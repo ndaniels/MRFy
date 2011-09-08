@@ -1,0 +1,3 @@
+in ghci, :load hmmplus.hs, then (h, hmm, md) <- result
+
+:load psipred.hs, then (h, p, md) <- result
