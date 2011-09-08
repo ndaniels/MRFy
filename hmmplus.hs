@@ -229,13 +229,28 @@ getBetaStrands h = getBetaStrands' 1 (getBetaPairs h)
 -- we want pairedPos to be relative to a specific residue in a paired strand
 -- this will allow flexibility with gaps in non-beta regions!
 
-data BetaResidue = {strandPosition::Int, pairedStrand::Int, pairedPosition::Int, solventExposure::exposure}
+-- data BetaResidue = {strandPosition::Int, pairedStrand::Int, pairedPosition::Int, solventExposure::exposure} 
+--  
+-- data BetaStrand =  
+--  
+--  
+-- data BetaStrand = BetaStrand {order::Int, startPosition::Int, endPosition::Int, exposureList::[Exposure]} 
 
-data BetaStrand = 
 
+-- This is from the board on Thu Sep  8 16:04:42 EDT 2011
+-- Do we want 'pairFwd' and 'pairBck' to be BetaPosition or BetaResidue?
 
-data BetaStrand = BetaStrand {order::Int, startPosition::Int, endPosition::Int, exposureList::[Exposure]}
+type BetaPosition = Int
 
+data BetaResidue = BetaResidue { position :: BetaPosition
+                               , solventExpsure :: Exposure
+                               , pairFwd :: Maybe BetaPosition
+                               , pairBck :: Maybe BetaPosition
+                               }
+
+data BetaStrand = BetaStrand { serial :: Int
+                             , residues :: [BetaResidue]
+                             }
     
 
 getTag :: Tag -> SmurfHeader -> Payload
