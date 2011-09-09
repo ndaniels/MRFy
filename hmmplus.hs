@@ -3,7 +3,7 @@
              DeriveDataTypeable, ScopedTypeVariables, NamedFieldPuns #-}
 
 module Smurf.HmmPlus where
-import Language.Pads.Padsc
+import Language.Pads.Padsc hiding (position, head)
 import Language.Pads.GenPretty
 import Control.Monad
 import System.IO.Unsafe (unsafePerformIO)
@@ -126,12 +126,18 @@ nucleotide = "ACTG"
   data LogProbability = LogZero '*'
                       | NonZero Double
                       
-  data TransitionProbability (fState::HMMState, tState::HMMState) = TransitionProbability { 
-                                                                  logProbability::LogProbability,
-                                                                  fromState = value fState::HMMState,
-                                                                  toState = value tState::HMMState
-  
-  }
+  -- data TransitionProbability (fState::HMMState, tState::HMMState) = TransitionProbability {  
+                                                                  -- logProbability::LogProbability, 
+                                                                  -- fromState = value fState::HMMState, 
+                                                                  -- toState = value tState::HMMState 
+  --  
+  -- } 
+
+  data TransitionProbability (fState::HMMState, tState::HMMState) = 
+       TransitionProbability { logProbability::LogProbability
+                             , fromState = value fState::HMMState
+                             , toState = value tState::HMMState
+                             }
 
     
   -- data HMMState = Match | Insertion | Deletion
@@ -195,46 +201,52 @@ getNumNodes ((HeaderLine {tag, payload}):xs) = case tag of
                               otherwise -> error "Invalid model length"
                     otherwise -> getNumNodes xs
                     
+-- PARALLELISM:
+-- start2 is the first residue in sequence in the second strand of the pair.
+-- It is not necessarily the position aligned with the first strand's
+-- first residue.
+--
+-- If parallel then start2 is paired with start1.
+-- If antiparallel then start1 is paired with start2 + length - 1.
+--
+-- Exposures for strand 1 are simply read in order.
+-- Exposures for strand 2:
+--    If antiparallel: read in reverse.
+--    If parallel:     read forwards.
+--
+-- An exposure applies to a *pair* of residues equally.
+-- If s1 is paired with s2, then s2's exposure is the same as s1's exposure.
+getBetaStrands :: SmurfHeader -> [BetaStrand]
+getBetaStrands h = mkBetaStrands 1 $ (mkBetaResidues . getBetaPairs) h
+
+mkBetaStrands :: Int -> [BetaResidue] -> [BetaStrand]
+mkBetaStrands i residues = mkBetaStrand : mkBetaStrands (i + 1) leftover
+  where getAdjacentAndRest residues =
+          foldl (\(adj, rest, pos) r -> if pos == 1 + position r then
+                                         (r:adj, rest, position r)
+                                       else
+                                         (adj, r:rest, position r))
+                ([], [], position $ head residues)
+                residues 
+        mkBetaStrand = BetaStrand { serial = i, residues = adjacent }
+        (adjacent, leftover, _) = getAdjacentAndRest residues
+
+-- XXX: Not implemented yet
+mkBetaResidues :: [StrandPair] -> [BetaResidue]
+mkBetaResidues spairs = []
+
+
+              
+
 -- given a SmurfHeader, return a list of beta strand pairs, possibly empty.                    
 getBetaPairs :: SmurfHeader -> [StrandPair]
-getBetaPairs ((HeaderLine {tag, payload}):xs) = case tag of
-                    BETA -> case payload of 
-                              Beta b -> (b:getBetaPairs xs)
-                              otherwise -> error "Invalid beta"
-                    otherwise -> getBetaPairs xs                    
+getBetaPairs (HeaderLine {tag, payload}:xs) = 
+  case tag of
+       BETA -> case payload of 
+                 Beta b -> b:getBetaPairs xs
+                 otherwise -> error "Invalid beta"
+       otherwise -> getBetaPairs xs                    
 getBetaPairs [] = []                
-
-getBetaStrands :: SmurfHeader -> [BetaStrand]
-getBetaStrands h = getBetaStrands' 1 (getBetaPairs h)
-  where getBetaStrands' _ [] = []
-        getBetaStrands' counter (x:xs) = createBetas counter x ++ getBetaStrands' (counter + 2) xs
-          where createBetas counter x = ((BetaStrand counter start1 (start1 + pairLength x) (exposure x)) : [(BetaStrand (counter + 1) start2 (start2 + pairLength x) (flipExposures $ exposure x))])
-                  where start1 = firstStart x
-                        start2 = secondStart x
-                        -- start2 depends on parallel
-                        -- start2 = secondStart 1 (really??)
-                        -- check logic for this
-                        -- I think this depends on parallel vs antiparallel
-                        -- should not flip exposures, just reverse the list if antiparallel
-                        -- need a way to represent paired residues (position, pairedpos)
-                        flipExposures ys = map flipExposure ys
-                          where flipExposure In = Out
-                                flipExposure Out = In
-
--- rethink this. A BetaStrand is a list of (Position, PairedPosition, Exposure) tuples.
--- Order can be derived from position of first residue.
--- data BetaStrand = {betaStrandId::Int, betaStrandPositions::[BetaResidue]}
--- still have to handle multiply paired....? pairedForward, pairedBack???
--- data BetaResidue = {position::Int, pairedStrand::Int, pairedPosition::Int, solventExposure::Exposure}
--- we want pairedPos to be relative to a specific residue in a paired strand
--- this will allow flexibility with gaps in non-beta regions!
-
--- data BetaResidue = {strandPosition::Int, pairedStrand::Int, pairedPosition::Int, solventExposure::exposure} 
---  
--- data BetaStrand =  
---  
---  
--- data BetaStrand = BetaStrand {order::Int, startPosition::Int, endPosition::Int, exposureList::[Exposure]} 
 
 
 -- This is from the board on Thu Sep  8 16:04:42 EDT 2011
