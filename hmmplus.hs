@@ -256,12 +256,21 @@ data BetaResidue = BetaResidue { position :: BetaPosition
                                , solventExposure :: Exposure
                                , pairFwd :: Maybe BetaPosition
                                , pairBck :: Maybe BetaPosition
-                               } deriving (Show)
+                               }
+instance Show BetaResidue where
+  show r = "BetaResidue " ++ (show $ position r)
+instance Eq BetaResidue where
+  r1 == r2 = (position r1) == (position r2)
 
 data BetaStrand = BetaStrand { serial :: Int
                              , residues :: [BetaResidue]
-                             } deriving (Show)
-    
+                             }
+instance Show BetaStrand where
+  show s = "BetaStrand " ++ (show $ serial s) ++ 
+           " [" ++ (show $ residues s) ++ "]"
+instance Eq BetaStrand where
+  s1 == s2 = (serial s1) == (serial s2)
+
 
 getTag :: Tag -> SmurfHeader -> Payload
 getTag t ((HeaderLine {tag, payload}):xs) = if tag == t
