@@ -219,34 +219,32 @@ getNumNodes ((HeaderLine {tag, payload}):xs) = case tag of
 getBetaStrands :: SmurfHeader -> [BetaStrand]
 getBetaStrands h = mkBetaStrands 1 $ (mkBetaResidues . getBetaPairs) h
 
-mkBetaStrands :: Int -> [BetaResidue] -> [BetaStrand]
-mkBetaStrands i residues = mkBetaStrand : mkBetaStrands (i + 1) leftover
-  where getAdjacentAndRest residues =
-          foldl (\(adj, rest, pos) r -> if pos == 1 + position r then
-                                         (r:adj, rest, position r)
-                                       else
-                                         (adj, r:rest, position r))
-                ([], [], position $ head residues)
-                residues 
-        mkBetaStrand = BetaStrand { serial = i, residues = adjacent }
-        (adjacent, leftover, _) = getAdjacentAndRest residues
+getBetaPairs :: SmurfHeader -> [StrandPair]
+getBetaPairs (HeaderLine {tag, payload}:xs) = 
+  case tag of
+       BETA -> case payload of 
+                    Beta b -> b:getBetaPairs xs
+                    otherwise -> error "Invalid beta"
+       otherwise -> getBetaPairs xs                    
+getBetaPairs [] = []                
 
 -- XXX: Not implemented yet
 mkBetaResidues :: [StrandPair] -> [BetaResidue]
 mkBetaResidues spairs = []
 
-
-              
-
--- given a SmurfHeader, return a list of beta strand pairs, possibly empty.                    
-getBetaPairs :: SmurfHeader -> [StrandPair]
-getBetaPairs (HeaderLine {tag, payload}:xs) = 
-  case tag of
-       BETA -> case payload of 
-                 Beta b -> b:getBetaPairs xs
-                 otherwise -> error "Invalid beta"
-       otherwise -> getBetaPairs xs                    
-getBetaPairs [] = []                
+mkBetaStrands :: Int -> [BetaResidue] -> [BetaStrand]
+mkBetaStrands _ [] = []
+mkBetaStrands i residues = mkBetaStrand : mkBetaStrands (i + 1) (reverse rest)
+  where mkBetaStrand = BetaStrand { serial = i, residues = reverse adjacent }
+        (adjacent, rest) = getAdjacentAndRest residues
+        getAdjacentAndRest residues =
+          foldl adjsAndRest ([], []) $ zip [startCount..] residues
+        startCount = position $ head residues
+        adjsAndRest (adj, rest) (cnt, residue) =
+          if cnt == position residue then
+            (residue:adj, rest)
+          else
+            (adj, residue:rest)
 
 
 -- This is from the board on Thu Sep  8 16:04:42 EDT 2011
@@ -255,14 +253,14 @@ getBetaPairs [] = []
 type BetaPosition = Int
 
 data BetaResidue = BetaResidue { position :: BetaPosition
-                               , solventExpsure :: Exposure
+                               , solventExposure :: Exposure
                                , pairFwd :: Maybe BetaPosition
                                , pairBck :: Maybe BetaPosition
-                               }
+                               } deriving (Show)
 
 data BetaStrand = BetaStrand { serial :: Int
                              , residues :: [BetaResidue]
-                             }
+                             } deriving (Show)
     
 
 getTag :: Tag -> SmurfHeader -> Payload
