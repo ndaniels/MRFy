@@ -228,28 +228,44 @@ getBetaPairs (HeaderLine {tag, payload}:xs) =
        otherwise -> getBetaPairs xs                    
 getBetaPairs [] = []                
 
--- XXX: Not implemented yet
-mkBetaResidues :: [StrandPair] -> [BetaResidue]
-mkBetaResidues spairs = mkBetaResidues' spairs []
+-- This is all really bad.
+-- I spoke with Norman, and I think a better approach is to do this in
+-- two passes instead of one pass. Namely, collect all of the nodes in one pass,
+-- then go and decorate them in a second pass.
+mkBetaResidues :: [StrandPair] -> [(BetaPosition, [BetaResidue])]
+mkBetaResidues [] strandResidues = strandResidues
+mkBetaResidues (sp:sps) strandResidues = mkBetaResidues sps newResidues'
+  where newResidues' = if strandExists posSecond then
+                         newResidues
+                       else
+                         mkNew $ zip3 [
+        posFirst = firstStart sp
+        posSecond = case parallel sp of
+                         Parallel -> secondStart sp
+                         Antiparallel -> (secondStart sp) + (pairLength sp) - 1
 
 mkBetaResidues' :: [StrandPair] -> [BetaResidue] -> [BetaResidue]
 mkBetaResidues' [] residues = residues
 mkBetaResidues' (sp:sps) residues =
-  mkBetaResidues' sps (mk2ndStrand $ mk1stStrand)
-  where mk1stStrand = addResidues $ zip3 [s1..] exps residues
-        mk2ndStrand residues' = residues'
+  mkBetaResidues' sps rsSecond
+  where rsFirst = addResidues resides $ zip3 [s1..] exps residues
+        rsSecond = addResidues rsFirst $ zip3 [s2..] exps rsFirst
         s1 = firstStart sp
         s2 = secondStart sp
         exps = exposure sp
 
-addResidues :: [(BetaPosition, Exposure, BetaResidue)] -> [BetaResidue]
-addResidues [] = []
-addResidues ((p, exp, r):residueInfo) = addResidue : (addResidues residueInfo)
-  where addResidue = BetaResidue { position = p
-                                 , solventExposure = exp
-                                 , pairFwd = Nothing
-                                 , pairBck = Nothing
-                                 }
+addResidues :: [BetaResidue] 
+               -> [(BetaPosition, Exposure, BetaResidue)] 
+               -> [BetaResidue]
+addResidues residues [] = residues
+addResidues residues ((p, exp, r):residueInfo) = 
+  addResidues addResidue residueInfo
+  where addResidue = newRes : residues
+        newRes = BetaResidue { position = p
+                             , solventExposure = exp
+                             , pairFwd = Nothing
+                             , pairBck = Nothing
+                             }
 
 ithBetaResidue :: BetaPosition -> [BetaResidue] -> Maybe BetaResidue
 ithBetaResidue i [] = Nothing
@@ -285,6 +301,8 @@ instance Show BetaResidue where
   show r = "BetaResidue " ++ (show $ position r)
 instance Eq BetaResidue where
   r1 == r2 = (position r1) == (position r2)
+instance Ord BetaResidue where
+  compare r1 r2 = compare (position r1) (position r2)
 
 data BetaStrand = BetaStrand { serial :: Int
                              , residues :: [BetaResidue]
