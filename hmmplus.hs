@@ -230,8 +230,35 @@ getBetaPairs [] = []
 
 -- XXX: Not implemented yet
 mkBetaResidues :: [StrandPair] -> [BetaResidue]
-mkBetaResidues spairs = []
+mkBetaResidues spairs = mkBetaResidues' spairs []
 
+mkBetaResidues' :: [StrandPair] -> [BetaResidue] -> [BetaResidue]
+mkBetaResidues' [] residues = residues
+mkBetaResidues' (sp:sps) residues =
+  mkBetaResidues' sps (mk2ndStrand $ mk1stStrand)
+  where mk1stStrand = addResidues $ zip3 [s1..] exps residues
+        mk2ndStrand residues' = residues'
+        s1 = firstStart sp
+        s2 = secondStart sp
+        exps = exposure sp
+
+addResidues :: [(BetaPosition, Exposure, BetaResidue)] -> [BetaResidue]
+addResidues [] = []
+addResidues ((p, exp, r):residueInfo) = addResidue : (addResidues residueInfo)
+  where addResidue = BetaResidue { position = p
+                                 , solventExposure = exp
+                                 , pairFwd = Nothing
+                                 , pairBck = Nothing
+                                 }
+
+ithBetaResidue :: BetaPosition -> [BetaResidue] -> Maybe BetaResidue
+ithBetaResidue i [] = Nothing
+ithBetaResidue i (r:rs) = if position r == i then
+                            Just r
+                          else
+                            ithBetaResidue i rs
+
+-- precondition: [BetaResidue] is sorted by 'position' in ascending order
 mkBetaStrands :: Int -> [BetaResidue] -> [BetaStrand]
 mkBetaStrands _ [] = []
 mkBetaStrands i residues = mkBetaStrand : mkBetaStrands (i + 1) (reverse rest)
@@ -246,9 +273,6 @@ mkBetaStrands i residues = mkBetaStrand : mkBetaStrands (i + 1) (reverse rest)
           else
             (adj, residue:rest)
 
-
--- This is from the board on Thu Sep  8 16:04:42 EDT 2011
--- Do we want 'pairFwd' and 'pairBck' to be BetaPosition or BetaResidue?
 
 type BetaPosition = Int
 
