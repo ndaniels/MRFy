@@ -232,40 +232,73 @@ getBetaPairs [] = []
 -- I spoke with Norman, and I think a better approach is to do this in
 -- two passes instead of one pass. Namely, collect all of the nodes in one pass,
 -- then go and decorate them in a second pass.
+mkBetaResidues :: [StrandPair] -> [BetaResidue]
+mkBetaResidues [] = []
+mkBetaResidues (sp:sps) = newResidues ++ mkBetaResidues sps
+where 
+  newResidues = case parallel sp of Parallel -> parallelPairs
+                                    Antiparallel -> antiPairs
+  parallelPairs = mkResidues $ zip3 (exposure sp) [s1..] [s2..]
+  antiPairs = mkResidues $ zip3 (reverse $ exposure sp) [s1..] [s2, s2-1..]
+  s1 = firstStart sp
+  s2 = secondStart sp
+
+  mkResidues :: [(Exposure, BetaPosition, BetaPosition)] -> [BetaResidue]
+  mkResidues [] = []
+  mkResidues ((exp, b1, b2):rest) = p1 : p2 : mkResidues rest
+  where 
+    p1 = BetaResidue { position = b1
+                     , solventExposure = exp
+                     , pairFwd = Just b2
+                     , pairBck = Nothing
+                     }
+    p2 = BetaResidue { position = b2
+                     , solventExposure = exp
+                     , pairFwd = Nothing
+                     , pairBck = Just b1
+                     }
+
 mkBetaResidues :: [StrandPair] -> [(BetaPosition, [BetaResidue])]
 mkBetaResidues [] strandResidues = strandResidues
 mkBetaResidues (sp:sps) strandResidues = mkBetaResidues sps newResidues'
   where newResidues' = if strandExists posSecond then
                          newResidues
                        else
-                         mkNew $ zip3 [
+                         newResidues : (mkNew $ zip [posSecond..] expSecond)
+        newResidues = if strandExists posFirst then
+                         strandResidues
+                      else
+                         
         posFirst = firstStart sp
         posSecond = case parallel sp of
                          Parallel -> secondStart sp
                          Antiparallel -> (secondStart sp) + (pairLength sp) - 1
+        expSecond = case parallel sp of
+                         Parallel -> exposure sp
+                         Antiparallel -> reverse $ exposure sp
 
-mkBetaResidues' :: [StrandPair] -> [BetaResidue] -> [BetaResidue]
-mkBetaResidues' [] residues = residues
-mkBetaResidues' (sp:sps) residues =
-  mkBetaResidues' sps rsSecond
-  where rsFirst = addResidues resides $ zip3 [s1..] exps residues
-        rsSecond = addResidues rsFirst $ zip3 [s2..] exps rsFirst
-        s1 = firstStart sp
-        s2 = secondStart sp
-        exps = exposure sp
-
-addResidues :: [BetaResidue] 
-               -> [(BetaPosition, Exposure, BetaResidue)] 
-               -> [BetaResidue]
-addResidues residues [] = residues
-addResidues residues ((p, exp, r):residueInfo) = 
-  addResidues addResidue residueInfo
-  where addResidue = newRes : residues
-        newRes = BetaResidue { position = p
-                             , solventExposure = exp
-                             , pairFwd = Nothing
-                             , pairBck = Nothing
-                             }
+-- mkBetaResidues' :: [StrandPair] -> [BetaResidue] -> [BetaResidue] 
+-- mkBetaResidues' [] residues = residues 
+-- mkBetaResidues' (sp:sps) residues = 
+  -- mkBetaResidues' sps rsSecond 
+  -- where rsFirst = addResidues resides $ zip3 [s1..] exps residues 
+        -- rsSecond = addResidues rsFirst $ zip3 [s2..] exps rsFirst 
+        -- s1 = firstStart sp 
+        -- s2 = secondStart sp 
+        -- exps = exposure sp 
+--  
+-- addResidues :: [BetaResidue]  
+               -- -> [(BetaPosition, Exposure, BetaResidue)]  
+               -- -> [BetaResidue] 
+-- addResidues residues [] = residues 
+-- addResidues residues ((p, exp, r):residueInfo) =  
+  -- addResidues addResidue residueInfo 
+  -- where addResidue = newRes : residues 
+        -- newRes = BetaResidue { position = p 
+                             -- , solventExposure = exp 
+                             -- , pairFwd = Nothing 
+                             -- , pairBck = Nothing 
+                             -- } 
 
 ithBetaResidue :: BetaPosition -> [BetaResidue] -> Maybe BetaResidue
 ithBetaResidue i [] = Nothing
