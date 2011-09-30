@@ -6,6 +6,8 @@ module Smurf.HmmPlus where
 import Language.Pads.Padsc hiding (position, head)
 import Language.Pads.GenPretty
 import Control.Monad
+import Data.List (sort)
+import qualified Data.Set as Set
 import System.IO.Unsafe (unsafePerformIO)
 
 ws = REd "[\t ]+|$" " "
@@ -228,84 +230,68 @@ getBetaPairs (HeaderLine {tag, payload}:xs) =
        otherwise -> getBetaPairs xs                    
 getBetaPairs [] = []                
 
--- This is all really bad.
--- I spoke with Norman, and I think a better approach is to do this in
--- two passes instead of one pass. Namely, collect all of the nodes in one pass,
--- then go and decorate them in a second pass.
+
 mkBetaResidues :: [StrandPair] -> [BetaResidue]
-mkBetaResidues [] = []
-mkBetaResidues (sp:sps) = newResidues ++ mkBetaResidues sps
-where 
-  newResidues = case parallel sp of Parallel -> parallelPairs
-                                    Antiparallel -> antiPairs
-  parallelPairs = mkResidues $ zip3 (exposure sp) [s1..] [s2..]
-  antiPairs = mkResidues $ zip3 (reverse $ exposure sp) [s1..] [s2, s2-1..]
-  s1 = firstStart sp
-  s2 = secondStart sp
+mkBetaResidues sps = sort $ decResidues residues
+  where residues = mkBetaResidues' sps
 
-  mkResidues :: [(Exposure, BetaPosition, BetaPosition)] -> [BetaResidue]
-  mkResidues [] = []
-  mkResidues ((exp, b1, b2):rest) = p1 : p2 : mkResidues rest
-  where 
-    p1 = BetaResidue { position = b1
-                     , solventExposure = exp
-                     , pairFwd = Just b2
-                     , pairBck = Nothing
-                     }
-    p2 = BetaResidue { position = b2
-                     , solventExposure = exp
-                     , pairFwd = Nothing
-                     , pairBck = Just b1
-                     }
+decResidues :: [BetaResidue] -> [BetaResidue]
+decResidues residues = sort $ Set.elems $ Set.fromList $ decorated
+  where decorated = decResidues' residues residues
 
-mkBetaResidues :: [StrandPair] -> [(BetaPosition, [BetaResidue])]
-mkBetaResidues [] strandResidues = strandResidues
-mkBetaResidues (sp:sps) strandResidues = mkBetaResidues sps newResidues'
-  where newResidues' = if strandExists posSecond then
-                         newResidues
-                       else
-                         newResidues : (mkNew $ zip [posSecond..] expSecond)
-        newResidues = if strandExists posFirst then
-                         strandResidues
-                      else
-                         
-        posFirst = firstStart sp
-        posSecond = case parallel sp of
-                         Parallel -> secondStart sp
-                         Antiparallel -> (secondStart sp) + (pairLength sp) - 1
-        expSecond = case parallel sp of
-                         Parallel -> exposure sp
-                         Antiparallel -> reverse $ exposure sp
+decResidues' :: [BetaResidue] -> [BetaResidue] -> [BetaResidue]
+decResidues' _ [] = []
+decResidues' residues (r:rs) = nr : decResidues' residues rs
+  where nr = foldl merge r $ filter ((==) r) residues
+        
+        merge :: BetaResidue -> BetaResidue -> BetaResidue
+        merge b b' = if solventExposure b /= solventExposure b' then
+                       error $ "Bad exposure for residue " ++ show b ++ " and " ++ show b'
+                     else
+                       maybe b'' (setFwd b'') (pairFwd b'')
+          where b'' = maybe b (setBck b) (pairBck b')
 
--- mkBetaResidues' :: [StrandPair] -> [BetaResidue] -> [BetaResidue] 
--- mkBetaResidues' [] residues = residues 
--- mkBetaResidues' (sp:sps) residues = 
-  -- mkBetaResidues' sps rsSecond 
-  -- where rsFirst = addResidues resides $ zip3 [s1..] exps residues 
-        -- rsSecond = addResidues rsFirst $ zip3 [s2..] exps rsFirst 
-        -- s1 = firstStart sp 
-        -- s2 = secondStart sp 
-        -- exps = exposure sp 
---  
--- addResidues :: [BetaResidue]  
-               -- -> [(BetaPosition, Exposure, BetaResidue)]  
-               -- -> [BetaResidue] 
--- addResidues residues [] = residues 
--- addResidues residues ((p, exp, r):residueInfo) =  
-  -- addResidues addResidue residueInfo 
-  -- where addResidue = newRes : residues 
-        -- newRes = BetaResidue { position = p 
-                             -- , solventExposure = exp 
-                             -- , pairFwd = Nothing 
-                             -- , pairBck = Nothing 
-                             -- } 
+        setFwd :: BetaResidue -> BetaPosition -> BetaResidue
+        setFwd b i = case pairFwd b of
+                          Just i' -> if i /= i' then 
+                                       error $ "Bad fwd pair for residue " ++ show b ++ ": (" ++ show i ++ ", " ++ show i' ++ ")"
+                                     else
+                                       b
+                          Nothing -> b { pairFwd = Just i }
 
-ithBetaResidue :: BetaPosition -> [BetaResidue] -> Maybe BetaResidue
-ithBetaResidue i [] = Nothing
-ithBetaResidue i (r:rs) = if position r == i then
-                            Just r
-                          else
-                            ithBetaResidue i rs
+        setBck :: BetaResidue -> BetaPosition -> BetaResidue
+        setBck b i = case pairBck b of
+                          Just i' -> if i /= i' then 
+                                       error $ "Bad bck pair for residue " ++ show b ++ ": (" ++ show i ++ ", " ++ show i' ++ ")"
+                                     else
+                                       b
+                          Nothing -> b { pairBck = Just i }
+  
+
+mkBetaResidues' :: [StrandPair] -> [BetaResidue]
+mkBetaResidues' [] = []
+mkBetaResidues' (sp:sps) = newResidues ++ mkBetaResidues' sps
+  where newResidues = case parallel sp of Parallel -> parallelPairs
+                                          Antiparallel -> antiPairs
+        parallelPairs = mkResidues $ zip3 (exposure sp) [s1..] [s2..]
+        antiPairs = mkResidues $ 
+                      zip3 (exposure sp) [s1..] [s2, s2-1..]
+        s1 = firstStart sp
+        s2 = secondStart sp + pairLength sp - 1
+
+        mkResidues :: [(Exposure, BetaPosition, BetaPosition)] -> [BetaResidue]
+        mkResidues [] = []
+        mkResidues ((exp, b1, b2):rest) = p1 : p2 : mkResidues rest
+          where p1 = BetaResidue { position = b1
+                                 , solventExposure = exp
+                                 , pairFwd = Just b2
+                                 , pairBck = Nothing
+                                 }
+                p2 = BetaResidue { position = b2
+                                 , solventExposure = exp
+                                 , pairFwd = Nothing
+                                 , pairBck = Just b1
+                                 }
 
 -- precondition: [BetaResidue] is sorted by 'position' in ascending order
 mkBetaStrands :: Int -> [BetaResidue] -> [BetaStrand]
@@ -331,7 +317,11 @@ data BetaResidue = BetaResidue { position :: BetaPosition
                                , pairBck :: Maybe BetaPosition
                                }
 instance Show BetaResidue where
-  show r = "BetaResidue " ++ (show $ position r)
+  show r = "BetaResidue " ++ (show $ position r) ++ details
+    where details = " (Exposure: " ++ exp ++ ", Fwd: " ++ f ++ ", Bck: " ++ b ++ ")"
+          exp = show $ solventExposure r
+          f = show $ pairFwd r
+          b = show $ pairBck r
 instance Eq BetaResidue where
   r1 == r2 = (position r1) == (position r2)
 instance Ord BetaResidue where
