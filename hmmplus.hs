@@ -245,16 +245,15 @@ decResidues' residues (r:rs) = nr : decResidues' residues rs
   where nr = foldl merge r $ filter ((==) r) residues
         
         merge :: BetaResidue -> BetaResidue -> BetaResidue
-        merge b b' = if solventExposure b /= solventExposure b' then
-                       error $ "Bad exposure for residue " ++ show b ++ " and " ++ show b'
-                     else
-                       maybe b'' (setFwd b'') (pairFwd b'')
+        merge b b' = maybe b'' (setFwd b'') (pairFwd b'')
           where b'' = maybe b (setBck b) (pairBck b')
 
         setFwd :: BetaResidue -> BetaPosition -> BetaResidue
         setFwd b i = case pairFwd b of
                           Just i' -> if i /= i' then 
-                                       error $ "Bad fwd pair for residue " ++ show b ++ ": (" ++ show i ++ ", " ++ show i' ++ ")"
+                                       error $ "Bad fwd pair for residue " 
+                                                ++ show b ++ ": (" ++ show i 
+                                                ++ ", " ++ show i' ++ ")"
                                      else
                                        b
                           Nothing -> b { pairFwd = Just i }
@@ -262,7 +261,9 @@ decResidues' residues (r:rs) = nr : decResidues' residues rs
         setBck :: BetaResidue -> BetaPosition -> BetaResidue
         setBck b i = case pairBck b of
                           Just i' -> if i /= i' then 
-                                       error $ "Bad bck pair for residue " ++ show b ++ ": (" ++ show i ++ ", " ++ show i' ++ ")"
+                                       error $ "Bad bck pair for residue " 
+                                                ++ show b ++ ": (" ++ show i 
+                                                ++ ", " ++ show i' ++ ")"
                                      else
                                        b
                           Nothing -> b { pairBck = Just i }
@@ -283,12 +284,14 @@ mkBetaResidues' (sp:sps) = newResidues ++ mkBetaResidues' sps
         mkResidues [] = []
         mkResidues ((exp, b1, b2):rest) = p1 : p2 : mkResidues rest
           where p1 = BetaResidue { position = b1
-                                 , solventExposure = exp
+                                 , exposureFwd = Just exp
+                                 , exposureBck = Nothing
                                  , pairFwd = Just b2
                                  , pairBck = Nothing
                                  }
                 p2 = BetaResidue { position = b2
-                                 , solventExposure = exp
+                                 , exposureFwd = Nothing
+                                 , exposureBck = Just exp
                                  , pairFwd = Nothing
                                  , pairBck = Just b1
                                  }
@@ -312,14 +315,17 @@ mkBetaStrands i residues = mkBetaStrand : mkBetaStrands (i + 1) (reverse rest)
 type BetaPosition = Int
 
 data BetaResidue = BetaResidue { position :: BetaPosition
-                               , solventExposure :: Exposure
+                               , exposureFwd :: Maybe Exposure
+                               , exposureBck :: Maybe Exposure
                                , pairFwd :: Maybe BetaPosition
                                , pairBck :: Maybe BetaPosition
                                }
 instance Show BetaResidue where
   show r = "BetaResidue " ++ (show $ position r) ++ details
-    where details = " (Exposure: " ++ exp ++ ", Fwd: " ++ f ++ ", Bck: " ++ b ++ ")"
-          exp = show $ solventExposure r
+    where details = " (Exposure Fwd: " ++ expF ++ ", Exposure Bck: " ++ expB 
+                      ++ ", Fwd: " ++ f ++ ", Bck: " ++ b ++ ")"
+          expF = show $ exposureFwd r
+          expB = show $ exposureBck r
           f = show $ pairFwd r
           b = show $ pairBck r
 instance Eq BetaResidue where
