@@ -1,4 +1,6 @@
 .*swp
+*.o
+*.hi
 tags
 TAGS
 smurf2
