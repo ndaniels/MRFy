@@ -1,4 +1,5 @@
 This is a Haskell implementation of the SMURF2 algorithm (stochastic search-based).
 
-Andrew can push!
+Docs for cmdargs (which is very nice):
+  http://hackage.haskell.org/packages/archive/cmdargs/latest/doc/html/System-Console-CmdArgs-Implicit.html
 

@@ -1,0 +1,3 @@
+pads-haskell >=0.2.1
+cmdargs ?>=0.8
+
