@@ -5,5 +5,5 @@ tags:V:
 	hasktags *.hs
 
 clean:V: 
-	rm *.{hi,o}
 	rm smurf2
+	rm *.{hi,o}
