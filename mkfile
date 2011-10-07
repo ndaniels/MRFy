@@ -6,3 +6,4 @@ tags:V:
 
 clean:V: 
 	rm *.{hi,o}
+	rm smurf2
