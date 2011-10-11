@@ -87,16 +87,38 @@ nucleotide = "ACTG"
   data HMM (alphabet :: String, numNodes :: Int) = 
        HMM { "HMM"
            , ws
+           -- the hmmAlphabet is just informational, but it
+           -- helps identify (positionally) which EmissionProbabilities maps
+           -- to which residue letter
            , hmmAlphabet :: [Letter alphabet | ws] length <| length alphabet |>
            , ws
            , EOR
            , ws
+           -- the transitionHeader is just informational, but it
+           -- helps identify (positionally) which TransitionProbabilities map
+           -- from which source state to which destination state
+           -- such as 'm->m' and 'm->i'
            , transitionHeader :: TransitionDescription
            , EOR
+           -- the model's overall match state probabilities; optional
+           -- I do not believe the Smurf2 algorithm has any use for these.
+           -- They are used for null model filtering in HMMER, but we cannot
+           -- use that simple 1-state null model in Smurf2.
            , composition :: Maybe (ws, "COMPO", ws, 
                                    EmissionProbabilities alphabet, ws, EOR)
+           -- the insertZeroEmissions and stateZeroTransitions are the
+           -- transition probabilities for the BEGIN node of the whole HMM.
+           -- match state 0 is the BEGIN state, which is mute so has no
+           -- match emission probabilities. the insertZeroEmissions is
+           -- the emission probability table for an insert state that may occur
+           -- before the first real match state (M1)                                    
            , insertZeroEmissions :: InsertEmissions alphabet
+           -- the stateZeroTransitions are the transition probabilities for
+           -- b->m1, b->i0, b->d1, i0->m1, i0->i0, d0->m1 (always 0.0), d0->d1 (always *)
+           -- recall that these are log probabilities, so log1 == 0 and log0 == infinity (*)
            , stateZeroTransitions :: StateTransitions
+           -- the "regular" nodes, which are the rest of the state transition and emission
+           -- probabilities. See the HmmNode type for full documentation
            , nodes :: [HmmNode <| alphabet |>] terminator "//" 
              where <| numNodes == length nodes |>
            }
@@ -106,7 +128,11 @@ nucleotide = "ACTG"
   
   type EmissionProbabilities (alphabet :: String) = 
        [ Double | ws ] length <| length alphabet |> 
-  
+
+  -- A bit of a hack here, because Pads doesn't yet support non-base types
+  -- as the parameteter for an algebraic parser type
+  -- note that 0 is for a match, 1 for insertion, and 2 for a deletion
+  -- 
   data TransitionProbabilities = TransitionProbabilities {
       m_m :: TransitionProbability <|(0, 0)|>, ws,
       m_i :: TransitionProbability <|(0, 1)|>, ws,
@@ -126,13 +152,25 @@ nucleotide = "ACTG"
   
   data HmmNode (alphabet::String) = 
        HmmNode { ws
+               -- simply the index (number) of the node. Begin state is 0.
                , nodeNum :: Int
                , ws
+               -- Emission log-odds probabilities for the match state
+               -- remember these are mapped to the alphabet in alphabetic order
                , matchEmissions :: EmissionProbabilities alphabet
                , ws
+               -- these are three extra fields for MAP, RF, and CS
+               -- we do not use them in the Smurf2 algorithm; see the
+               -- HMMER3 user guide if you are curious.
                , annotations :: EmissionAnnotationSet
                , EOR
+               -- these fields are the insert emission log-odds scores, one per
+               -- symbol in alphabetic order
                , insertionEmissions :: InsertEmissions alphabet
+               -- these fields are the transition log-odds for this node in order:
+               -- mk->(mk+1, ik, dk+1), ik->(mk+1, ik); dk->(mk+1, dk+1)
+               -- note that these correspond exactly to the edges in a profile
+               -- HMM state-transition diagram
                , transitions::StateTransitions
                }
   
@@ -240,6 +278,9 @@ getBetaPairs (HeaderLine {tag = tag, payload = payload}:xs) =
 getBetaPairs [] = []                
                 
 -- What is "SmurfFile_md" ? o_0
+-- It is the metadata from the PADS parser, and can give us information
+-- as to errors in the file format! We'll want to do some error checking
+-- and fail gracefully.
 parse :: FilePath -> IO (SmurfHeader, HMM, SmurfFile_md)
 parse f = do (SmurfFile header hmm, md) <- parseFile f
              return (header, hmm, md)
