@@ -30,13 +30,16 @@ amino = "ACDEFGHIKLMNPQRSTVWY"
 nucleotide = "ACTG"
 
 [pads|
-  data SmurfFile = SmurfFile { header::SmurfHeader, hmm::HMM <| (getAlphabet header, getNumNodes header) |> }
+  data SmurfFile = SmurfFile { header::SmurfHeader, 
+                               hmm::HMM <| (getAlphabet header, 
+                                            getNumNodes header) |> }
   
   type SmurfHeader = [Line HeaderLine] terminator Try (LitRE 'HMM ')
   
   data HeaderLine = HeaderLine { tag::Tag, ws, payload::Payload tag }
   
-  data Tag = FileVersion "HMMER3/a" -- this string literal will change with major file version changes
+  data Tag = FileVersion "HMMER3/a" -- this string literal will change with 
+                                    -- major file version changes
             | NAME | ACC | DESC | LENG | ALPH | RF | CS | MAP | DATE | MEAN | RMSD
             | COM | NSEQ | EFFN | CKSUM | GA | TC | NC | STATS | BETA | Other (StringSE ws)
   
@@ -46,11 +49,13 @@ nucleotide = "ACTG"
     | ACC -> Accession StringLn
     | DESC -> Description StringLn
     | LENG -> ModelLength Int
-    | ALPH -> Alphabet StringLn
+    | ALPH -> Alphabet StringLn -- amino or nucleotide
     | RF -> ReferenceAnnotation StringLn
     | CS -> ConsensusStructure StringLn
     | MAP -> MapAnnotation StringLn
     | DATE -> Date StringLn
+    | MEAN -> Mean Double -- used to calculate p-value
+    | RMSD -> StandardDeviation Double -- used to calculate p-value
     | COM -> CommandLog StringLn
     | NSEQ -> SequenceNumber Int
     | EFFN -> EffectiveSeq Double
@@ -59,7 +64,7 @@ nucleotide = "ACTG"
     | TC -> PfamTrusted (Double, ws, Double)
     | NC -> PfamNoise (Double, ws, Double)
     | STATS -> Stats {"LOCAL", ws, scoredist::ScoreDistribution, ws, values::[Double | ws] terminator Try EOR }
-    | BETA -> Beta StrandPair
+    | BETA -> Beta StrandPair -- consensus beta-strand pairing
     | Other tag -> BadTag StringLn
     | otherwise -> OtherTag StringLn
     
