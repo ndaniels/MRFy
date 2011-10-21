@@ -4,6 +4,7 @@
 module HmmPlus 
   ( SmurfHeader
   
+  , HMM(..)
   , Exposure
   , StrandPair
   , firstStart
