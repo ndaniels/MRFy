@@ -2,6 +2,7 @@
 
 module Main where
 
+import Data.Array
 import System.Console.CmdArgs
 
 import Beta
@@ -18,7 +19,7 @@ querySeq = listArray (1, 10) "ADBEHAQITP"
 
 main = do sargs <- cmdArgs smurfargs
           (header, hmm, md) <- parse $ hmmPlusFile sargs
-          putStrln $ show $ hmmAlign querySeq hmm
           putStrLn $ show $ getBetaStrands header
+          putStrLn $ show $ hmmAlign querySeq hmm
           
 
