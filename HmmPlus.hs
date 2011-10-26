@@ -5,6 +5,7 @@ module HmmPlus
   ( SmurfHeader
   
   , HMM(..)
+  , Direction(..)
   , Exposure
   , StrandPair
   , firstStart
@@ -14,7 +15,6 @@ module HmmPlus
   , parallel
   , exposure
   
-  , paraOrAnti
   , getBetaPairs
   , parse
   )
@@ -267,12 +267,6 @@ getTag t ((HeaderLine {tag, payload}):xs) = if tag == t
                                             else
                                               getTag t xs
 getTag t [] = error "Tag not found"  
-
--- This is a hack since I cannot seem to expose the type constructors for
--- Direction. (Which is declared in the Pads flib flab above.)
-paraOrAnti :: Direction -> a -> a -> a
-paraOrAnti p when_para when_anti = case p of Parallel -> when_para
-                                             Antiparallel -> when_anti
 
 getBetaPairs :: SmurfHeader -> [StrandPair]
 getBetaPairs (HeaderLine {tag = tag, payload = payload}:xs) = 
