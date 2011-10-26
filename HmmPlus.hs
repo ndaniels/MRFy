@@ -3,9 +3,13 @@
              DeriveDataTypeable, ScopedTypeVariables, NamedFieldPuns #-}
 module HmmPlus 
   ( SmurfHeader
+  , HMMState
   
   , HMM(..)
   , Direction(..)
+  , TransitionProbability(..)
+  , TransitionProbabilities(..)
+  , LogProbability(..)
   , Exposure
   , StrandPair
   , firstStart
@@ -41,8 +45,9 @@ nucleotide = "ACTG"
   
   data Tag = FileVersion "HMMER3/a" -- this string literal will change with 
                                     -- major file version changes
-            | NAME | ACC | DESC | LENG | ALPH | RF | CS | MAP | DATE | MEAN | RMSD
-            | COM | NSEQ | EFFN | CKSUM | GA | TC | NC | STATS | BETA | Other (StringSE ws)
+            | NAME | ACC | DESC | LENG | ALPH | RF | CS | MAP | DATE | MEAN 
+            | RMSD | COM | NSEQ | EFFN | CKSUM | GA | TC | NC | STATS 
+            | BETA | Other (StringSE ws)
   
   data Payload (t::Tag) = case t of
       FileVersion -> Version VersionString
@@ -64,7 +69,9 @@ nucleotide = "ACTG"
     | GA -> PfamGathering (Double, ws, Double)
     | TC -> PfamTrusted (Double, ws, Double)
     | NC -> PfamNoise (Double, ws, Double)
-    | STATS -> Stats {"LOCAL", ws, scoredist::ScoreDistribution, ws, values::[Double | ws] terminator Try EOR }
+    | STATS -> Stats { "LOCAL", ws, 
+                       scoredist :: ScoreDistribution, ws, 
+                       values :: [Double | ws] terminator Try EOR }
     | BETA -> Beta StrandPair -- consensus beta-strand pairing
     | Other tag -> BadTag StringLn
     | otherwise -> OtherTag StringLn
@@ -91,7 +98,7 @@ nucleotide = "ACTG"
                  | Antiparallel "-1"
   
   data HMM (alphabet :: String, numNodes :: Int) = 
-       HMM { "HMM"
+     HMM { "HMM"
            , ws
            -- the hmmAlphabet is just informational, but it
            -- helps identify (positionally) which EmissionProbabilities maps
