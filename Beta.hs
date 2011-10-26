@@ -99,7 +99,8 @@ mkBetaResidues' :: [StrandPair] -> [BetaResidue]
 mkBetaResidues' [] = []
 mkBetaResidues' (sp:sps) = newResidues ++ mkBetaResidues' sps
   where
-        newResidues = paraOrAnti (parallel sp) parallelPairs antiPairs
+        newResidues = case parallel sp of Parallel -> parallelPairs
+                                          Antiparallel -> antiPairs
         parallelPairs = mkResidues $ zip3 (exposure sp) [s1..] [s2..]
         antiPairs = mkResidues $ 
                       zip3 (exposure sp) [s1..] [s2, s2-1..]
