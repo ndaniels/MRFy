@@ -6,6 +6,7 @@ module HmmPlus
   , HMMState
   
   , HMM(..)
+  , HmmNode(..)
   , Direction(..)
   , TransitionProbability(..)
   , TransitionProbabilities(..)
