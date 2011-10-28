@@ -30,9 +30,8 @@ hmmAlign' seq hmm 0 state node
                                 (hmmAlphabet hmm)
                                 (seq ! 0)
                    +
-                   transProb (stateZeroTransitions hmm) m_i
-  | state == del = transProb (stateZeroTransitions hmm) m_d
-                        
+                   transProb hmm 0 m_i
+  | state == del = transProb hmm 0 m_d
 hmmAlign' seq hmm obs state node
   | state == mat = 0
   | state == ins = 1
@@ -44,8 +43,14 @@ emissionProb emissions alphabet residue =
     Just i -> emissions !! i
     Nothing -> error "Residue not found in alphabet"
 
-transProb transProbs stateTrans =
-  case logProbability $ stateTrans transProbs of
-    NonZero p -> p
-    LogZero -> error "Cannot compute log 0"
+-- This function may need to be changed after we filter the stuff from Pads.
+-- 1) We will use arrays instead of lists
+-- 2) We may put the '0' node in with the other HmmNodes
+transProb :: HMM -> Int -> (TransitionProbabilities -> TransitionProbability) 
+             -> Double
+transProb hmm node state = case logProbability $ state trans of
+                                NonZero p -> p
+                                LogZero -> error "Cannot compute log 0"
+  where trans = if node == 0 then stateZeroTransitions hmm
+                             else transitions ((nodes hmm) !! node)
 
