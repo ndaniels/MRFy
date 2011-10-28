@@ -24,7 +24,7 @@ hmmAlign seq hmm = maximum [ hmmAlign' seq hmm seqlen mat numNodes
         numNodes = length $ nodes hmm
 
 hmmAlign' :: QuerySequence -> HMM -> Int -> HMMState -> Int -> Score
-hmmAlign' seq hmm 0 state node
+hmmAlign' seq hmm 0 state nodenum
   | state == mat = 0
   | state == ins = emissionProb (insertZeroEmissions hmm)
                                 (hmmAlphabet hmm)
@@ -32,10 +32,17 @@ hmmAlign' seq hmm 0 state node
                    +
                    transProb hmm 0 m_i
   | state == del = transProb hmm 0 m_d
-hmmAlign' seq hmm obs state node
-  | state == mat = 0
+hmmAlign' seq hmm obs state nodenum
+  | state == mat = emissionProb (matchEmissions node) alpha res
+                   + 
+                   maximum [ transProb hmm (nodenum - 1) m_m
+                             + hmmAlign' seq hmm (obs - 1) mat (nodenum - 1)
+                           ]
   | state == ins = 1
   | state == del = 2
+  where node = (nodes hmm) !! nodenum
+        alpha = hmmAlphabet hmm
+        res = seq ! obs
 
 emissionProb :: Eq b => [a] -> [b] -> b -> a
 emissionProb emissions alphabet residue = 
@@ -48,9 +55,9 @@ emissionProb emissions alphabet residue =
 -- 2) We may put the '0' node in with the other HmmNodes
 transProb :: HMM -> Int -> (TransitionProbabilities -> TransitionProbability) 
              -> Double
-transProb hmm node state = case logProbability $ state trans of
-                                NonZero p -> p
-                                LogZero -> error "Cannot compute log 0"
-  where trans = if node == 0 then stateZeroTransitions hmm
-                             else transitions ((nodes hmm) !! node)
+transProb hmm nodenum state = case logProbability $ state trans of
+                                   NonZero p -> p
+                                   LogZero -> error "Cannot compute log 0"
+  where trans = if nodenum == 0 then stateZeroTransitions hmm
+                                else transitions ((nodes hmm) !! nodenum)
 
