@@ -37,9 +37,25 @@ hmmAlign' seq hmm obs state nodenum
                    + 
                    maximum [ transProb hmm (nodenum - 1) m_m
                              + hmmAlign' seq hmm (obs - 1) mat (nodenum - 1)
+                           , transProb hmm (nodenum - 1) i_m
+                             + hmmAlign' seq hmm (obs - 1) ins (nodenum - 1)
+                           , transProb hmm (nodenum - 1) d_m
+                             + hmmAlign' seq hmm (obs - 1) del (nodenum - 1)
                            ]
-  | state == ins = 1
-  | state == del = 2
+  | state == ins = emissionProb (insertionEmissions node) alpha res
+                   +
+                   maximum [ transProb hmm nodenum m_i
+                             + hmmAlign' seq hmm (obs - 1) mat nodenum
+                           , transProb hmm nodenum i_i
+                             + hmmAlign' seq hmm (obs - 1) ins nodenum
+                           , 0
+                           ]
+  | state == del = maximum [ transProb hmm (nodenum - 1) m_d
+                             + hmmAlign' seq hmm obs mat (nodenum - 1)
+                           , 0
+                           , transProb hmm (nodenum - 1) d_d
+                             + hmmAlign' seq hmm obs del (nodenum - 1)
+                           ]
   where node = (nodes hmm) !! nodenum
         alpha = hmmAlphabet hmm
         res = seq ! obs
