@@ -15,11 +15,13 @@ data SmurfArgs = SmurfArgs { hmmPlusFile :: FilePath }
 smurfargs = SmurfArgs { hmmPlusFile = def &= typ "HMM Plus file" &= argPos 0 }
 
 -- to be removed
-querySeq = listArray (1, 10) "ADBEHAQITP"
+qseq = "STVWACIKLMAACDDEADGHSTVMMPQRRDDIKLMNPQSTVWYAGEADGE"
+-- qseq = "ADGE" 
+querySeq = listArray (0, (length qseq) - 1) qseq
 
 main = do sargs <- cmdArgs smurfargs
           (header, hmm, md) <- parse $ hmmPlusFile sargs
-          putStrLn $ show $ getBetaStrands header
-          putStrLn $ show $ hmmAlign querySeq hmm
+          -- putStrLn $ show $ getBetaStrands header 
+          putStrLn $ show $ viterbi_memo querySeq hmm
           
 
