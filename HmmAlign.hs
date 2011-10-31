@@ -31,10 +31,10 @@ viterbi_memo seq hmm = maximum [ arr ! (seqlen - 1, mat, numNodes - 1)
                                , arr ! (seqlen - 1, ins, numNodes - 1)
                                , arr ! (seqlen - 1, del, numNodes - 1)
                                ]
-  where (_, seqlen) = bounds seq
+  where (_, seqlen) = {-# SCC "bounds" #-} bounds seq
         numNodes = length $ nodes hmm
         arr = listArray ((0, 0, 0), (seqlen - 1, 2, numNodes - 1))
-                        [ hmmAlign seq hmm o s n
+                        [ {-# SCC "hmmAlign" #-} hmmAlign seq hmm o s n
                         | o <- [0..seqlen - 1]
                         , s <- [0..2]
                         , n <- [0..numNodes - 1]
@@ -53,7 +53,7 @@ viterbi_memo seq hmm = maximum [ arr ! (seqlen - 1, mat, numNodes - 1)
           | state == del = (transProb hmm 0 m_d, [del])
         hmmAlign seq hmm obs state 0
           | state == mat = (0, [mat])
-          | state == ins = let (score, path) = align 0 (obs - 1) i_i ins
+          | state == ins = let (score, path) = {-# SCC "align" #-} align 0 (obs - 1) i_i ins
                            in  (score, ins : path)
           | state == del = (0, [del])
           where align :: Int -> Int -> StateAcc -> HMMState -> (Score, StatePath)
@@ -85,7 +85,7 @@ viterbi_memo seq hmm = maximum [ arr ! (seqlen - 1, mat, numNodes - 1)
                 res = seq ! obs
 
                 align :: Int -> Int -> StateAcc -> HMMState -> (Score, StatePath)
-                align nodenum obs stateFun state = 
+                align nodenum obs stateFun state = {-# SCC "align2" #-}
                   -- let (score, path) = hmmAlign seq hmm obs state nodenum 
                   let (score, path) = arr ! (obs, state, nodenum)
                   in  (score + transProb hmm nodenum stateFun, path)
