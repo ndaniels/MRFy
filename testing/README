@@ -1,0 +1,4 @@
+Current testing files:
+51182_nobeta.hmm - modified version of 51182_smurf-lite.hmm+ with beta strands removed
+51182_nobeta_smurf.out - smurf output using that hmm and thermotoga_Q9X0A3.fasta
+thermotoga_Q9X0A3.fasta - a gene from thermotoga that should align well to this hmm
