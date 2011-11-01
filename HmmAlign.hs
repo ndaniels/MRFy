@@ -27,7 +27,7 @@ del = 2 :: HMMState
         -- numNodes = length $ nodes hmm 
 
 viterbi_memo :: QuerySequence -> HMM -> (Score, StatePath)
-viterbi_memo seq hmm = maximum [ arr ! (seqlen - 1, mat, numNodes - 1)
+viterbi_memo seq hmm = minimum [ arr ! (seqlen - 1, mat, numNodes - 1)
                                , arr ! (seqlen - 1, ins, numNodes - 1)
                                , arr ! (seqlen - 1, del, numNodes - 1)
                                ]
@@ -63,20 +63,20 @@ viterbi_memo seq hmm = maximum [ arr ! (seqlen - 1, mat, numNodes - 1)
                   in  (score + transProb hmm nodenum stateFun, path)
         hmmAlign seq hmm obs state nodenum
           | state == mat = 
-              let (score, path) = maximum [ align (nodenum - 1) (obs - 1) m_m mat
+              let (score, path) = minimum [ align (nodenum - 1) (obs - 1) m_m mat
                                           , align (nodenum - 1) (obs - 1) i_m ins
                                           , align (nodenum - 1) (obs - 1) d_m del
                                           ]
               in  (score + emissionProb (matchEmissions node) alpha res, mat : path)
           | state == ins = 
-              let (score, path) = maximum [ align nodenum (obs - 1) m_i mat
+              let (score, path) = minimum [ align nodenum (obs - 1) m_i mat
                                           , align nodenum (obs - 1) i_i ins
-                                          , (-1, [])
+                                          -- , (-1, [])
                                           ]
               in  (score + emissionProb (insertionEmissions node) alpha res, ins : path)
           | state == del = 
-              let (score, path) = maximum [ align (nodenum - 1) obs m_d mat
-                                          , (-1, [])
+              let (score, path) = minimum [ align (nodenum - 1) obs m_d mat
+                                          -- , (-1, [])
                                           , align (nodenum - 1) obs d_d del
                                           ]
               in  (score, del : path)
@@ -103,7 +103,7 @@ emissionProb emissions alphabet residue =
 transProb :: HMM -> Int -> StateAcc -> Double
 transProb hmm nodenum state = case logProbability $ state trans of
                                    NonZero p -> p
-                                   LogZero -> 0
+                                   LogZero -> 100000
                                    -- LogZero -> error "Cannot compute log 0" 
   where trans = if nodenum == 0 then stateZeroTransitions hmm
                                 else transitions ((nodes hmm) !! nodenum)
