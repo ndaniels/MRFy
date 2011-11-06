@@ -1,0 +1,16 @@
+Miscellaneous TODO notes:
+
+- we should add an 'alpha' parameter to Viterbi, and pass in alphabet, since the HMM we pass in is
+  now just a list of HmmNodes. This would be useful should we ever wish to handle nucleotide models.
+
+- NMD's viterbi still has messed up syntax, but may be close to working.
+
+- as a performance optimization, we may want to implement a viterbiLite variant which doesn't
+  remember the path, just the score. Not sure if this would be significantly faster, but we'd call
+  viterbiLite a LOT and we only care about the final path after all the stochastic search is done.
+  Question: how could we do this using higher-order functions?
+
+- major work left: figuring out beta-strand stochastic search (uniform dist and psipred-guided).
+  Figuring out stopping point and search techniques.
+
+- minor work left: output alignment, compute p-value, read query seq from fasta
