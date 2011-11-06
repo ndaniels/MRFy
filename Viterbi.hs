@@ -5,12 +5,12 @@ import Data.List
 
 import HmmPlus
 
+import Constants
+
 type QuerySequence = Array Int Char
 type Score = Double
 type StatePath = [ HMMState ]
 type StateAcc = TransitionProbabilities -> TransitionProbability
-
-maxProb = 10e1024 :: Double
 
 -- Remember, for states, 0 is a match, 1 is insertion and 2 is deletion.
 -- It must be this way because the Pads parser does not support non-base

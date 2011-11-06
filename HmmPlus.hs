@@ -30,6 +30,7 @@ import Language.Pads.GenPretty
 import Control.Monad
 import System.IO.Unsafe (unsafePerformIO)
 import qualified Data.Vector as V
+import Constants
 
 ws = REd "[\t ]+|$" " "
 
@@ -172,7 +173,7 @@ nucleotide = "ACTG"
                , ws
                -- Emission log-odds probabilities for the match state
                -- remember these are mapped to the alphabet in alphabetic order
-               , matchEmissions :: Maybe (EmissionProbabilities alphabet)
+               , matchEmissions :: EmissionProbabilities alphabet
                , ws
                -- these are three extra fields for MAP, RF, and CS
                -- we do not use them in the Smurf2 algorithm; see the
@@ -270,7 +271,7 @@ getNumNodes ((HeaderLine {tag, payload}):xs) = case tag of
                     
 getHmmNodes :: HMM -> V.Vector HmmNode
 getHmmNodes hmm = V.fromList $ z:nodes hmm
-                  where z = HmmNode 0 Nothing Nothing 
+                  where z = HmmNode 0 (replicate (length amino) maxProb) Nothing 
                             (insertZeroEmissions hmm) (stateZeroTransitions hmm) 
 
 getTag :: Tag -> SmurfHeader -> Payload
