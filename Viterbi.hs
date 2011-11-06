@@ -32,12 +32,12 @@ viterbi query hmm = minimum
                                   viterbi'' state node obs
         -- we see observation obs with node at state
                                     
-        numNodes = length $ nodes hmm
+        numNodes = length $ hmm
         seqlen = length query
         
         viterbi'' s 1 0 -- node 1 and zeroth observation
           | s == mat = (transProb hmm 0 m_m +
-                        (emissionProb (matchEmissions node $ 1) alpha (res 0)),
+                        (emissionProb (matchEmissions node $ 1) amino (res 0)),
                         []
                         ) -- we came from 'begin'
           | s == ins = (maxProb,[]) -- not allowed
@@ -50,7 +50,7 @@ viterbi query hmm = minimum
         viterbi'' s 0 o -- node 0 but not zeroth observation
           | s == mat = (maxProb,[]) -- not allowed
           | s == ins = (transProb hmm 0 i_i +
-                        emissionProb (insertZeroEmissions hmm) alpha (res o) +
+                        emissionProb (insertZeroEmissions hmm) amino (res o) +
                         score,
                         ins:path
                         ) -- possible self-insert cycle
@@ -144,16 +144,12 @@ viterbi query hmm = minimum
           
 -- TODO preprocessing: convert hmm to array of nodes with the stateZero and insertZero stuff prepended
 -- this will transform `node` below and `transProb` below
-          where node n' = (nodes hmm) !! n' -- optimize this!
-                alpha = hmmAlphabet hmm
+          where node n' = hmm ! n'
                 res o' = seq ! o'
                                     
 
 
 transProb :: HMM -> Int -> StateAcc -> Double
-transProb hmm nodenum state = case logProbability $ state trans of
+transProb hmm nodenum state = case logProbability $ state (transitions (hmm ! nodenum)) of
                                    NonZero p -> p
                                    LogZero -> maxProb
-                                   -- LogZero -> error "Cannot compute log 0" 
-  where trans = if nodenum == 0 then stateZeroTransitions hmm
-                                else transitions ((nodes hmm) !! nodenum)    

@@ -39,7 +39,7 @@ nucleotide = "ACTG"
 
 [pads|
   data SmurfFile = SmurfFile { header::SmurfHeader, 
-                               hmm::HMM <| (getAlphabet header, 
+                               hmm::HMMp <| (getAlphabet header, 
                                             getNumNodes header) |> }
   
   type SmurfHeader = [Line HeaderLine] terminator Try (LitRE 'HMM ')
@@ -100,8 +100,8 @@ nucleotide = "ACTG"
   data Direction = Parallel "1"
                  | Antiparallel "-1"
   
-  data HMM (alphabet :: String, numNodes :: Int) = 
-     HMM { "HMM"
+  data HMMp (alphabet :: String, numNodes :: Int) = 
+     HMMp { "HMM"
            , ws
            -- the hmmAlphabet is just informational, but it
            -- helps identify (positionally) which EmissionProbabilities maps
@@ -268,8 +268,10 @@ getNumNodes ((HeaderLine {tag, payload}):xs) = case tag of
                               ModelLength i -> i
                               otherwise -> error "Invalid model length"
                     otherwise -> getNumNodes xs
+
+type HMM = V.Vector HmmNode
                     
-getHmmNodes :: HMM -> V.Vector HmmNode
+getHmmNodes :: HMMp -> HMM
 getHmmNodes hmm = V.fromList $ z:nodes hmm
                   where z = HmmNode 0 (replicate (length amino) maxProb) Nothing 
                             (insertZeroEmissions hmm) (stateZeroTransitions hmm) 
@@ -296,5 +298,5 @@ getBetaPairs [] = []
 -- and fail gracefully.
 parse :: FilePath -> IO (SmurfHeader, HMM, SmurfFile_md)
 parse f = do (SmurfFile header hmm, md) <- parseFile f
-             return (header, hmm, md)
+             return (header, getHmmNodes hmm, md)
 
