@@ -1,6 +1,8 @@
 .*swp
 *.o
 *.hi
+*.p_o
+*.prof
 tags
 TAGS
 smurf2
