@@ -29,6 +29,7 @@ import Language.Pads.Padsc hiding (position, head)
 import Language.Pads.GenPretty
 import Control.Monad
 import System.IO.Unsafe (unsafePerformIO)
+import qualified Data.Vector as V
 
 ws = REd "[\t ]+|$" " "
 
@@ -171,12 +172,12 @@ nucleotide = "ACTG"
                , ws
                -- Emission log-odds probabilities for the match state
                -- remember these are mapped to the alphabet in alphabetic order
-               , matchEmissions :: EmissionProbabilities alphabet
+               , matchEmissions :: Maybe (EmissionProbabilities alphabet)
                , ws
                -- these are three extra fields for MAP, RF, and CS
                -- we do not use them in the Smurf2 algorithm; see the
                -- HMMER3 user guide if you are curious.
-               , annotations :: EmissionAnnotationSet
+               , annotations :: Maybe EmissionAnnotationSet
                , EOR
                -- these fields are the insert emission log-odds scores, one per
                -- symbol in alphabetic order
@@ -267,7 +268,10 @@ getNumNodes ((HeaderLine {tag, payload}):xs) = case tag of
                               otherwise -> error "Invalid model length"
                     otherwise -> getNumNodes xs
                     
-
+getHmmNodes :: HMM -> V.Vector HmmNode
+getHmmNodes hmm = V.fromList $ z:nodes hmm
+                  where z = HmmNode 0 Nothing Nothing 
+                            (insertZeroEmissions hmm) (stateZeroTransitions hmm) 
 
 getTag :: Tag -> SmurfHeader -> Payload
 getTag t ((HeaderLine {tag, payload}):xs) = if tag == t
