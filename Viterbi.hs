@@ -28,7 +28,7 @@ viterbi query hmm = minimum
   ]
   
       
-  where viterbi' state node obs = Memo.memo3 Memo.integral Memo.integral Memo.char 
+  where viterbi' state node obs = Memo.memo3 Memo.integral Memo.integral Memo.integral 
                                   viterbi'' state node obs
         -- we see observation obs with node at state
                                     
