@@ -1,3 +1,4 @@
 pads-haskell >=0.2.1
 cmdargs ?>=0.8
+data-memocombinators ?>=0.4.2
 

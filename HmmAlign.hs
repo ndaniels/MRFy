@@ -18,13 +18,7 @@ mat = 0 :: HMMState
 ins = 1 :: HMMState
 del = 2 :: HMMState
 
--- viterbi :: QuerySequence -> HMM -> (Score, StatePath) 
--- viterbi seq hmm = maximum [ hmmAlign seq hmm (seqlen - 1) mat (numNodes - 1) 
-                          -- , hmmAlign seq hmm (seqlen - 1) ins (numNodes - 1) 
-                          -- , hmmAlign seq hmm (seqlen - 1) del (numNodes - 1) 
-                          -- ] 
-  -- where (_, seqlen) = bounds seq 
-        -- numNodes = length $ nodes hmm 
+maxProb = 10e1024 :: Score
 
 viterbi_memo :: QuerySequence -> HMM -> (Score, StatePath)
 viterbi_memo seq hmm = minimum [ arr ! (seqlen - 1, mat, numNodes - 1)
@@ -33,35 +27,62 @@ viterbi_memo seq hmm = minimum [ arr ! (seqlen - 1, mat, numNodes - 1)
                                ]
   where (_, seqlen) = {-# SCC "bounds" #-} bounds seq
         numNodes = length $ nodes hmm
-        arr = listArray ((0, 0, 0), (seqlen - 1, 2, numNodes - 1))
-                        [ {-# SCC "hmmAlign" #-} hmmAlign seq hmm o s n
-                        | o <- [0..seqlen - 1]
+        arr = listArray ((-1, 0, 0), (seqlen - 1, 2, numNodes - 1))
+                        [ {-# SCC "hmmAlign" #-} hmmAlign o s n
+                        | o <- [-1..seqlen - 1]
                         , s <- [0..2]
                         , n <- [0..numNodes - 1]
                         ]
+        alpha = hmmAlphabet hmm
+        res = (!) seq
 
-        hmmAlign :: QuerySequence -> HMM -> Int -> HMMState -> Int -> (Score, StatePath)
-        hmmAlign seq hmm 0 state nodenum
-          | state == mat = (0, [mat])
-          | state == ins = ( emissionProb (insertZeroEmissions hmm)
-                                          (hmmAlphabet hmm)
-                                          (seq ! 0)
-                             +
-                             transProb hmm 0 m_i
-                           , [ins]
+        align :: Int -> Int -> StateAcc -> HMMState -> (Score, StatePath)
+        align nodenum obs stateFun state = {-# SCC "align2" #-}
+          let (score, path) = arr ! (obs, state, nodenum)
+          in  (score + transProb hmm nodenum stateFun, path)
+
+        hmmAlign :: Int -> HMMState -> Int -> (Score, StatePath)
+        hmmAlign 0 state 1
+          | state == mat = ( transProb hmm 0 m_m
+                             + (emissionProb (matchEmissions ((nodes hmm) !! 1)) 
+                                             alpha
+                                             (res 0))
+                           , []
                            )
-          | state == del = (transProb hmm 0 m_d, [del])
-        hmmAlign seq hmm obs state 0
-          | state == mat = (0, [mat])
-          | state == ins = let (score, path) = {-# SCC "align" #-} align 0 (obs - 1) i_i ins
-                           in  (score, ins : path)
-          | state == del = (0, [del])
-          where align :: Int -> Int -> StateAcc -> HMMState -> (Score, StatePath)
-                align nodenum obs stateFun state = 
-                  -- let (score, path) = hmmAlign seq hmm obs state nodenum 
-                  let (score, path) = arr ! (obs, state, nodenum)
-                  in  (score + transProb hmm nodenum stateFun, path)
-        hmmAlign seq hmm obs state nodenum
+          | state == ins = (maxProb, [])
+          | state == del = (maxProb, [])
+        hmmAlign 0 state 0
+          | state == mat = (maxProb, [])
+          | state == ins = ( transProb hmm 0 m_i
+                             + emissionProb (matchEmissions ((nodes hmm) !! 0))
+                                            alpha
+                                            (res 0)
+                           , []
+                           )
+        hmmAlign (-1) state 1
+          | state == mat = (maxProb, [])
+          | state == ins = (maxProb, [])
+          | state == del = (transProb hmm 0 m_d, [del])          
+        hmmAlign (-1) state 0 = error "oh boy"
+        hmmAlign (-1) state nodenum
+          | state == mat = (maxProb, [])
+          | state == ins = (maxProb, [])
+          | state == del = ( transProb hmm (nodenum - 1) d_d
+                             + score
+                           , del : path
+                           )
+              where (score, path) = align (nodenum - 1) (-1) d_d del
+        hmmAlign obs state 0
+          | state == mat = (maxProb, [])
+          | state == ins = ( score 
+                             + emissionProb (insertZeroEmissions hmm)
+                                            alpha
+                                            (res 0)
+                           , ins : path
+                           )
+          | state == del = (maxProb, [])
+          where (score, path) = align 0 (obs - 1) i_i ins 
+        hmmAlign obs state nodenum
           | state == mat = 
               let (score, path) = minimum [ align (nodenum - 1) (obs - 1) m_m mat
                                           , align (nodenum - 1) (obs - 1) i_m ins
@@ -81,14 +102,7 @@ viterbi_memo seq hmm = minimum [ arr ! (seqlen - 1, mat, numNodes - 1)
                                           ]
               in  (score, del : path)
           where node = (nodes hmm) !! nodenum
-                alpha = hmmAlphabet hmm
                 res = seq ! obs
-
-                align :: Int -> Int -> StateAcc -> HMMState -> (Score, StatePath)
-                align nodenum obs stateFun state = {-# SCC "align2" #-}
-                  -- let (score, path) = hmmAlign seq hmm obs state nodenum 
-                  let (score, path) = arr ! (obs, state, nodenum)
-                  in  (score + transProb hmm nodenum stateFun, path)
 
 
 emissionProb :: Eq b => [a] -> [b] -> b -> a
