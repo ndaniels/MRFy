@@ -20,6 +20,8 @@ qseq = "MVDDIFERGSKGSSDFFTGNVWVKMLVTDENGVFNTQVYDVVFEPGARTHWHSHPGGQILIVTRGKGFYQER
 -- qseq = "ADGE" 
 querySeq = listArray (0, (length qseq) - 1) qseq
 
+-- showAlignment :: HMM -> QuerySequence -> StatePath -> String 
+
 main = do sargs <- cmdArgs smurfargs
           (header, hmm, md) <- parse $ hmmPlusFile sargs
           -- putStrLn $ show $ getBetaStrands header 

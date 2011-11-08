@@ -4,7 +4,7 @@ all:V:
 
 optimize:V:
 	mkdir -p .crud
-	ghc -hidir .crud -odir .crud --make *.hs -O3 -o smurf2
+	ghc -hidir .crud -odir .crud --make *.hs -O3 -fllvm -o smurf2
 
 tags:V:
 	hasktags *.hs
