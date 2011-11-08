@@ -34,8 +34,7 @@ import Constants
 
 ws = REd "[\t ]+|$" " "
 
-amino = "ACDEFGHIKLMNPQRSTVWY"
-nucleotide = "ACTG"
+
 
 [pads|
   data SmurfFile = SmurfFile { header::SmurfHeader, 
