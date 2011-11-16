@@ -65,7 +65,9 @@ viterbi querystring hmm alpha = flipSnd $ DL.minimum
         viterbi'' s 0 0 -- node 0 and zeroth observation, base of self-insert
           | s == mat = (maxProb, []) -- not allowed
           | s == ins = (transProb hmm 0 m_i +
-                        emissionProb (insertionEmissions $ hmm ! 0) (res 0), []) -- base of insert cycle
+                        emissionProb (insertionEmissions $ hmm ! 0) (res 0),
+                        []
+                        ) -- base of insert cycle
           | s == del = (maxProb, []) -- not allowed          
         viterbi'' s 0 o -- node 0 but not zeroth observation
           | s == mat = (maxProb,[]) -- not allowed

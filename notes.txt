@@ -1,3 +1,31 @@
 in ghci, :load hmmplus.hs, then (h, hmm, md) <- result
 
 :load psipred.hs, then (h, p, md) <- result
+
+need to subtract log qx from each emission score! These come from the background probs.
+
+matt first turns the neg-log-probs back into probs
+
+additional probs (from HmmStruct.c line 670+)
+bgfreqs: hardcode or look at insert?
+X: 1 (no??) 
+Z: glx (2 and 11) -- (log of)[ probability of 2 given (match or insert) * probability background 2 + 
+                     (same) for 11, / sum of background (2, 11)]
+B: same but 3 & 13
+U: skip
+
+try: occupiedProb = sum ((m_m + m_i) - i )
+
+transform all transition logprobs to probs
+
+then, occsum = sum for i from 0 to n of ( (len-i) * occprob ) 
+			where occprob i = occprob (i-1) * (m_m + m_i) + (1-occprob) * d_m
+			
+then, for all i, b_m for i = -log(occprob / occsum)
+			where occprob i = occprob (i-1) * (m_m + m_i) + (1-occprob) * d_m
+			
+then, for all i, m_e for i = -log(v)
+			where v = m_d + sum
+				where sum = sum (i..n) d_d
+
+only have to do this at the beginning for hmms beginning at node 0; at end for those ending at n
