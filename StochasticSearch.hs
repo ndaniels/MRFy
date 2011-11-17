@@ -39,7 +39,7 @@ search query hmm betas strategy seeds = search' seeds initialGuess 0
                                               if terminate' solution age then
                                                 solution
                                                else
-                                                 search' seeds solution (age + 1)
+                                                search' seeds solution (age + 1)
                                            else
                                              search' seeds guesses (age + 1)
         initialGuess = initialize strategy $ s1
@@ -51,3 +51,6 @@ score :: Scorer
 
 score query hmm betas = map (viterbi query) miniHmms
   where miniHmms = []
+  -- really, mutate' should take the query and hmm as arguments, and call score as appropriate
+  -- remaining question: if we want to try deferring Viterbi until later generations, how do we
+  -- do this? obviously age needs to be a parameter, but maybe we want a variety of scorers?
