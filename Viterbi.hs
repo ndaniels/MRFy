@@ -2,6 +2,7 @@
 module Viterbi where
 
 import Debug.Trace (trace)
+import Data.Char
 import qualified Data.MemoCombinators as Memo
 import qualified Data.List as DL
 
@@ -21,14 +22,51 @@ mat = 0 :: HMMState
 ins = 1 :: HMMState
 del = 2 :: HMMState
 
--- showAlignment :: HMM -> QuerySequence -> StatePath -> String
--- -- obviously, inserts are printed as the (capitalized) query char and a '-' for hmm
--- -- likewise, deletes are printed as the (lowercase) model char and a '-' for query
--- -- matches are printed with a '|' in between and showing both chars
--- -- the model char is the most probable emission for the MATCH state for that node
+-- obviously, inserts are printed as the (capitalized) query char and a '-' for  
+-- hmm likewise, deletes are printed as the (lowercase) model char and a '-' 
+-- for  query matches are printed with a '|' in between and showing both chars 
+-- the model char is the most probable emission for the MATCH state for that 
+-- node
 -- 
--- showAlignment hmm query (p:path) =
---   | p == mat = -- need some fold juju over 3 accumulators here?
+showAlignment :: HMM -> QuerySequence -> StatePath -> Int -> String -> String
+showAlignment hmm query path len alpha = 
+  niceify $ showA query path 0 0 [] [] []
+  where niceify (oq, om, oh) = niceify' (DL.splitAt len oq)
+                                        (DL.splitAt len om)
+                                        (DL.splitAt len oh)
+          where niceify' (oq, []) (om, []) (oh, []) = 
+                  oh DL.++ "\n" DL.++ om DL.++ "\n" DL.++ oq
+                niceify' (oq, oq') (om, om') (oh, oh') =
+                  oh DL.++ "\n" DL.++ om DL.++ "\n" DL.++ oq DL.++ "\n\n"
+                  DL.++ niceify' (DL.splitAt len oq') 
+                                 (DL.splitAt len om') 
+                                 (DL.splitAt len oh')
+  
+        showA :: String -> StatePath -> Int -> HMMState 
+                 -> String -> String -> String -- correspond to the three lines
+                 -> (String, String, String)
+        showA _ [] _ _ oq om oh = ( DL.reverse $ DL.map toUpper oq
+                                  , DL.reverse om
+                                  , DL.reverse $ DL.map toLower oh
+                                  )
+        showA (q:qs) (p:ps) i lastp oq om oh
+          | p == mat = showA qs ps (i+1) p (q:oq) ('|':om) (model:oh)
+          | p == ins = showA qs ps nextInd p (q:oq) (' ':om) ('-':oh)
+          | p == del = showA (q:qs) ps (i+1) p ('-':oq) (' ':om) (model:oh)
+
+          where model = alpha !! ai
+                (_, ai, _) = DL.foldr maxWithInd 
+                                   (0, -1, -1) 
+                                   (matchEmissions $ hmm ! i)
+                maxWithInd prob (ind, mi, mp) = if prob > mp then
+                                                  (ind + 1, ind, prob)
+                                                else
+                                                  (ind + 1, mi, mp)
+
+                -- this is only used when we're in an Insert node
+                -- thus, assume the current node is an insert
+                nextInd = if lastp == ins then i else i + 1
+
 
 
 -- note: this returns the sequence in reverse; we'll reverse it later
