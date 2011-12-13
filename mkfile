@@ -1,6 +1,9 @@
 all:V:
 	mkdir -p .crud
-	ghc -hidir .crud -odir .crud --make *.hs -o smurf2
+	ghc -hidir .crud -odir .crud \
+			--make Beta.hs Constants.hs HmmPlus Main.hs Viterbi.hs \
+			-O3 \
+			-o smurf2
 
 optimize:V:
 	mkdir -p .crud
