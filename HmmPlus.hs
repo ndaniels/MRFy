@@ -285,10 +285,14 @@ data HmmNode =
              , insertionEmissions :: InsertEmissions
              , transitions::StateTransitions
              , matchOccupy :: LogProbability
+             , matchEnd :: LogProbability
              }
                     
 getHmmNodes :: HMMp -> HMM
-getHmmNodes hmm = snd $ foldl addOccupy (0, V.empty) $ map convert (z:nodes hmm)
+getHmmNodes hmm = snd 
+                    $ foldl addOccupy (0, V.empty) 
+                    $ snd $ foldr addMatchEnd (0, [])
+                    $ map convert (z:nodes hmm)
   where z = HmmNodeP { nodeNumP = 0 
                      , matchEmissionsP = (replicate (length amino) maxProb) 
                      , annotationsP = Nothing 
@@ -303,7 +307,17 @@ getHmmNodes hmm = snd $ foldl addOccupy (0, V.empty) $ map convert (z:nodes hmm)
                             , insertionEmissions = insertionEmissionsP n
                             , transitions = transitionsP n
                             , matchOccupy = LogZero
+                            , matchEnd = LogZero
                             }
+
+        addMatchEnd :: HmmNode -> (Double, [HmmNode]) -> (Double, [HmmNode])
+        addMatchEnd n (sk, nodes) = (sk', n':nodes)
+          where n' = n { matchEnd = mek }
+                mek = if null nodes then 
+                        NonZero 1 
+                      else 
+                        NonZero $ logst m_d n + sk
+                sk' = if null nodes then 0 else logst d_d n
 
         -- The key point of this folding function is to *use the accumulator*
         -- to calculate the occupy probability for the current node.
@@ -321,12 +335,12 @@ getHmmNodes hmm = snd $ foldl addOccupy (0, V.empty) $ map convert (z:nodes hmm)
           where occProb
                   | i == 0 = LogZero
                   | i == 1 = NonZero $
-                               (logp m_i $ nodes V.! 0)
-                               + (logp m_m $ nodes V.! 0)
+                               (logst m_i $ nodes V.! 0)
+                               + (logst m_m $ nodes V.! 0)
                   | otherwise = let pmocc = exp (-prevMocc)
-                                    pm_m = exp (-(logp m_m pnode))
-                                    pm_i = exp (-(logp m_i pnode))
-                                    pd_m = exp (-(logp d_m pnode))
+                                    pm_m = exp (-(logst m_m pnode))
+                                    pm_i = exp (-(logst m_i pnode))
+                                    pd_m = exp (-(logst d_m pnode))
                                     mocc = pmocc 
                                            * (pm_m + pm_i + pd_m * (1 - pmocc))
                                 in  NonZero (-(log mocc))
@@ -336,13 +350,13 @@ getHmmNodes hmm = snd $ foldl addOccupy (0, V.empty) $ map convert (z:nodes hmm)
                 prevMocc :: Double
                 prevMocc = getlog $ matchOccupy pnode
 
-                logp :: StateAcc -> HmmNode -> Double                
-                logp st node = getlog $ logProbability $ st $ transitions node
+        logst :: StateAcc -> HmmNode -> Double                
+        logst st node = getlog $ logProbability $ st $ transitions node
 
-                getlog :: LogProbability -> Double
-                getlog lp = case lp of
-                              LogZero -> error "cannot compute with log zero"
-                              NonZero d -> d
+        getlog :: LogProbability -> Double
+        getlog lp = case lp of
+                      LogZero -> error "cannot compute with log zero"
+                      NonZero d -> d
 
 getTag :: Tag -> SmurfHeader -> Payload
 getTag t ((HeaderLine {tag, payload}):xs) = if tag == t
