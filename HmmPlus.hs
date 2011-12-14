@@ -134,7 +134,7 @@ ws = REd "[\t ]+|$" " "
            , stateZeroTransitions :: StateTransitions
            -- the "regular" nodes, which are the rest of the state transition and emission
            -- probabilities. See the HmmNode type for full documentation
-           , nodes :: [HmmNode <| alphabet |>] terminator "//" 
+           , nodes :: [HmmNodeP <| alphabet |>] terminator "//" 
              where <| numNodes == length nodes |>
            }
               
@@ -165,28 +165,28 @@ ws = REd "[\t ]+|$" " "
   
   type StateTransitions = (ws, TransitionProbabilities, ws, EOR)
   
-  data HmmNode (alphabet::String) = 
-       HmmNode { ws
+  data HmmNodeP (alphabet::String) = 
+       HmmNodeP { ws
                -- simply the index (number) of the node. Begin state is 0.
-               , nodeNum :: Int
+               , nodeNumP :: Int
                , ws
                -- Emission log-odds probabilities for the match state
                -- remember these are mapped to the alphabet in alphabetic order
-               , matchEmissions :: EmissionProbabilities alphabet
+               , matchEmissionsP :: EmissionProbabilities alphabet
                , ws
                -- these are three extra fields for MAP, RF, and CS
                -- we do not use them in the Smurf2 algorithm; see the
                -- HMMER3 user guide if you are curious.
-               , annotations :: Maybe EmissionAnnotationSet
+               , annotationsP :: Maybe EmissionAnnotationSet
                , EOR
                -- these fields are the insert emission log-odds scores, one per
                -- symbol in alphabetic order
-               , insertionEmissions :: InsertEmissions alphabet
+               , insertionEmissionsP :: InsertEmissions alphabet
                -- these fields are the transition log-odds for this node in order:
                -- mk->(mk+1, ik, dk+1), ik->(mk+1, ik); dk->(mk+1, dk+1)
                -- note that these correspond exactly to the edges in a profile
                -- HMM state-transition diagram
-               , transitions::StateTransitions
+               , transitionsP :: StateTransitions
                }
   
   type EmissionAnnotationSet = ( EmissionAnnotation
@@ -269,11 +269,55 @@ getNumNodes ((HeaderLine {tag, payload}):xs) = case tag of
                     otherwise -> getNumNodes xs
 
 type HMM = V.Vector HmmNode
+
+-- See type definition for 'HmmNodeP' above for some documentation
+-- The purpose of re-creating the HmmNode type is to add occupy
+-- probabilities to each HmmNode as a pre-processing step.
+data HmmNode = 
+     HmmNode { nodeNum :: Int
+             , matchEmissions :: EmissionProbabilities
+             , annotations :: Maybe EmissionAnnotationSet
+             , insertionEmissions :: InsertEmissions
+             , transitions::StateTransitions
+             , matchOccupy :: Double
+             }
                     
 getHmmNodes :: HMMp -> HMM
-getHmmNodes hmm = V.fromList $ z:nodes hmm
-                  where z = HmmNode 0 (replicate (length amino) maxProb) Nothing 
-                            (insertZeroEmissions hmm) (stateZeroTransitions hmm) 
+getHmmNodes hmm = V.map convert nodeVector 
+  where z = HmmNodeP { nodeNumP = 0 
+                     , matchEmissionsP = (replicate (length amino) maxProb) 
+                     , annotationsP = Nothing 
+                     , insertionEmissionsP = (insertZeroEmissions hmm) 
+                     , transitionsP = (stateZeroTransitions hmm) 
+                     }
+
+        nodeVector :: V.Vector HmmNodeP
+        nodeVector = V.fromList $ z:nodes hmm
+
+        convert :: HmmNodeP -> HmmNode
+        convert n = HmmNode { nodeNum = nodeNumP n
+                            , matchEmissions = matchEmissionsP n
+                            , annotations = annotationsP n
+                            , insertionEmissions = insertionEmissionsP n
+                            , transitions = transitionsP n
+                            , matchOccupy = 0
+                            }
+          -- where i = nodeNumP n 
+                -- trans 
+                  -- | i == 0 = transitionsP n 
+                  -- | otherwise = transitions $ nodeVector V.! (i - 1) 
+                -- prevOccupy 
+                  -- | i == 0 = 1 
+                  -- | otherwise = matchOccupy $ nodeVector V.! (i - 1) 
+                -- occupy 
+                  -- | i == 0 = 1 
+                  -- | i == 1 = m_i trans + m_m trans 
+                  -- | otherwise = let pmocc = exp -(prevOccupy) 
+                                    -- pm_m = exp -(m_m trans) 
+                                    -- pm_i = exp -(m_i trans) 
+                                    -- pd_m = exp -(d_m trans) 
+                                -- in  -log (pmocc  
+                                          -- * (pm_m + pm_i + pd_m * (1 - pmocc))) 
 
 getTag :: Tag -> SmurfHeader -> Payload
 getTag t ((HeaderLine {tag, payload}):xs) = if tag == t
