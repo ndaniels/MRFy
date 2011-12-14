@@ -8,6 +8,7 @@ module HmmPlus
   , HMM(..)
   , HmmNode(..)
   , Direction(..)
+  , StateAcc
   , TransitionProbability(..)
   , TransitionProbabilities(..)
   , LogProbability(..)
@@ -24,6 +25,8 @@ module HmmPlus
   , parse
   )
 where
+
+import Debug.Trace (trace)
 
 import Language.Pads.Padsc hiding (position, head)
 import Language.Pads.GenPretty
@@ -253,6 +256,8 @@ ws = REd "[\t ]+|$" " "
 
 -- I think we'll want a max function on a TransitionProbabilities, which gives us the max of the 7
 
+type StateAcc = TransitionProbabilities -> TransitionProbability
+
 getAlphabet :: SmurfHeader -> String
 getAlphabet ((HeaderLine {tag, payload}):xs) = case tag of
                     ALPH -> case payload of
@@ -279,11 +284,11 @@ data HmmNode =
              , annotations :: Maybe EmissionAnnotationSet
              , insertionEmissions :: InsertEmissions
              , transitions::StateTransitions
-             , matchOccupy :: Double
+             , matchOccupy :: LogProbability
              }
                     
 getHmmNodes :: HMMp -> HMM
-getHmmNodes hmm = V.map convert nodeVector 
+getHmmNodes hmm = snd $ foldl addOccupy (0, V.empty) $ map convert (z:nodes hmm)
   where z = HmmNodeP { nodeNumP = 0 
                      , matchEmissionsP = (replicate (length amino) maxProb) 
                      , annotationsP = Nothing 
@@ -291,33 +296,53 @@ getHmmNodes hmm = V.map convert nodeVector
                      , transitionsP = (stateZeroTransitions hmm) 
                      }
 
-        nodeVector :: V.Vector HmmNodeP
-        nodeVector = V.fromList $ z:nodes hmm
-
         convert :: HmmNodeP -> HmmNode
         convert n = HmmNode { nodeNum = nodeNumP n
                             , matchEmissions = matchEmissionsP n
                             , annotations = annotationsP n
                             , insertionEmissions = insertionEmissionsP n
                             , transitions = transitionsP n
-                            , matchOccupy = 0
+                            , matchOccupy = LogZero
                             }
-          -- where i = nodeNumP n 
-                -- trans 
-                  -- | i == 0 = transitionsP n 
-                  -- | otherwise = transitions $ nodeVector V.! (i - 1) 
-                -- prevOccupy 
-                  -- | i == 0 = 1 
-                  -- | otherwise = matchOccupy $ nodeVector V.! (i - 1) 
-                -- occupy 
-                  -- | i == 0 = 1 
-                  -- | i == 1 = m_i trans + m_m trans 
-                  -- | otherwise = let pmocc = exp -(prevOccupy) 
-                                    -- pm_m = exp -(m_m trans) 
-                                    -- pm_i = exp -(m_i trans) 
-                                    -- pd_m = exp -(d_m trans) 
-                                -- in  -log (pmocc  
-                                          -- * (pm_m + pm_i + pd_m * (1 - pmocc))) 
+
+        -- The key point of this folding function is to *use the accumulator*
+        -- to calculate the occupy probability for the current node.
+        -- In this case, the accumulator is a vector containing all of the
+        -- nodes.
+        --
+        -- This function uses 'snoc', which appends elements to the end of a
+        -- vector. Its complexity is O(n) where n is the size of the vector.
+        addOccupy :: (Int, V.Vector HmmNode) -> HmmNode
+                     -> (Int, V.Vector HmmNode)
+        addOccupy (i, nodes) n = ( i + 1
+                                 , V.snoc nodes 
+                                          (n { matchOccupy = occProb })
+                                 )
+          where occProb
+                  | i == 0 = LogZero
+                  | i == 1 = NonZero $
+                               (logp m_i $ nodes V.! 0)
+                               + (logp m_m $ nodes V.! 0)
+                  | otherwise = let pmocc = exp (-prevMocc)
+                                    pm_m = exp (-(logp m_m pnode))
+                                    pm_i = exp (-(logp m_i pnode))
+                                    pd_m = exp (-(logp d_m pnode))
+                                    mocc = pmocc 
+                                           * (pm_m + pm_i + pd_m * (1 - pmocc))
+                                in  NonZero (-(log mocc))
+
+                pnode = nodes V.! (i - 1)
+
+                prevMocc :: Double
+                prevMocc = getlog $ matchOccupy pnode
+
+                logp :: StateAcc -> HmmNode -> Double                
+                logp st node = getlog $ logProbability $ st $ transitions node
+
+                getlog :: LogProbability -> Double
+                getlog lp = case lp of
+                              LogZero -> error "cannot compute with log zero"
+                              NonZero d -> d
 
 getTag :: Tag -> SmurfHeader -> Payload
 getTag t ((HeaderLine {tag, payload}):xs) = if tag == t

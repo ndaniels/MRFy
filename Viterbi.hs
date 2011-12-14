@@ -13,7 +13,6 @@ import Constants
 type QuerySequence = String
 type Score = Double
 type StatePath = [ HMMState ]
-type StateAcc = TransitionProbabilities -> TransitionProbability
 
 -- Remember, for states, 0 is a match, 1 is insertion and 2 is deletion.
 -- It must be this way because the Pads parser does not support non-base
