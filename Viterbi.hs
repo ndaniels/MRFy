@@ -21,6 +21,8 @@ type StateAcc = TransitionProbabilities -> TransitionProbability
 mat = 0 :: HMMState
 ins = 1 :: HMMState
 del = 2 :: HMMState
+beg = 3 :: HMMState
+end = 4 :: HMMState
 
 -- Example output:
 -- 
@@ -114,7 +116,8 @@ viterbi querystring hmm alpha hasStart hasEnd = flipSnd $ DL.minimum
                                   (Memo.arrayRange (0, seqlen)) 
                                   viterbi'' state node obs
                                   
-        bestEnd = [] -- ugh. mutually recurse?                          
+        bestEnd = viterbi' beg (numNodes - 1) (seqlen - 1)
+             
         -- we see observation obs with node at state
         flipSnd pair = (fst pair, DL.reverse $ snd pair)
         
@@ -167,16 +170,25 @@ viterbi querystring hmm alpha hasStart hasEnd = flipSnd $ DL.minimum
           -- I think only this equation will change when
           -- we incorporate the begin-to-match code
           | s == mat = let transition trans prevstate = 
-                               (score + transProb hmm (n-1) trans +
-                                emissionProb (matchEmissions $ hmm ! n) (res o),
-                                mat:path
-                               )
+                               if prevState = beg and hasStart
+                                   then 
+                                       (transProb hmm (n - 1) trans + eProb,
+                                       mat
+                                       )
+                                   else (score + transProb hmm (n-1) trans +
+                                        eProb,
+                                        mat:path
+                                        )
                                where (score, path) = viterbi' prevstate (n - 1) (o - 1)
+                                     eProb = emissionProb (matchEmissions $ hmm ! n) (res o)
                           in DL.minimum [
                                 transition m_m mat, -- match came from match
                                 transition i_m ins, -- match came from insert
-                                transition d_m del  -- match came from delete
-                                ]
+                                transition d_m del -- match came from delete
+                                ] ++ startProb
+                                where startProb = if hasStart
+                                    then transition b_m beg  -- match came from start
+                                    else []
                                                                             
           -- consume an observation but not a node
           | s == ins = let transition trans prevstate =
@@ -198,6 +210,19 @@ viterbi querystring hmm alpha hasStart hasEnd = flipSnd $ DL.minimum
                           in DL.minimum [
                                 transition m_d mat, -- delete came from match
                                 transition d_d del  -- delete came from delete
+                                  ]
+          | s == end = let transition trans prevstate = 
+                               if prevstate = mat
+                                   then
+                                       (score + transProb hmm (n-1) trans,
+                                       end:path
+                                       )
+                                   else
+                                       (score, end:path)          
+                               where (score, path) = viterbi' prevstate (n-1) (o-1)
+                          in DL.minimum [
+                                transition m_e mat,
+                                transition m_e end
                                   ]
           
 -- TODO preprocessing: convert hmm to array of nodes with the stateZero and insertZero stuff prepended
