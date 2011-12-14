@@ -310,6 +310,9 @@ getHmmNodes hmm = snd
                             , matchEnd = LogZero
                             }
 
+        -- in log space:
+        -- M_E_n = 0, S_n = 0
+        -- M_E_k = M_D_k + S_k+1, S_k = S_k+1 + D_D_k
         addMatchEnd :: HmmNode -> (Double, [HmmNode]) -> (Double, [HmmNode])
         addMatchEnd n (sk, nodes) = (sk', n':nodes)
           where n' = n { matchEnd = mek }
@@ -326,6 +329,15 @@ getHmmNodes hmm = snd
         --
         -- This function uses 'snoc', which appends elements to the end of a
         -- vector. Its complexity is O(n) where n is the size of the vector.
+        --
+        -- mocc_0 = 0
+        -- mocc_1 = M_I_0 + M_M_0
+        -- mocc_k = mocc_k-1 * (M_M_k-1 + M_I_k-1 + D_M_k-1 * (1 - mocc_k-1))
+        --
+        -- Remember that the above is in probability space. So for each term
+        -- in the above equations X, e^-X should be applied before calculation.
+        -- Once the calculation is done, -ln(result) should be used to bring
+        -- things back to log space.
         addOccupy :: (Int, V.Vector HmmNode) -> HmmNode
                      -> (Int, V.Vector HmmNode)
         addOccupy (i, nodes) n = ( i + 1
