@@ -56,9 +56,10 @@ showAlignment hmm query path len alpha =
 
           where model = alpha !! ai
                 (_, ai, _) = DL.foldr maxWithInd 
-                                   (0, -1, -1) 
+                                   (0, 0, maxProb) 
                                    (matchEmissions $ hmm ! i)
-                maxWithInd prob (ind, mi, mp) = if prob > mp then
+                maxWithInd :: Double -> (Int, Int, Double) -> (Int, Int, Double)                   
+                maxWithInd prob (ind, mi, mp) = if prob < mp then
                                                   (ind + 1, ind, prob)
                                                 else
                                                   (ind + 1, mi, mp)
