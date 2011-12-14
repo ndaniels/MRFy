@@ -7,7 +7,17 @@ all:V:
 
 optimize:V:
 	mkdir -p .crud
-	ghc -hidir .crud -odir .crud --make *.hs -O3 -fllvm -o smurf2
+	ghc -hidir .crud -odir .crud \
+			--make Beta.hs Constants.hs HmmPlus Main.hs Viterbi.hs \
+			-O3 \
+			-fllvm \
+			-o smurf2
+
+unoptimize:V:
+	mkdir -p .crud
+	ghc -hidir .crud -odir .crud \
+			--make Beta.hs Constants.hs HmmPlus Main.hs Viterbi.hs \
+			-o smurf2
 
 tags:V:
 	hasktags *.hs
