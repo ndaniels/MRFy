@@ -169,7 +169,7 @@ viterbi querystring hmm alpha (hasStart, hasEnd) = flipSnd $ DL.minimum $
           -- I think only this equation will change when
           -- we incorporate the begin-to-match code
           | s == mat = let transition trans prevstate = 
-                               if prevState = beg and hasStart
+                               if prevstate == beg && hasStart
                                    then 
                                        (transProb hmm (n - 1) trans + eProb,
                                        mat
@@ -180,15 +180,14 @@ viterbi querystring hmm alpha (hasStart, hasEnd) = flipSnd $ DL.minimum $
                                         )
                                where (score, path) = viterbi' prevstate (n - 1) (o - 1)
                                      eProb = emissionProb (matchEmissions $ hmm ! n) (res o)
+
+                                     
                           in DL.minimum [
                                 transition m_m mat, -- match came from match
                                 transition i_m ins, -- match came from insert
                                 transition d_m del -- match came from delete
-                                ] ++ startProb
-                                where startProb = if hasStart
-                                    then transition b_m beg  -- match came from start
-                                    else []
-                                                                            
+                                ] DL.++ (if hasStart then transition b_m beg else [])
+                                -- match came from start                                            
           -- consume an observation but not a node
           | s == ins = let transition trans prevstate =
                                (score + transProb hmm n trans +
@@ -211,7 +210,7 @@ viterbi querystring hmm alpha (hasStart, hasEnd) = flipSnd $ DL.minimum $
                                 transition d_d del  -- delete came from delete
                                   ]
           | s == end = let transition trans prevstate = 
-                               if prevstate = mat
+                               if prevstate == mat
                                    then
                                        (score + transProb hmm (n-1) trans,
                                        end:path
