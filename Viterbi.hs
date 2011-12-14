@@ -95,18 +95,26 @@ showAlignment hmm query path len alpha =
 
 
 -- note: this returns the sequence in reverse; we'll reverse it later
-viterbi :: QuerySequence -> HMM -> String -> (Score, StatePath)
-viterbi querystring hmm alpha = flipSnd $ DL.minimum
+-- I think we have to have a fourth case in this minimum:
+-- itself a minimum of viterbi' mat for every possible final-match
+-- this is the local alignment, after all
+-- does this have to cover all observation-node pairs!?
+-- also remember the arguments for hasStart and hasEnd
+-- and this extra case is only when hasEnd
+viterbi :: QuerySequence -> HMM -> String -> (Bool, Bool) -> (Score, StatePath)
+viterbi querystring hmm alpha hasStart hasEnd = flipSnd $ DL.minimum
   [viterbi' mat (numNodes - 1) (seqlen - 1),
    viterbi' ins (numNodes - 1) (seqlen - 1),
    viterbi' del (numNodes - 1) (seqlen - 1)
-  ]
+  ] ++ if hasEnd then bestEnd else []
   
       
   where viterbi' state node obs = Memo.memo3 (Memo.arrayRange (mat, del)) 
                                   (Memo.arrayRange (0, numNodes))
                                   (Memo.arrayRange (0, seqlen)) 
                                   viterbi'' state node obs
+                                  
+        bestEnd = [] -- ugh. mutually recurse?                          
         -- we see observation obs with node at state
         flipSnd pair = (fst pair, DL.reverse $ snd pair)
         
@@ -156,6 +164,8 @@ viterbi querystring hmm alpha = flipSnd $ DL.minimum
                           where (score, path) = viterbi' del (n - 1) (-1)
         viterbi'' s n o
           -- consume an observation AND a node
+          -- I think only this equation will change when
+          -- we incorporate the begin-to-match code
           | s == mat = let transition trans prevstate = 
                                (score + transProb hmm (n-1) trans +
                                 emissionProb (matchEmissions $ hmm ! n) (res o),
