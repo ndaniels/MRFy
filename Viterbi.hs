@@ -13,7 +13,6 @@ import Constants
 type QuerySequence = String
 type Score = Double
 type StatePath = [ HMMState ]
-type StateAcc = TransitionProbabilities -> TransitionProbability
 
 -- Remember, for states, 0 is a match, 1 is insertion and 2 is deletion.
 -- It must be this way because the Pads parser does not support non-base
@@ -104,11 +103,11 @@ showAlignment hmm query path len alpha =
 -- also remember the arguments for hasStart and hasEnd
 -- and this extra case is only when hasEnd
 viterbi :: QuerySequence -> HMM -> String -> (Bool, Bool) -> (Score, StatePath)
-viterbi querystring hmm alpha hasStart hasEnd = flipSnd $ DL.minimum
+viterbi querystring hmm alpha (hasStart, hasEnd) = flipSnd $ DL.minimum $
   [viterbi' mat (numNodes - 1) (seqlen - 1),
    viterbi' ins (numNodes - 1) (seqlen - 1),
    viterbi' del (numNodes - 1) (seqlen - 1)
-  ] ++ if hasEnd then bestEnd else []
+  ] DL.++ if hasEnd then bestEnd else []
   
       
   where viterbi' state node obs = Memo.memo3 (Memo.arrayRange (mat, del)) 

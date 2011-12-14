@@ -8,6 +8,7 @@ module HmmPlus
   , HMM(..)
   , HmmNode(..)
   , Direction(..)
+  , StateAcc
   , TransitionProbability(..)
   , TransitionProbabilities(..)
   , LogProbability(..)
@@ -24,6 +25,8 @@ module HmmPlus
   , parse
   )
 where
+
+import Debug.Trace (trace)
 
 import Language.Pads.Padsc hiding (position, head)
 import Language.Pads.GenPretty
@@ -134,7 +137,7 @@ ws = REd "[\t ]+|$" " "
            , stateZeroTransitions :: StateTransitions
            -- the "regular" nodes, which are the rest of the state transition and emission
            -- probabilities. See the HmmNode type for full documentation
-           , nodes :: [HmmNode <| alphabet |>] terminator "//" 
+           , nodes :: [HmmNodeP <| alphabet |>] terminator "//" 
              where <| numNodes == length nodes |>
            }
               
@@ -165,28 +168,28 @@ ws = REd "[\t ]+|$" " "
   
   type StateTransitions = (ws, TransitionProbabilities, ws, EOR)
   
-  data HmmNode (alphabet::String) = 
-       HmmNode { ws
+  data HmmNodeP (alphabet::String) = 
+       HmmNodeP { ws
                -- simply the index (number) of the node. Begin state is 0.
-               , nodeNum :: Int
+               , nodeNumP :: Int
                , ws
                -- Emission log-odds probabilities for the match state
                -- remember these are mapped to the alphabet in alphabetic order
-               , matchEmissions :: EmissionProbabilities alphabet
+               , matchEmissionsP :: EmissionProbabilities alphabet
                , ws
                -- these are three extra fields for MAP, RF, and CS
                -- we do not use them in the Smurf2 algorithm; see the
                -- HMMER3 user guide if you are curious.
-               , annotations :: Maybe EmissionAnnotationSet
+               , annotationsP :: Maybe EmissionAnnotationSet
                , EOR
                -- these fields are the insert emission log-odds scores, one per
                -- symbol in alphabetic order
-               , insertionEmissions :: InsertEmissions alphabet
+               , insertionEmissionsP :: InsertEmissions alphabet
                -- these fields are the transition log-odds for this node in order:
                -- mk->(mk+1, ik, dk+1), ik->(mk+1, ik); dk->(mk+1, dk+1)
                -- note that these correspond exactly to the edges in a profile
                -- HMM state-transition diagram
-               , transitions::StateTransitions
+               , transitionsP :: StateTransitions
                }
   
   type EmissionAnnotationSet = ( EmissionAnnotation
@@ -253,6 +256,8 @@ ws = REd "[\t ]+|$" " "
 
 -- I think we'll want a max function on a TransitionProbabilities, which gives us the max of the 7
 
+type StateAcc = TransitionProbabilities -> TransitionProbability
+
 getAlphabet :: SmurfHeader -> String
 getAlphabet ((HeaderLine {tag, payload}):xs) = case tag of
                     ALPH -> case payload of
@@ -269,11 +274,101 @@ getNumNodes ((HeaderLine {tag, payload}):xs) = case tag of
                     otherwise -> getNumNodes xs
 
 type HMM = V.Vector HmmNode
+
+-- See type definition for 'HmmNodeP' above for some documentation
+-- The purpose of re-creating the HmmNode type is to add occupy
+-- probabilities to each HmmNode as a pre-processing step.
+data HmmNode = 
+     HmmNode { nodeNum :: Int
+             , matchEmissions :: EmissionProbabilities
+             , annotations :: Maybe EmissionAnnotationSet
+             , insertionEmissions :: InsertEmissions
+             , transitions::StateTransitions
+             , matchOccupy :: LogProbability
+             , matchEnd :: LogProbability
+             }
                     
 getHmmNodes :: HMMp -> HMM
-getHmmNodes hmm = V.fromList $ z:nodes hmm
-                  where z = HmmNode 0 (replicate (length amino) maxProb) Nothing 
-                            (insertZeroEmissions hmm) (stateZeroTransitions hmm) 
+getHmmNodes hmm = snd 
+                    $ foldl addOccupy (0, V.empty) 
+                    $ snd $ foldr addMatchEnd (0, [])
+                    $ map convert (z:nodes hmm)
+  where z = HmmNodeP { nodeNumP = 0 
+                     , matchEmissionsP = (replicate (length amino) maxProb) 
+                     , annotationsP = Nothing 
+                     , insertionEmissionsP = (insertZeroEmissions hmm) 
+                     , transitionsP = (stateZeroTransitions hmm) 
+                     }
+
+        convert :: HmmNodeP -> HmmNode
+        convert n = HmmNode { nodeNum = nodeNumP n
+                            , matchEmissions = matchEmissionsP n
+                            , annotations = annotationsP n
+                            , insertionEmissions = insertionEmissionsP n
+                            , transitions = transitionsP n
+                            , matchOccupy = LogZero
+                            , matchEnd = LogZero
+                            }
+
+        -- in log space:
+        -- M_E_n = 0, S_n = 0
+        -- M_E_k = M_D_k + S_k+1, S_k = S_k+1 + D_D_k
+        addMatchEnd :: HmmNode -> (Double, [HmmNode]) -> (Double, [HmmNode])
+        addMatchEnd n (sk, nodes) = (sk', n':nodes)
+          where n' = n { matchEnd = mek }
+                mek = if null nodes then 
+                        NonZero 1 
+                      else 
+                        NonZero $ logst m_d n + sk
+                sk' = if null nodes then 0 else logst d_d n
+
+        -- The key point of this folding function is to *use the accumulator*
+        -- to calculate the occupy probability for the current node.
+        -- In this case, the accumulator is a vector containing all of the
+        -- nodes.
+        --
+        -- This function uses 'snoc', which appends elements to the end of a
+        -- vector. Its complexity is O(n) where n is the size of the vector.
+        --
+        -- mocc_0 = 0
+        -- mocc_1 = M_I_0 + M_M_0
+        -- mocc_k = mocc_k-1 * (M_M_k-1 + M_I_k-1 + D_M_k-1 * (1 - mocc_k-1))
+        --
+        -- Remember that the above is in probability space. So for each term
+        -- in the above equations X, e^-X should be applied before calculation.
+        -- Once the calculation is done, -ln(result) should be used to bring
+        -- things back to log space.
+        addOccupy :: (Int, V.Vector HmmNode) -> HmmNode
+                     -> (Int, V.Vector HmmNode)
+        addOccupy (i, nodes) n = ( i + 1
+                                 , V.snoc nodes 
+                                          (n { matchOccupy = occProb })
+                                 )
+          where occProb
+                  | i == 0 = LogZero
+                  | i == 1 = NonZero $
+                               (logst m_i $ nodes V.! 0)
+                               + (logst m_m $ nodes V.! 0)
+                  | otherwise = let pmocc = exp (-prevMocc)
+                                    pm_m = exp (-(logst m_m pnode))
+                                    pm_i = exp (-(logst m_i pnode))
+                                    pd_m = exp (-(logst d_m pnode))
+                                    mocc = pmocc 
+                                           * (pm_m + pm_i + pd_m * (1 - pmocc))
+                                in  NonZero (-(log mocc))
+
+                pnode = nodes V.! (i - 1)
+
+                prevMocc :: Double
+                prevMocc = getlog $ matchOccupy pnode
+
+        logst :: StateAcc -> HmmNode -> Double                
+        logst st node = getlog $ logProbability $ st $ transitions node
+
+        getlog :: LogProbability -> Double
+        getlog lp = case lp of
+                      LogZero -> error "cannot compute with log zero"
+                      NonZero d -> d
 
 getTag :: Tag -> SmurfHeader -> Payload
 getTag t ((HeaderLine {tag, payload}):xs) = if tag == t
