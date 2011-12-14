@@ -22,42 +22,50 @@ mat = 0 :: HMMState
 ins = 1 :: HMMState
 del = 2 :: HMMState
 
--- obviously, inserts are printed as the (capitalized) query char and a '-' for  
--- hmm likewise, deletes are printed as the (lowercase) model char and a '-' 
--- for  query matches are printed with a '|' in between and showing both chars 
--- the model char is the most probable emission for the MATCH state for that 
--- node
+-- Example output:
 -- 
+-- ttsmydgty-------
+--         |       
+-- --------LGPAEWLG 
+--
+-- The top sequence is the "model" or HMM sequence. All amino acids in the
+-- top sequence are found by finding the most probable emission for the MATCH
+-- state of that node. (Note that log probabilities are used, so we really need
+-- to find the minimum.)
+--
+-- The bottom sequence is the query sequence (the input to smurf).
+--
+-- The middle is filled with spaces or pipe/bar characters depending upon state.
+--
+-- There are three kinds of states that affect output:
+--   match:    HMM seq gets model amino acid. 
+--             Middle gets pipe symbol.
+--             Query seq gets query amino acid.
+--   insert:   HMM seq gets '-' symbol.
+--             Middle gets space character.
+--             Query seq gets query amino acid.
+--   deletion: HMM seq gets model amino acid.
+--             Middle gets space character.
+--             Query seq gets '-' symbol.
 showAlignment :: HMM -> QuerySequence -> StatePath -> Int -> String -> String
 showAlignment hmm query path len alpha = 
   niceify $ showA query path 0 0 [] [] []
-  where niceify (oq, om, oh) = niceify' (DL.splitAt len oq)
-                                        (DL.splitAt len om)
-                                        (DL.splitAt len oh)
-          where niceify' (oq, []) (om, []) (oh, []) = 
-                  oh DL.++ "\n" DL.++ om DL.++ "\n" DL.++ oq
-                niceify' (oq, oq') (om, om') (oh, oh') =
-                  oh DL.++ "\n" DL.++ om DL.++ "\n" DL.++ oq DL.++ "\n\n"
-                  DL.++ niceify' (DL.splitAt len oq') 
-                                 (DL.splitAt len om') 
-                                 (DL.splitAt len oh')
-  
-        showA :: String -> StatePath -> Int -> HMMState 
+  where showA :: String -> StatePath -> Int -> HMMState 
                  -> String -> String -> String -- correspond to the three lines
                  -> (String, String, String)
-        showA _ [] _ _ oq om oh = ( DL.reverse $ DL.map toUpper oq
+        showA _ [] _ _ oh om oq = ( DL.reverse $ DL.map toLower oh
                                   , DL.reverse om
-                                  , DL.reverse $ DL.map toLower oh
+                                  , DL.reverse $ DL.map toUpper oq
                                   )
-        showA (q:qs) (p:ps) i lastp oq om oh
-          | p == mat = showA qs ps (i+1) p (q:oq) ('|':om) (model:oh)
-          | p == ins = showA qs ps nextInd p (q:oq) (' ':om) ('-':oh)
-          | p == del = showA (q:qs) ps (i+1) p ('-':oq) (' ':om) (model:oh)
+        showA (q:qs) (p:ps) i lastp oh om oq
+          | p == mat = showA qs ps (i+1) p (model:oh) ('|':om) (q:oq)
+          | p == ins = showA qs ps nextInd p ('-':oh) (' ':om) (q:oq)
+          | p == del = showA (q:qs) ps (i+1) p (model:oh) (' ':om) ('-':oq)
 
           where model = alpha !! ai
                 (_, ai, _) = DL.foldr maxWithInd 
-                                   (0, 0, maxProb) 
-                                   (matchEmissions $ hmm ! i)
+                                      (0, 0, maxProb) 
+                                      (matchEmissions $ hmm ! i)
                 maxWithInd :: Double -> (Int, Int, Double) -> (Int, Int, Double)                   
                 maxWithInd prob (ind, mi, mp) = if prob < mp then
                                                   (ind + 1, ind, prob)
@@ -67,6 +75,22 @@ showAlignment hmm query path len alpha =
                 -- this is only used when we're in an Insert node
                 -- thus, assume the current node is an insert
                 nextInd = if lastp == ins then i else i + 1
+
+        -- Strictly for cutting up the strings and displaying them nicely.
+        -- Note: Assumes each string is in the correct order and that
+        --       each string is of the same length.
+        niceify :: (String, String, String) -> String
+        niceify (oh, om, oq) = niceify' (DL.splitAt len oh)
+                                        (DL.splitAt len om)
+                                        (DL.splitAt len oq)
+          where niceify' (oh, []) (om, []) (oq, []) = 
+                  oh DL.++ "\n" DL.++ om DL.++ "\n" DL.++ oq
+                niceify' (oh, oh') (om, om') (oq, oq') =
+                  oh DL.++ "\n" DL.++ om DL.++ "\n" DL.++ oq 
+                  DL.++ "\n\n"
+                  DL.++ niceify' (DL.splitAt len oh') 
+                                 (DL.splitAt len om') 
+                                 (DL.splitAt len oq')
 
 
 
