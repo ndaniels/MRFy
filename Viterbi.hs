@@ -217,7 +217,7 @@ viterbi querystring hmm alpha (hasStart, hasEnd) = flipSnd $ DL.minimum $
                                        )
                                    else
                                        (score, end:path)          
-                               where (score, path) = viterbi' prevstate (n-1) (o-1)
+                               where (score, path) = viterbi' prevstate (n-1) o
                           in DL.minimum [
                                 transition m_e mat,
                                 transition m_e end
