@@ -95,19 +95,16 @@ showAlignment hmm query path len alpha =
 
 
 
--- note: this returns the sequence in reverse; we'll reverse it later
--- I think we have to have a fourth case in this minimum:
--- itself a minimum of viterbi' mat for every possible final-match
--- this is the local alignment, after all
--- does this have to cover all observation-node pairs!?
--- also remember the arguments for hasStart and hasEnd
--- and this extra case is only when hasEnd
+-- hasStart and hasEnd are (for now) for model-relative local alignment.
+-- when we want to consider sequence-relative local alignment, we
+-- will also need to consider better of seqLocal vs. modLocal
 viterbi :: QuerySequence -> HMM -> String -> (Bool, Bool) -> (Score, StatePath)
 viterbi querystring hmm alpha (hasStart, hasEnd) = flipSnd $ DL.minimum $
   [viterbi' mat (numNodes - 1) (seqlen - 1),
    viterbi' ins (numNodes - 1) (seqlen - 1),
    viterbi' del (numNodes - 1) (seqlen - 1)
   ] DL.++ if hasEnd then bestEnd else []
+  
   
       
   where viterbi' state node obs = Memo.memo3 (Memo.arrayRange (mat, del)) 
@@ -169,7 +166,7 @@ viterbi querystring hmm alpha (hasStart, hasEnd) = flipSnd $ DL.minimum $
           -- I think only this equation will change when
           -- we incorporate the begin-to-match code
           | s == mat = let transition trans prevstate = 
-                               if prevstate == beg && hasStart
+                               if hasStart && prevstate == beg -- hasStart maybe unnecessary?
                                    then 
                                        (transProb hmm (n - 1) trans + eProb,
                                        mat
@@ -218,10 +215,12 @@ viterbi querystring hmm alpha (hasStart, hasEnd) = flipSnd $ DL.minimum $
                                    else
                                        (score, end:path)          
                                where (score, path) = viterbi' prevstate (n-1) o
+                               -- for local to QUERY we would do n, o-1.
                           in DL.minimum [
                                 transition m_e mat,
                                 transition m_e end
                                   ]
+-- TODO seqLocal: consider the case where we consume obs, not state, for beg & end.
           
 -- TODO preprocessing: convert hmm to array of nodes with the stateZero and insertZero stuff prepended
 -- this will transform `node` below and `transProb` below
