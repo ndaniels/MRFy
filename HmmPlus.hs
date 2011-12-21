@@ -134,7 +134,7 @@ ws = REd "[\t ]+|$" " "
            -- the stateZeroTransitions are the transition probabilities for
            -- b->m1, b->i0, b->d1, i0->m1, i0->i0, d0->m1 (always 0.0), d0->d1 (always *)
            -- recall that these are log probabilities, so log1 == 0 and log0 == infinity (*)
-           , stateZeroTransitions :: StateTransitions
+           , stateZeroTransitions :: StateTransitionsP
            -- the "regular" nodes, which are the rest of the state transition and emission
            -- probabilities. See the HmmNode type for full documentation
            , nodes :: [HmmNodeP <| alphabet |>] terminator "//" 
@@ -151,14 +151,14 @@ ws = REd "[\t ]+|$" " "
   -- as the parameteter for an algebraic parser type
   -- note that 0 is for a match, 1 for insertion, and 2 for a deletion
   -- 
-  data TransitionProbabilities = TransitionProbabilities {
-      m_m :: TransitionProbability <|(0, 0)|>, ws,
-      m_i :: TransitionProbability <|(0, 1)|>, ws,
-      m_d :: TransitionProbability <|(0, 2)|>, ws,
-      i_m :: TransitionProbability <|(1, 0)|>, ws,
-      i_i :: TransitionProbability <|(1, 1)|>, ws,
-      d_m :: TransitionProbability <|(2, 0)|>, ws,
-      d_d :: TransitionProbability <|(2, 2)|>
+  data TransitionProbabilitiesP = TransitionProbabilitiesP {
+      m_mP :: TransitionProbability <|(0, 0)|>, ws,
+      m_iP :: TransitionProbability <|(0, 1)|>, ws,
+      m_dP :: TransitionProbability <|(0, 2)|>, ws,
+      i_mP :: TransitionProbability <|(1, 0)|>, ws,
+      i_iP :: TransitionProbability <|(1, 1)|>, ws,
+      d_mP :: TransitionProbability <|(2, 0)|>, ws,
+      d_dP :: TransitionProbability <|(2, 2)|>
   }
   
   type TransitionDescription = [ StringSE ws | ws] terminator (Try EOR)
@@ -166,7 +166,7 @@ ws = REd "[\t ]+|$" " "
   type InsertEmissions (alphabet :: String) = 
        (ws, EmissionProbabilities alphabet, ws, EOR)
   
-  type StateTransitions = (ws, TransitionProbabilities, ws, EOR)
+  type StateTransitionsP = (ws, TransitionProbabilitiesP, ws, EOR)
   
   data HmmNodeP (alphabet::String) = 
        HmmNodeP { ws
@@ -189,7 +189,7 @@ ws = REd "[\t ]+|$" " "
                -- mk->(mk+1, ik, dk+1), ik->(mk+1, ik); dk->(mk+1, dk+1)
                -- note that these correspond exactly to the edges in a profile
                -- HMM state-transition diagram
-               , transitionsP :: StateTransitions
+               , transitionsP :: StateTransitionsP
                }
   
   type EmissionAnnotationSet = ( EmissionAnnotation
@@ -275,7 +275,7 @@ getNumNodes ((HeaderLine {tag, payload}):xs) = case tag of
 
 type HMM = V.Vector HmmNode
 
--- See type definition for 'HmmNodeP' above for some documentation
+-- See type definition for 'HmmNodeP' above for some documentation.
 -- The purpose of re-creating the HmmNode type is to add occupy
 -- probabilities to each HmmNode as a pre-processing step.
 data HmmNode = 
@@ -283,10 +283,24 @@ data HmmNode =
              , matchEmissions :: EmissionProbabilities
              , annotations :: Maybe EmissionAnnotationSet
              , insertionEmissions :: InsertEmissions
-             , transitions::StateTransitions
-             , matchOccupy :: LogProbability
-             , matchEnd :: LogProbability
+             , transitions :: StateTransitions
              }
+
+data TransitionProbabilities = 
+     TransitionProbabilities { m_m :: TransitionProbability
+                             , m_i :: TransitionProbability
+                             , m_d :: TransitionProbability
+                             , i_m :: TransitionProbability
+                             , i_i :: TransitionProbability
+                             , d_m :: TransitionProbability
+                             , d_d :: TransitionProbability
+                             , b_m :: TransitionProbability
+                             , m_e :: TransitionProbability
+                             }
+
+-- I don't think this is completely needed, but I feel more comfortable
+-- mirroring the Pads types at the moment.
+type StateTransitions = TransitionProbabilities
                     
 getHmmNodes :: HMMp -> HMM
 getHmmNodes hmm = snd 
@@ -305,17 +319,37 @@ getHmmNodes hmm = snd
                             , matchEmissions = matchEmissionsP n
                             , annotations = annotationsP n
                             , insertionEmissions = insertionEmissionsP n
-                            , transitions = transitionsP n
-                            , matchOccupy = LogZero
-                            , matchEnd = LogZero
+                            , transitions = newTrans
                             }
+          where otran = transitionsP n
+                m_eDef = mkDefTransProb LogZero 0 4
+                b_mDef = mkDefTransProb LogZero 3 0
+                newTrans = TransitionProbabilities { m_m = m_mP otran
+                                                   , m_i = m_iP otran
+                                                   , m_d = m_dP otran
+                                                   , i_m = i_mP otran
+                                                   , i_i = i_iP otran
+                                                   , d_m = d_mP otran
+                                                   , d_d = d_dP otran
+                                                   , b_m = b_mDef
+                                                   , m_e = m_eDef
+                                                   }
+
+        mkDefTransProb :: LogProbability -> HMMState -> HMMState 
+                          -> TransitionProbability
+        mkDefTransProb logProb f t = 
+          TransitionProbability { logProbability = logProb
+                                , fromState = f
+                                , toState = t
+                                }
 
         -- in log space:
         -- M_E_n = 0, S_n = 0
         -- M_E_k = M_D_k + S_k+1, S_k = S_k+1 + D_D_k
         addMatchEnd :: HmmNode -> (Double, [HmmNode]) -> (Double, [HmmNode])
         addMatchEnd n (sk, nodes) = (sk', n':nodes)
-          where n' = n { matchEnd = mek }
+          where n' = n { transitions = otran { m_e = mkDefTransProb mek 0 4 } }
+                otran = transitions n
                 mek = if null nodes then 
                         NonZero 1 
                       else 
@@ -341,10 +375,12 @@ getHmmNodes hmm = snd
         addOccupy :: (Int, V.Vector HmmNode) -> HmmNode
                      -> (Int, V.Vector HmmNode)
         addOccupy (i, nodes) n = ( i + 1
-                                 , V.snoc nodes 
-                                          (n { matchOccupy = occProb })
+                                 , V.snoc nodes n'
                                  )
-          where occProb
+          where n' = n { transitions = ntran }
+                ntran = otran { b_m = mkDefTransProb occProb 3 0 }                
+                otran = transitions n
+                occProb
                   | i == 0 = LogZero
                   | i == 1 = NonZero $
                                (logst m_i $ nodes V.! 0)
@@ -360,7 +396,7 @@ getHmmNodes hmm = snd
                 pnode = nodes V.! (i - 1)
 
                 prevMocc :: Double
-                prevMocc = getlog $ matchOccupy pnode
+                prevMocc = getlog $ logProbability $ b_m $ transitions pnode
 
         logst :: StateAcc -> HmmNode -> Double                
         logst st node = getlog $ logProbability $ st $ transitions node

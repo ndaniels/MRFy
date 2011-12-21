@@ -103,7 +103,7 @@ viterbi querystring hmm alpha (hasStart, hasEnd) = flipSnd $ DL.minimum $
   [viterbi' mat (numNodes - 1) (seqlen - 1),
    viterbi' ins (numNodes - 1) (seqlen - 1),
    viterbi' del (numNodes - 1) (seqlen - 1)
-  ] DL.++ if hasEnd then bestEnd else []
+  ] DL.++ if hasEnd then [bestEnd] else []
   
   
       
@@ -169,7 +169,7 @@ viterbi querystring hmm alpha (hasStart, hasEnd) = flipSnd $ DL.minimum $
                                if hasStart && prevstate == beg -- hasStart maybe unnecessary?
                                    then 
                                        (transProb hmm (n - 1) trans + eProb,
-                                       mat
+                                       mat:path
                                        )
                                    else (score + transProb hmm (n-1) trans +
                                         eProb,
@@ -179,11 +179,11 @@ viterbi querystring hmm alpha (hasStart, hasEnd) = flipSnd $ DL.minimum $
                                      eProb = emissionProb (matchEmissions $ hmm ! n) (res o)
 
                                      
-                          in DL.minimum [
+                          in DL.minimum $ [
                                 transition m_m mat, -- match came from match
                                 transition i_m ins, -- match came from insert
                                 transition d_m del -- match came from delete
-                                ] DL.++ (if hasStart then transition b_m beg else [])
+                                ] DL.++ (if hasStart then [transition b_m beg] else [])
                                 -- match came from start                                            
           -- consume an observation but not a node
           | s == ins = let transition trans prevstate =
