@@ -107,7 +107,7 @@ viterbi querystring hmm alpha (hasStart, hasEnd) = flipSnd $ DL.minimum $
   ] DL.++ if hasEnd then [bestEnd] else []
 
 
-
+  -- trace (show state DL.++ " " DL.++ show node DL.++ " " DL.++ show obs) $
   where viterbi' state node obs = Memo.memo3 (Memo.arrayRange (mat, del)) 
                                   (Memo.arrayRange (0, numNodes))
                                   (Memo.arrayRange (0, seqlen)) 
@@ -171,7 +171,7 @@ viterbi querystring hmm alpha (hasStart, hasEnd) = flipSnd $ DL.minimum $
                                if hasStart && prevstate == beg -- hasStart maybe unnecessary?
                                    then 
                                        (transProb hmm (n - 1) trans + eProb,
-                                       mat:path
+                                       [mat]
                                        )
                                    else (score + transProb hmm (n-1) trans +
                                         eProb,
@@ -218,10 +218,10 @@ viterbi querystring hmm alpha (hasStart, hasEnd) = flipSnd $ DL.minimum $
                                        (score, end:path)          
                                where (score, path) = viterbi' prevstate (n-1) o
                                -- for local to QUERY we would do n, o-1.
-                          in DL.minimum [
+                          in DL.minimum (if n >= 2 then [
                                 transition m_e mat,
                                 transition m_e end
-                                  ]
+                                  ] else [transition m_e mat])
 -- TODO seqLocal: consider the case where we consume obs, not state, for beg & end.
 
 -- TODO preprocessing: convert hmm to array of nodes with the stateZero and insertZero stuff prepended
