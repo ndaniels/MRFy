@@ -2,6 +2,7 @@
 module Viterbi where
 
 import Debug.Trace (trace)
+import Debug.Trace.LocationTH (check)
 import Data.Char
 import qualified Data.MemoCombinators as Memo
 import qualified Data.List as DL
@@ -104,27 +105,27 @@ viterbi querystring hmm alpha (hasStart, hasEnd) = flipSnd $ DL.minimum $
    viterbi' ins (numNodes - 1) (seqlen - 1),
    viterbi' del (numNodes - 1) (seqlen - 1)
   ] DL.++ if hasEnd then [bestEnd] else []
-  
-  
-      
+
+
+
   where viterbi' state node obs = Memo.memo3 (Memo.arrayRange (mat, del)) 
                                   (Memo.arrayRange (0, numNodes))
                                   (Memo.arrayRange (0, seqlen)) 
                                   viterbi'' state node obs
-                                  
-        bestEnd = viterbi' beg (numNodes - 1) (seqlen - 1)
-             
+
+        bestEnd = viterbi' end (numNodes - 1) (seqlen - 1)
+
         -- we see observation obs with node at state
         flipSnd pair = (fst pair, DL.reverse $ snd pair)
-        
+
         query = {-# SCC "transQuery" #-} fromList (DL.map lookup querystring)
                 where lookup k = DL.elemIndex k alpha
-                                    
+
         numNodes = Data.Vector.length $ hmm
         seqlen = Data.Vector.length query
-        
+
         res o = query ! o
-        
+
         viterbi'' s 1 0 -- node 1 and zeroth observation
           | s == mat = (transProb hmm 0 m_m +
                         (emissionProb (matchEmissions $ hmm ! 1) (res 0)),
@@ -138,7 +139,7 @@ viterbi querystring hmm alpha (hasStart, hasEnd) = flipSnd $ DL.minimum $
                         emissionProb (insertionEmissions $ hmm ! 0) (res 0),
                         []
                         ) -- base of insert cycle
-          | s == del = (maxProb, []) -- not allowed          
+          | s == del = (maxProb, []) -- not allowed
         viterbi'' s 0 o -- node 0 but not zeroth observation
           | s == mat = (maxProb,[]) -- not allowed
           | s == ins = (transProb hmm 0 i_i +
@@ -147,6 +148,7 @@ viterbi querystring hmm alpha (hasStart, hasEnd) = flipSnd $ DL.minimum $
                         ins:path
                         ) -- possible self-insert cycle
           | s == del = (maxProb,[]) -- not allowed
+          | s == end = (transProb hmm 0 m_e, [mat])
               where (score, path) = viterbi' ins 0 (o - 1)
 
         viterbi'' s 1 (-1) -- node 1 and no more observations (came from begin)
@@ -221,10 +223,10 @@ viterbi querystring hmm alpha (hasStart, hasEnd) = flipSnd $ DL.minimum $
                                 transition m_e end
                                   ]
 -- TODO seqLocal: consider the case where we consume obs, not state, for beg & end.
-          
+
 -- TODO preprocessing: convert hmm to array of nodes with the stateZero and insertZero stuff prepended
 -- this will transform `node` below and `transProb` below
-                                    
+
 emissionProb :: [a] -> Maybe Int -> a
 emissionProb emissions residue = 
   case residue of
