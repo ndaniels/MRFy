@@ -366,7 +366,7 @@ getHmmNodes hmm = snd
         --
         -- mocc_0 = 0
         -- mocc_1 = M_I_0 + M_M_0
-        -- mocc_k = mocc_k-1 * (M_M_k-1 + M_I_k-1 + D_M_k-1 * (1 - mocc_k-1))
+        -- mocc_k = mocc_k-1 * (M_M_k-1 + M_I_k-1) + D_M_k-1 * (1 - mocc_k-1)
         --
         -- Remember that the above is in probability space. So for each term
         -- in the above equations X, e^-X should be applied before calculation.
@@ -390,7 +390,7 @@ getHmmNodes hmm = snd
                                     pm_i = exp (-(logst m_i pnode))
                                     pd_m = exp (-(logst d_m pnode))
                                     mocc = pmocc 
-                                           * (pm_m + pm_i + pd_m * (1 - pmocc))
+                                           * (pm_m + pm_i) + pd_m * (1 - pmocc)
                                 in  NonZero (-(log mocc))
 
                 pnode = nodes V.! (i - 1)
