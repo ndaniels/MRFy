@@ -406,8 +406,8 @@ getHmmNodes hmm = divOccSum
                 otran = transitions n
                 occProb
                   | i == 0 = NonZero $ 
-                               -(log (exp (-(logst m_i $ nodes V.! 0))
-                               + exp (-(logst m_m $ nodes V.! 0))))
+                               -(log (exp (-(logst m_i n))
+                               + exp (-(logst m_m n))))
                   | otherwise = let pmocc = exp (-prevMocc)
                                     pm_m = exp (-(logst m_m pnode))
                                     pm_i = exp (-(logst m_i pnode))
