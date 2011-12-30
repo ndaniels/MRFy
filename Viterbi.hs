@@ -2,7 +2,7 @@
 module Viterbi where
 
 import Debug.Trace (trace)
-import Debug.Trace.LocationTH (check)
+-- import Debug.Trace.LocationTH (check) 
 import Data.Char
 import qualified Data.MemoCombinators as Memo
 import qualified Data.List as DL
