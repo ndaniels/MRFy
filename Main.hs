@@ -26,12 +26,12 @@ querySeq = "MVDDIFERGSKGSSDFFTGNVWVKMLVTDENGVFNTQVYDVVFEPGARTHWHSHPGGQILIVTRGKGF
 -- showAlignment :: HMM -> QuerySequence -> StatePath -> String 
 
 temp hmm = showAlignment hmm querySeq sp 61 Constants.amino
-  where (score, sp) = viterbi querySeq hmm Constants.amino (True, True)
+  where (score, sp) = viterbi (False, False) Constants.amino querySeq hmm
 
 main = do sargs <- cmdArgs smurfargs
           (header, hmm, md) <- parse $ hmmPlusFile sargs
           -- putStrLn $ show $ getBetaStrands header 
-          putStrLn $ show $ viterbi querySeq hmm Constants.amino (True, True)
+          putStrLn $ show $ viterbi (False, False) Constants.amino querySeq hmm
           putStrLn $ temp hmm
           
 

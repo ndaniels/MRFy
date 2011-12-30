@@ -1,4 +1,8 @@
 module StochasticSearch where
+import HmmPlus
+import Constants
+import Viterbi
+import Beta
 -- this module will take the random number list or generator, and will
 -- pass random numbers to the mutating function, possibly the initialization function,
 -- and possibly the accepting function
@@ -19,12 +23,11 @@ module StochasticSearch where
 -- need a representation of a solution
 
 type SearchGuess = [Int] -- list of *starting* residue positions of each beta strand
-type Score = Double
 type SearchSolution = (Score, SearchGuess)
 type Temperature = Double
 type Seed = Double
 type Age = Int
-type Scorer = QuerySequence -> HMM -> [BetaStrand] -> SearchGuess
+type Scorer = QuerySequence -> HMM -> [BetaStrand] -> SearchSolution
 data SearchStrategy = SearchStrategy { accept :: Seed -> [SearchSolution] -> Age -> Bool
                                      , terminate :: [SearchSolution] -> Age -> Bool
                                      , mutate :: Seed -> Scorer -> [SearchSolution] -> [SearchSolution]
@@ -33,23 +36,25 @@ data SearchStrategy = SearchStrategy { accept :: Seed -> [SearchSolution] -> Age
 
 search :: QuerySequence -> HMM -> [BetaStrand] -> SearchStrategy -> [Seed] -> SearchSolution
 
-search query hmm betas strategy seeds = search' seeds initialGuess 0
-  where search' (s1:s2:s3:seeds) guesses age = let solution = mutate' guesses
-                                        in if accept' solution age then
-                                              if terminate' solution age then
-                                                solution
-                                               else
-                                                search' seeds solution (age + 1)
-                                           else
-                                             search' seeds guesses (age + 1)
-        initialGuess = initialize strategy $ s1
-        mutate' = mutate strategy $ s2 score
-        terminate' = terminate strategy
-        accept' = accept strategy $ s3
+search query hmm betas strategy seeds = search' (tail seeds) initialGuess 0
+  where initialGuess = initialize strategy $ head seeds
+        search' :: [Seed] -> [SearchSolution] -> Age -> SearchSolution
+        search' (s1:s2:seeds) guesses age =
+          let solutions = mutate' guesses
+            in if accept' solutions age then
+                  if terminate' solutions age then
+                    minimum solutions
+                   else
+                    search' seeds solutions (age + 1)
+               else
+                 search' seeds guesses (age + 1)
+            where mutate' = mutate strategy s1 score
+                  terminate' = terminate strategy
+                  accept' = accept strategy s2
 
 score :: Scorer
 
-score query hmm betas = map (viterbi query) miniHmms
+score query hmm betas = (foldr (+) (0.0 :: Double) $ map (fst . viterbi (False, False) Constants.amino query) miniHmms, [])
   where miniHmms = []
   -- really, mutate' should take the query and hmm as arguments, and call score as appropriate
   -- remaining question: if we want to try deferring Viterbi until later generations, how do we

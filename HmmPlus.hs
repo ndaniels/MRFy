@@ -402,7 +402,7 @@ getHmmNodes hmm = divOccSum
                                  , V.snoc nodes n'
                                  )
           where n' = n { transitions = ntran }
-                ntran = otran { b_m = mkDefTransProb (trace (show occProb) $ occProb) 3 0 }                
+                ntran = otran { b_m = mkDefTransProb occProb 3 0 }                
                 otran = transitions n
                 occProb
                   | i == 0 = NonZero $ 

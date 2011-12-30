@@ -16,7 +16,8 @@ If s1 is paired with s2, then s2's exposure is the same as s1's exposure.
 --}
 
 module Beta 
-  ( getBetaStrands )
+  ( getBetaStrands
+  , BetaStrand (..) )
 where
 
 import Data.List (sort)
