@@ -235,6 +235,8 @@ ws = REd "[\t ]+|$" " "
   type DeletionToDeletion = FromDeletion
 |]
 
+-- may need to use EtoC + CtoT for M_E and NtoB for begin, for local-local,
+-- but SMURF sets them to zero.
 
 -- instance Eq LogProbability where
 --   x == y = case (x, y) of
@@ -285,6 +287,7 @@ data HmmNode =
              , insertionEmissions :: InsertEmissions
              , transitions :: StateTransitions
              }
+             deriving (Show)
 
 data TransitionProbabilities = 
      TransitionProbabilities { m_m :: TransitionProbability
@@ -297,6 +300,7 @@ data TransitionProbabilities =
                              , b_m :: TransitionProbability
                              , m_e :: TransitionProbability
                              }
+                             deriving (Show)
 
 -- I don't think this is completely needed, but I feel more comfortable
 -- mirroring the Pads types at the moment.
@@ -351,10 +355,10 @@ getHmmNodes hmm = snd
           where n' = n { transitions = otran { m_e = mkDefTransProb mek 0 4 } }
                 otran = transitions n
                 mek = if null nodes then 
-                        NonZero 1 
+                        NonZero 0
                       else 
                         NonZero $ logst m_d n + sk
-                sk' = if null nodes then 0 else logst d_d n
+                sk' = if null nodes then 0 else sk + logst d_d n
 
         -- The key point of this folding function is to *use the accumulator*
         -- to calculate the occupy probability for the current node.
@@ -378,13 +382,13 @@ getHmmNodes hmm = snd
                                  , V.snoc nodes n'
                                  )
           where n' = n { transitions = ntran }
-                ntran = otran { b_m = mkDefTransProb occProb 3 0 }                
+                ntran = otran { b_m = mkDefTransProb (trace (show occProb) $ occProb) 3 0 }                
                 otran = transitions n
                 occProb
                   | i == 0 = LogZero
-                  | i == 1 = NonZero $
-                               (logst m_i $ nodes V.! 0)
-                               + (logst m_m $ nodes V.! 0)
+                  | i == 1 = NonZero $ 
+                               -(log (exp (-(logst m_i $ nodes V.! 0))
+                               + exp (-(logst m_m $ nodes V.! 0))))
                   | otherwise = let pmocc = exp (-prevMocc)
                                     pm_m = exp (-(logst m_m pnode))
                                     pm_i = exp (-(logst m_i pnode))
