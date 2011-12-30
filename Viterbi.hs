@@ -61,7 +61,8 @@ showAlignment hmm query path len alpha =
                                   )
         showA (q:qs) (p:ps) i lastp oh om oq
           | p == mat = showA qs ps (i+1) p (model:oh) ('|':om) (q:oq)
-          | p == ins = showA qs ps nextInd p ('-':oh) (' ':om) (q:oq)
+          | p == ins || p == beg || p == end = 
+              showA qs ps nextInd p ('-':oh) (' ':om) (q:oq)
           | p == del = showA (q:qs) ps (i+1) p (model:oh) (' ':om) ('-':oq)
 
           where model = alpha !! ai
@@ -76,7 +77,10 @@ showAlignment hmm query path len alpha =
 
                 -- this is only used when we're in an Insert node
                 -- thus, assume the current node is an insert
-                nextInd = if lastp == ins then i else i + 1
+                nextInd = if lastp == ins || lastp == beg || lastp == end then 
+                            i 
+                          else 
+                            i + 1
 
         -- Strictly for cutting up the strings and displaying them nicely.
         -- Note: Assumes each string is in the correct order and that
