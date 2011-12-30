@@ -307,16 +307,35 @@ data TransitionProbabilities =
 type StateTransitions = TransitionProbabilities
                     
 getHmmNodes :: HMMp -> HMM
-getHmmNodes hmm = snd 
-                    $ foldl addOccupy (0, V.empty) 
-                    $ snd $ foldr addMatchEnd (0, [])
-                    $ map convert (z:nodes hmm)
+getHmmNodes hmm = 
   where z = HmmNodeP { nodeNumP = 0 
                      , matchEmissionsP = (replicate (length amino) maxProb) 
                      , annotationsP = Nothing 
                      , insertionEmissionsP = (insertZeroEmissions hmm) 
                      , transitionsP = (stateZeroTransitions hmm) 
                      }
+
+        divOccSum :: HMM
+        divOccSum = V.map divBySum withOccupy
+
+        divBySum :: HmmNode -> HmmNode
+        divBySumm node = node { transitions = otran { b_m = newOccProb } }
+          where otran = transitions node
+                newOccProb = NonZero $ 
+                               (-(log (exp (-(logst b_m node)) / occSum)))
+
+        occSum :: Double
+        occSum = V.ifoldl addOcc 0.0 withOccupy
+
+        addOcc :: Double -> Int -> HmmNode -> Double
+        addOcc sum i node = sum + (occProb * ((V.length withOccupy) - i))
+          where occProb = exp (-(logst b_m node))
+
+        withOccupy :: HMM
+        withOccupy = snd 
+                     $ foldl addOccupy (0, V.empty) 
+                     $ snd $ foldr addMatchEnd (0, [])
+                     $ map convert (z:nodes hmm)
 
         convert :: HmmNodeP -> HmmNode
         convert n = HmmNode { nodeNum = nodeNumP n
