@@ -389,8 +389,7 @@ getHmmNodes hmm = divOccSum
         -- This function uses 'snoc', which appends elements to the end of a
         -- vector. Its complexity is O(n) where n is the size of the vector.
         --
-        -- mocc_0 = 0
-        -- mocc_1 = M_I_0 + M_M_0
+        -- mocc_0 = M_I_0 + M_M_0
         -- mocc_k = mocc_k-1 * (M_M_k-1 + M_I_k-1) + D_M_k-1 * (1 - mocc_k-1)
         --
         -- Remember that the above is in probability space. So for each term
@@ -406,8 +405,7 @@ getHmmNodes hmm = divOccSum
                 ntran = otran { b_m = mkDefTransProb (trace (show occProb) $ occProb) 3 0 }                
                 otran = transitions n
                 occProb
-                  | i == 0 = LogZero
-                  | i == 1 = NonZero $ 
+                  | i == 0 = NonZero $ 
                                -(log (exp (-(logst m_i $ nodes V.! 0))
                                + exp (-(logst m_m $ nodes V.! 0))))
                   | otherwise = let pmocc = exp (-prevMocc)
