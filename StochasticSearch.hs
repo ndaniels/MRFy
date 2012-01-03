@@ -30,7 +30,7 @@ type Age = Int
 type Scorer = QuerySequence -> HMM -> [BetaStrand] -> SearchSolution
 data SearchStrategy = SearchStrategy { accept :: Seed -> [SearchSolution] -> Age -> Bool
                                      , terminate :: [SearchSolution] -> Age -> Bool
-                                     , mutate :: Seed -> Scorer -> [SearchSolution] -> [SearchSolution]
+                                     , mutate :: Seed -> Scorer -> [BetaStrand] -> [SearchSolution] -> [SearchSolution]
                                      , initialize :: Seed -> [SearchSolution]
                                      }
 
@@ -48,7 +48,7 @@ search query hmm betas strategy seeds = search' (tail seeds) initialGuess 0
                     search' seeds solutions (age + 1)
                else
                  search' seeds guesses (age + 1)
-            where mutate' = mutate strategy s1 score
+            where mutate' = mutate strategy s1 score betas
                   terminate' = terminate strategy
                   accept' = accept strategy s2
 
