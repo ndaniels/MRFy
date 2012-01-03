@@ -46,7 +46,9 @@ instance Eq BetaResidue where
 instance Ord BetaResidue where
   compare r1 r2 = compare (position r1) (position r2)
 
+-- XXX: add length of residues to BetaStrand type
 data BetaStrand = BetaStrand { serial :: Int
+                             , len :: Int
                              , residues :: [BetaResidue]
                              }
 instance Show BetaStrand where
@@ -103,8 +105,7 @@ mkBetaResidues' (sp:sps) = newResidues ++ mkBetaResidues' sps
         newResidues = case parallel sp of Parallel -> parallelPairs
                                           Antiparallel -> antiPairs
         parallelPairs = mkResidues $ zip3 (exposure sp) [s1..] [s2..]
-        antiPairs = mkResidues $ 
-                      zip3 (exposure sp) [s1..] [s2, s2-1..]
+        antiPairs = mkResidues $ zip3 (exposure sp) [s1..] [s2, s2-1..]
         s1 = firstStart sp
         s2 = secondStart sp + pairLength sp - 1
 
@@ -128,7 +129,10 @@ mkBetaResidues' (sp:sps) = newResidues ++ mkBetaResidues' sps
 mkBetaStrands :: Int -> [BetaResidue] -> [BetaStrand]
 mkBetaStrands _ [] = []
 mkBetaStrands i residues = mkBetaStrand : mkBetaStrands (i + 1) (reverse rest)
-  where mkBetaStrand = BetaStrand { serial = i, residues = reverse adjacent }
+  where mkBetaStrand = BetaStrand { serial = i
+                                  , len = length adjacent
+                                  , residues = reverse adjacent 
+                                  }
         (adjacent, rest) = getAdjacentAndRest residues
         getAdjacentAndRest residues =
           foldl adjsAndRest ([], []) $ zip [startCount..] residues
