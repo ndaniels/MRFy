@@ -1,5 +1,6 @@
 module SearchStrategy where
 
+import qualified Data.Vector as V
 import System.Random (mkStdGen, randomR, StdGen)
 
 import Beta
@@ -13,7 +14,7 @@ initialGuess seed qs betas = initialGuess' betas 0 $ mkStdGen seed
         initialGuess' (b:bs) start gen = pos : initialGuess' bs (start + betaLen) gen'
           where (pos, gen') = randomR (start, betaSum) gen
                 betaLen = len b
-                betaSum = length qs - (foldr (+) 0 $ map len bs)
+                betaSum = V.length qs - (foldr (+) 0 $ map len bs)
 
         
 

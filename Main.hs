@@ -3,6 +3,7 @@
 module Main where
 
 import Data.Array
+import Data.List as DL
 import System.Console.CmdArgs
 import Data.Vector
 
@@ -20,18 +21,25 @@ smurfargs = SmurfArgs { hmmPlusFile = def &= typ "HMM Plus file" &= argPos 0 }
 -- to be removed
 -- qseq = "STVWACIKLMAACDDEADGHSTVMMPQRRDDIKLMNPQSTVWYAGEADGE"
 querySeq = "MVDDIFERGSKGSSDFFTGNVWVKMLVTDENGVFNTQVYDVVFEPGARTHWHSHPGGQILIVTRGKGFYQERGKPARILKKGDVVEIPPNVVHWHGAAPDEELVHIGISTQVHLGPAEWLGSVTEEEYRKATEGK"
+
+query :: Vector Int
+query = fromList $ DL.map lookup querySeq
+  where lookup k = case DL.elemIndex k Constants.aminoS of
+                        Just i -> i
+                        Nothing -> error "Residue not found in alphabet"
+
 -- qseq = "ADGE" 
 -- querySeq = listArray (0, (length qseq) - 1) qseq
 
 -- showAlignment :: HMM -> QuerySequence -> StatePath -> String 
 
-temp hmm = showAlignment hmm querySeq sp 61 Constants.amino
-  where (score, sp) = viterbi (False, False) Constants.amino querySeq hmm
+temp hmm = showAlignment hmm query sp 61 Constants.amino
+  where (score, sp) = viterbi (False, False) Constants.amino query hmm
 
 main = do sargs <- cmdArgs smurfargs
           (header, hmm, md) <- parse $ hmmPlusFile sargs
           -- putStrLn $ show $ getBetaStrands header 
-          putStrLn $ show $ viterbi (False, False) Constants.amino querySeq hmm
+          putStrLn $ show $ viterbi (False, False) Constants.amino query hmm
           putStrLn $ temp hmm
           
 

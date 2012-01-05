@@ -60,7 +60,7 @@ ws = REd "[\t ]+|$" " "
     | ACC -> Accession StringLn
     | DESC -> Description StringLn
     | LENG -> ModelLength Int
-    | ALPH -> Alphabet StringLn -- amino or nucleotide
+    | ALPH -> AlphabetP StringLn -- amino or nucleotide
     | RF -> ReferenceAnnotation StringLn
     | CS -> ConsensusStructure StringLn
     | MAP -> MapAnnotation StringLn
@@ -263,8 +263,8 @@ type StateAcc = TransitionProbabilities -> TransitionProbability
 getAlphabet :: SmurfHeader -> String
 getAlphabet ((HeaderLine {tag, payload}):xs) = case tag of
                     ALPH -> case payload of
-                              Alphabet "amino" -> amino
-                              Alphabet "nucleotide" -> nucleotide
+                              AlphabetP "amino" -> aminoS
+                              AlphabetP "nucleotide" -> nucleotideS
                               otherwise -> error "Invalid alphabet"
                     otherwise -> getAlphabet xs
 
@@ -309,7 +309,7 @@ type StateTransitions = TransitionProbabilities
 getHmmNodes :: HMMp -> HMM
 getHmmNodes hmm = divOccSum
   where z = HmmNodeP { nodeNumP = 0 
-                     , matchEmissionsP = (replicate (length amino) maxProb) 
+                     , matchEmissionsP = (replicate (V.length amino) maxProb) 
                      , annotationsP = Nothing 
                      , insertionEmissionsP = (insertZeroEmissions hmm) 
                      , transitionsP = (stateZeroTransitions hmm) 

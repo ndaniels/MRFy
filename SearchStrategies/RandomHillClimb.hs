@@ -1,5 +1,6 @@
 module SearchStrategies.RandomHillClimb where
 
+import qualified Data.Vector as V
 import System.Random (mkStdGen, randomR, StdGen)
 
 import Beta
@@ -37,7 +38,7 @@ mutate' seed query scorer betas solutions = (scorer query betas $ mutate'' guess
                        (len $ betas !! (i - 1))
                        + guesses !! (i - 1)
                 hi = if i == length guesses then
-                       length query - (len $ betas !! i)
+                       V.length query - (len $ betas !! i)
                      else
                        guesses !! (i + 1)
                        - (len $ betas !! i)

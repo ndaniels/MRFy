@@ -11,7 +11,7 @@ import HmmPlus
 import Data.Vector
 import Constants
 
-type QuerySequence = String
+type QuerySequence = Vector Int -- indices into Constants.amino
 type Score = Double
 type StatePath = [ HMMState ]
 
@@ -49,9 +49,9 @@ end = 4 :: HMMState
 --   deletion: HMM seq gets model amino acid.
 --             Middle gets space character.
 --             Query seq gets '-' symbol.
-showAlignment :: HMM -> QuerySequence -> StatePath -> Int -> String -> String
+showAlignment :: HMM -> QuerySequence -> StatePath -> Int -> Alphabet -> String
 showAlignment hmm query path len alpha = 
-  niceify $ showA query path 0 0 [] [] []
+  niceify $ showA (DL.map (getResidue alpha) $ toList query) path 0 0 [] [] []
   where showA :: String -> StatePath -> Int -> HMMState 
                  -> String -> String -> String -- correspond to the three lines
                  -> (String, String, String)
@@ -65,7 +65,7 @@ showAlignment hmm query path len alpha =
               showA qs ps nextInd p ('-':oh) (' ':om) (q:oq)
           | p == del = showA (q:qs) ps (i+1) p (model:oh) (' ':om) ('-':oq)
 
-          where model = alpha !! ai
+          where model = alpha ! ai
                 (_, ai, _) = DL.foldr maxWithInd 
                                       (0, 0, maxProb) 
                                       (matchEmissions $ hmm ! i)
@@ -103,8 +103,8 @@ showAlignment hmm query path len alpha =
 -- hasStart and hasEnd are (for now) for model-relative local alignment.
 -- when we want to consider sequence-relative local alignment, we
 -- will also need to consider better of seqLocal vs. modLocal
-viterbi :: (Bool, Bool) -> String -> QuerySequence -> HMM -> (Score, StatePath)
-viterbi (hasStart, hasEnd) alpha querystring hmm = flipSnd $ DL.minimum $
+viterbi :: (Bool, Bool) -> Alphabet -> QuerySequence -> HMM -> (Score, StatePath)
+viterbi (hasStart, hasEnd) alpha query hmm = flipSnd $ DL.minimum $
   [viterbi' mat (numNodes - 1) (seqlen - 1),
    viterbi' ins (numNodes - 1) (seqlen - 1),
    viterbi' del (numNodes - 1) (seqlen - 1)
@@ -121,9 +121,6 @@ viterbi (hasStart, hasEnd) alpha querystring hmm = flipSnd $ DL.minimum $
 
         -- we see observation obs with node at state
         flipSnd pair = (fst pair, DL.reverse $ snd pair)
-
-        query = {-# SCC "transQuery" #-} fromList (DL.map lookup querystring)
-                where lookup k = DL.elemIndex k alpha
 
         numNodes = Data.Vector.length $ hmm
         seqlen = Data.Vector.length query
@@ -231,11 +228,8 @@ viterbi (hasStart, hasEnd) alpha querystring hmm = flipSnd $ DL.minimum $
 -- TODO preprocessing: convert hmm to array of nodes with the stateZero and insertZero stuff prepended
 -- this will transform `node` below and `transProb` below
 
-emissionProb :: [a] -> Maybe Int -> a
-emissionProb emissions residue = 
-  case residue of
-    Just i -> emissions !! i
-    Nothing -> error "Residue not found in alphabet"
+emissionProb :: [a] -> Int -> a
+emissionProb emissions residue = emissions !! residue
 
 transProb :: HMM -> Int -> StateAcc -> Double
 transProb hmm nodenum state = case logProbability $ state (transitions (hmm ! nodenum)) of
