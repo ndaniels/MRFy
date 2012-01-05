@@ -5,7 +5,7 @@ module Main where
 import Data.Array
 import Data.List as DL
 import System.Console.CmdArgs
-import Data.Vector
+import qualified Data.Vector as V
 
 import Beta
 -- import HmmAlign
@@ -22,9 +22,9 @@ smurfargs = SmurfArgs { hmmPlusFile = def &= typ "HMM Plus file" &= argPos 0 }
 -- qseq = "STVWACIKLMAACDDEADGHSTVMMPQRRDDIKLMNPQSTVWYAGEADGE"
 querySeq = "MVDDIFERGSKGSSDFFTGNVWVKMLVTDENGVFNTQVYDVVFEPGARTHWHSHPGGQILIVTRGKGFYQERGKPARILKKGDVVEIPPNVVHWHGAAPDEELVHIGISTQVHLGPAEWLGSVTEEEYRKATEGK"
 
-query :: Vector Int
-query = fromList $ DL.map lookup querySeq
-  where lookup k = case DL.elemIndex k Constants.aminoS of
+query :: V.Vector Int
+query = V.fromList $ DL.map lookup querySeq
+  where lookup k = case V.elemIndex k Constants.amino of
                         Just i -> i
                         Nothing -> error "Residue not found in alphabet"
 

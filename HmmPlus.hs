@@ -263,8 +263,8 @@ type StateAcc = TransitionProbabilities -> TransitionProbability
 getAlphabet :: SmurfHeader -> String
 getAlphabet ((HeaderLine {tag, payload}):xs) = case tag of
                     ALPH -> case payload of
-                              AlphabetP "amino" -> aminoS
-                              AlphabetP "nucleotide" -> nucleotideS
+                              AlphabetP "amino" -> V.toList amino
+                              AlphabetP "nucleotide" -> V.toList nucleotide
                               otherwise -> error "Invalid alphabet"
                     otherwise -> getAlphabet xs
 
@@ -277,7 +277,7 @@ getNumNodes ((HeaderLine {tag, payload}):xs) = case tag of
 
 type HMM = V.Vector HmmNode
 
-type EmissionProbabilities = [Double]
+type EmissionProbabilities = V.Vector Double
 type InsertEmissions = EmissionProbabilities
 
 -- See type definition for 'HmmNodeP' above for some documentation.
@@ -344,9 +344,9 @@ getHmmNodes hmm = divOccSum
 
         convert :: HmmNodeP -> HmmNode
         convert n = HmmNode { nodeNum = nodeNumP n
-                            , matchEmissions = convertEmissions $ matchEmissionsP n
+                            , matchEmissions = V.fromList $ convertEmissions $ matchEmissionsP n
                             , annotations = annotationsP n
-                            , insertionEmissions = insertionEmissionsP n
+                            , insertionEmissions = V.fromList $ convertEmissions $ insertionEmissionsP n
                             , transitions = newTrans
                             }
           where otran = transitionsP n
@@ -363,7 +363,7 @@ getHmmNodes hmm = divOccSum
                                                    , m_e = m_eDef
                                                    }
                 convertEmissions emissions = emissions ++ [-(log xEmission)]
-                  where xEmission = foldr xEmission' 0 [0..(length amino)]
+                  where xEmission = foldr xEmission' 0 [0..((V.length amino) - 1 - numAlphabetAdditions)]
                         xEmission' idx acc = acc + ((bgFreqs V.! idx) * exp (-(emissions !! idx)))
 
         mkDefTransProb :: LogProbability -> HMMState -> HMMState 

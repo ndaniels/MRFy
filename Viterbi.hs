@@ -66,7 +66,7 @@ showAlignment hmm query path len alpha =
           | p == del = showA (q:qs) ps (i+1) p (model:oh) (' ':om) ('-':oq)
 
           where model = alpha ! ai
-                (_, ai, _) = DL.foldr maxWithInd 
+                (_, ai, _) = Data.Vector.foldr maxWithInd 
                                       (0, 0, maxProb) 
                                       (matchEmissions $ hmm ! i)
                 maxWithInd :: Double -> (Int, Int, Double) -> (Int, Int, Double)                   
@@ -228,8 +228,8 @@ viterbi (hasStart, hasEnd) alpha query hmm = flipSnd $ DL.minimum $
 -- TODO preprocessing: convert hmm to array of nodes with the stateZero and insertZero stuff prepended
 -- this will transform `node` below and `transProb` below
 
-emissionProb :: [a] -> Int -> a
-emissionProb emissions residue = emissions !! residue
+emissionProb :: Vector a -> Int -> a
+emissionProb emissions residue = emissions ! residue
 
 transProb :: HMM -> Int -> StateAcc -> Double
 transProb hmm nodenum state = case logProbability $ state (transitions (hmm ! nodenum)) of

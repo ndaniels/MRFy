@@ -5,11 +5,11 @@ import Data.Vector
 type Alphabet = Vector Char
   
 maxProb = 10e1024 :: Double
-aminoS = "ACDEFGHIKLMNPQRSTVWYX"
-nucleotideS = "ACTG"
+amino = fromList "ACDEFGHIKLMNPQRSTVWYX"
+nucleotide = fromList "ACTG"
 
-amino = fromList aminoS :: Alphabet
-nucleotide = fromList nucleotideS
+-- amino = fromList aminoS :: Alphabet 
+-- nucleotide = fromList nucleotideS 
 
 getResidue :: Alphabet -> Int -> Char
 getResidue alpha i = alpha ! i
