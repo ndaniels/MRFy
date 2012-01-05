@@ -18,10 +18,7 @@ initialize' :: Seed -> QuerySequence -> [BetaStrand] -> [SearchGuess]
 initialize' seed query betas = [initialGuess seed query betas]
 
 accept' :: Seed -> [SearchSolution] -> Age -> Bool
-accept' _ (s1:s2:solutions) _ = if s1score < s2score then
-                                  (s1:s2:solutions)
-                                else
-                                  (s2:solutions)
+accept' _ (s1:s2:solutions) _ = s1score < s2score
   where (s1score, _) = s1
         (s2score, _) = s2
 
