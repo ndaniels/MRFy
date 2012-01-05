@@ -123,14 +123,14 @@ ws = REd "[\t ]+|$" " "
            -- They are used for null model filtering in HMMER, but we cannot
            -- use that simple 1-state null model in Smurf2.
            , composition :: Maybe (ws, "COMPO", ws, 
-                                   EmissionProbabilities alphabet, ws, EOR)
+                                   EmissionProbabilitiesP alphabet, ws, EOR)
            -- the insertZeroEmissions and stateZeroTransitions are the
            -- transition probabilities for the BEGIN node of the whole HMM.
            -- match state 0 is the BEGIN state, which is mute so has no
            -- match emission probabilities. the insertZeroEmissions is
            -- the emission probability table for an insert state that may occur
            -- before the first real match state (M1)                                    
-           , insertZeroEmissions :: InsertEmissions alphabet
+           , insertZeroEmissions :: InsertEmissionsP alphabet
            -- the stateZeroTransitions are the transition probabilities for
            -- b->m1, b->i0, b->d1, i0->m1, i0->i0, d0->m1 (always 0.0), d0->d1 (always *)
            -- recall that these are log probabilities, so log1 == 0 and log0 == infinity (*)
@@ -144,8 +144,8 @@ ws = REd "[\t ]+|$" " "
   type Letter (alphabet :: String) = constrain c :: Char 
                                      where <| c `elem` alphabet |>
   
-  type EmissionProbabilities (alphabet :: String) = 
-       [ Double | ws ] length <| length alphabet |> 
+  type EmissionProbabilitiesP (alphabet :: String) = 
+       [ Double | ws ] length <| (length alphabet) - numAlphabetAdditions |> 
 
   -- A bit of a hack here, because Pads doesn't yet support non-base types
   -- as the parameteter for an algebraic parser type
@@ -163,8 +163,8 @@ ws = REd "[\t ]+|$" " "
   
   type TransitionDescription = [ StringSE ws | ws] terminator (Try EOR)
   
-  type InsertEmissions (alphabet :: String) = 
-       (ws, EmissionProbabilities alphabet, ws, EOR)
+  type InsertEmissionsP (alphabet :: String) = 
+       (ws, EmissionProbabilitiesP alphabet, ws, EOR)
   
   type StateTransitionsP = (ws, TransitionProbabilitiesP, ws, EOR)
   
@@ -175,7 +175,7 @@ ws = REd "[\t ]+|$" " "
                , ws
                -- Emission log-odds probabilities for the match state
                -- remember these are mapped to the alphabet in alphabetic order
-               , matchEmissionsP :: EmissionProbabilities alphabet
+               , matchEmissionsP :: EmissionProbabilitiesP alphabet
                , ws
                -- these are three extra fields for MAP, RF, and CS
                -- we do not use them in the Smurf2 algorithm; see the
@@ -184,7 +184,7 @@ ws = REd "[\t ]+|$" " "
                , EOR
                -- these fields are the insert emission log-odds scores, one per
                -- symbol in alphabetic order
-               , insertionEmissionsP :: InsertEmissions alphabet
+               , insertionEmissionsP :: InsertEmissionsP alphabet
                -- these fields are the transition log-odds for this node in order:
                -- mk->(mk+1, ik, dk+1), ik->(mk+1, ik); dk->(mk+1, dk+1)
                -- note that these correspond exactly to the edges in a profile
@@ -277,6 +277,9 @@ getNumNodes ((HeaderLine {tag, payload}):xs) = case tag of
 
 type HMM = V.Vector HmmNode
 
+type EmissionProbabilities = [Double]
+type InsertEmissions = EmissionProbabilities
+
 -- See type definition for 'HmmNodeP' above for some documentation.
 -- The purpose of re-creating the HmmNode type is to add occupy
 -- probabilities to each HmmNode as a pre-processing step.
@@ -341,7 +344,7 @@ getHmmNodes hmm = divOccSum
 
         convert :: HmmNodeP -> HmmNode
         convert n = HmmNode { nodeNum = nodeNumP n
-                            , matchEmissions = matchEmissionsP n
+                            , matchEmissions = convertEmissions $ matchEmissionsP n
                             , annotations = annotationsP n
                             , insertionEmissions = insertionEmissionsP n
                             , transitions = newTrans
@@ -359,6 +362,9 @@ getHmmNodes hmm = divOccSum
                                                    , b_m = b_mDef
                                                    , m_e = m_eDef
                                                    }
+                convertEmissions emissions = emissions ++ [-(log xEmission)]
+                  where xEmission = foldr xEmission' 0 [0..(length amino)]
+                        xEmission' idx acc = acc + ((bgFreqs V.! idx) * exp (-(emissions !! idx)))
 
         mkDefTransProb :: LogProbability -> HMMState -> HMMState 
                           -> TransitionProbability
