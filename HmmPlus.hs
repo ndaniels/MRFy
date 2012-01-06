@@ -363,8 +363,8 @@ getHmmNodes hmm = divOccSum
                                                    , m_e = m_eDef
                                                    }
                 convertEmissions emissions = emissions ++ [-(log xEmission)]
-                  where xEmission = foldr xEmission' 0 [0..((V.length amino) - 1 - numAlphabetAdditions)]
-                        xEmission' idx acc = acc + ((bgFreqs V.! idx) * exp (-(emissions !! idx)))
+                  where xEmission = foldr (+) 0 (map xEmission' (zip (V.toList bgFreqs) emissions))
+                        xEmission' (f, e)= f * exp (- e)
 
         mkDefTransProb :: LogProbability -> HMMState -> HMMState 
                           -> TransitionProbability
