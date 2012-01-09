@@ -18,16 +18,15 @@ ss = SearchStrategy { accept = accept'
 initialize' :: Seed -> QuerySequence -> [BetaStrand] -> [SearchGuess]
 initialize' seed query betas = [initialGuess seed query betas]
 
-accept' :: Seed -> [SearchSolution] -> Age -> Bool
-accept' _ (s1:s2:solutions) _ = s1score < s2score
-  where (s1score, _) = s1
-        (s2score, _) = s2
+accept' :: Seed -> [Score] -> Age -> Bool
+accept' _ (s1:s2:scores) _ = s1 < s2
 
-terminate' :: [SearchSolution] -> Age -> Bool
-terminate' solutions age = if age < 1000 then False else True
+terminate' :: [Score] -> Age -> Bool
+terminate' scores age = not $ age < 1000
 
+-- invariant: len [SearchSolution] == 1
 mutate' :: Seed -> QuerySequence -> Scorer -> [BetaStrand] -> [SearchSolution] -> [SearchSolution]
-mutate' seed query scorer betas solutions = (scorer query betas $ mutate'' guesses 0 $ mkStdGen seed) : solutions
+mutate' seed query scorer betas solutions = [scorer query betas $ mutate'' guesses 0 $ mkStdGen seed] 
   where guesses = snd $ head solutions
         mutate'' :: SearchGuess -> Int -> StdGen -> SearchGuess
         mutate'' (g:gs) i gen = g' : mutate'' gs (i+1) gen'

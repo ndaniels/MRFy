@@ -1,4 +1,7 @@
 module StochasticSearch where
+
+import qualified Data.Vector as V
+
 import HmmPlus
 import Constants
 import Viterbi
@@ -27,27 +30,32 @@ type SearchSolution = (Score, SearchGuess)
 type Temperature = Double
 type Seed = Int
 type Age = Int
+type History = [Score]
 type Scorer = QuerySequence -> [BetaStrand] -> SearchGuess -> SearchSolution
-data SearchStrategy = SearchStrategy { accept :: Seed -> [SearchSolution] -> Age -> Bool
-                                     , terminate :: [SearchSolution] -> Age -> Bool
+data SearchStrategy = SearchStrategy { accept :: Seed -> History -> Age -> Bool
+                                     , terminate :: History -> Age -> Bool
                                      , mutate :: Seed -> QuerySequence -> Scorer -> [BetaStrand] -> [SearchSolution] -> [SearchSolution]
                                      , initialize :: Seed -> QuerySequence -> [BetaStrand]-> [SearchGuess]
                                      }
 
-search :: QuerySequence -> HMM -> [BetaStrand] -> SearchStrategy -> [Seed] -> SearchSolution
+-- invariant: fst SearchSolution == head History
+search :: QuerySequence -> HMM -> [BetaStrand] -> SearchStrategy -> [Seed] -> (SearchSolution, History)
 
-search query hmm betas strategy seeds = search' (tail seeds) initialGuess 0
+search query hmm betas strategy seeds = search' (tail seeds) initialGuess [] 0
   where initialGuess = map (score hmm query betas) $ initialize strategy (head seeds) query betas
-        search' :: [Seed] -> [SearchSolution] -> Age -> SearchSolution
-        search' (s1:s2:seeds) guesses age =
-          let solutions = mutate' guesses
-            in if accept' solutions age then
-                  if terminate' solutions age then
-                    minimum solutions
+
+        search' :: [Seed] -> [SearchSolution] -> History -> Age -> (SearchSolution, History)
+        search' (s1:s2:seeds) guesses hist age =
+          let population = mutate' guesses
+              score = fst $ minimum population
+              newhist = score : hist
+            in if accept' newhist age then
+                  if terminate' newhist age then
+                    (minimum population, newhist)
                    else
-                    search' seeds solutions (age + 1)
+                    search' seeds population newhist (age + 1)
                else
-                 search' seeds guesses (age + 1)
+                 search' seeds guesses hist (age + 1)
             where mutate' = mutate strategy s1 query (score hmm) betas
                   terminate' = terminate strategy
                   accept' = accept strategy s2
