@@ -28,6 +28,7 @@ import HmmPlus
 type BetaPosition = Int
 
 data BetaResidue = BetaResidue { position :: BetaPosition
+                               , strandSerial :: Int
                                , exposureFwd :: Maybe Exposure
                                , exposureBck :: Maybe Exposure
                                , pairFwd :: Maybe BetaPosition
@@ -113,12 +114,14 @@ mkBetaResidues' (sp:sps) = newResidues ++ mkBetaResidues' sps
         mkResidues [] = []
         mkResidues ((exp, b1, b2):rest) = p1 : p2 : mkResidues rest
           where p1 = BetaResidue { position = b1
+                                 , strandSerial = undefined
                                  , exposureFwd = Just exp
                                  , exposureBck = Nothing
                                  , pairFwd = Just b2
                                  , pairBck = Nothing
                                  }
                 p2 = BetaResidue { position = b2
+                                 , strandSerial = undefined
                                  , exposureFwd = Nothing
                                  , exposureBck = Just exp
                                  , pairFwd = Nothing
@@ -131,8 +134,9 @@ mkBetaStrands _ [] = []
 mkBetaStrands i residues = mkBetaStrand : mkBetaStrands (i + 1) (reverse rest)
   where mkBetaStrand = BetaStrand { serial = i
                                   , len = length adjacent
-                                  , residues = reverse adjacent 
+                                  , residues = addSerial $ reverse adjacent 
                                   }
+        addSerial = map (\r -> r { strandSerial = i })
         (adjacent, rest) = getAdjacentAndRest residues
         getAdjacentAndRest residues =
           foldl adjsAndRest ([], []) $ zip [startCount..] residues
