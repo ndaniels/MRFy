@@ -1,0 +1,5 @@
+slice query sequence
+zip with alternating bools: T = viterbi, F = beta
+Beta needs scoring function
+	BetaMatch looks at HMM nodes
+	BetaPair uses the beta table
