@@ -60,7 +60,36 @@ search query hmm betas strategy seeds = search' (tail seeds) initialGuess [] 0
                   terminate' = terminate strategy
                   accept' = accept strategy s2
 
+data BetaOrViterbi = Beta
+                     | Viterbi
+
+oppAligner Beta = Viterbi
+oppAligner Viterbi = Beta
+
 score :: HMM -> Scorer
+score hmm query betas guesses = (0.0, [])
+  where (miniHmms, hmmAlignTypes) = sliceHmms betas 1 [] []
+        miniQueries = undefined
+
+        sliceHmms [] hmmPos hmms atypes = if hmmPos < (V.length hmm) - 1 then
+                                            ((V.drop hmmPos hmm) : hmms, Viterbi : atypes)
+                                          else
+                                            (hmms, atypes)
+        sliceHmms (b:b2:bs) hmmPos hmms atypes
+          | hmmPos == 1 = sliceHmms betas' initLastPos (initVHmm : initBHmm : hmms) (Viterbi : Beta : atypes)
+          | otherwise = sliceHmms betas' lastPos (vHmm : bHmm : hmms) (Viterbi : Beta : atypes)
+          where firstRes = resPosition . head . residues
+                endRes = firstRes b + len b
+
+                initVHmm = V.slice 0 (firstRes b) hmm
+                initBHmm = V.slice (firstRes b) (len b) hmm
+                initLastPos = firstRes b + len b
+
+                vHmm = V.slice endRes (firstRes b2 - endRes) hmm
+                bHmm = V.slice (firstRes b2) (len b2) hmm
+                lastPos = firstRes b2 + len b2
+
+                betas' = if hmmPos == 1 then (b:b2:bs) else (b2:bs)
 
 score hmm query betas guesses = (foldr (+) (0.0 :: Double) $ map (fst . viterbi (False, False) Constants.amino query) miniHmms, [])
   where miniHmms = []

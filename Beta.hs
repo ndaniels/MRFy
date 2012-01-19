@@ -17,7 +17,10 @@ If s1 is paired with s2, then s2's exposure is the same as s1's exposure.
 
 module Beta 
   ( getBetaStrands
-  , BetaStrand (..) )
+  , BetaStrand (..)
+  , BetaResidue (..)
+  , BetaPair (..)
+  )
 where
 
 import Debug.Trace (trace)

@@ -141,6 +141,10 @@ viterbi (hasStart, hasEnd) alpha query hmm = flipSnd $ DL.minimum $
                         []
                         ) -- base of insert cycle
           | s == del = (maxProb, []) -- not allowed
+        viterbi'' s 0 (-1) -- node 0 and no observations
+          | s == mat = (transProb hmm 0 m_m, [])
+          | s == ins = (maxProb, [])
+          | s == del = (maxProb, [])
         viterbi'' s 0 o -- node 0 but not zeroth observation
           | s == mat = (maxProb,[]) -- not allowed
           | s == ins = (transProb hmm 0 i_i +
