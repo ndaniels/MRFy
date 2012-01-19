@@ -68,8 +68,31 @@ oppAligner Viterbi = Beta
 
 score :: HMM -> Scorer
 score hmm query betas guesses = (0.0, [])
+-- score hmm query betas guesses = (foldr (+) (0.0 :: Double) $ map (fst . viterbi (False, False) Constants.amino query) miniHmms, []) 
   where (miniHmms, hmmAlignTypes) = sliceHmms betas 1 [] []
-        miniQueries = undefined
+        miniQueries = sliceQuery betas guesses 1
+
+        -- invariant: length betas == length guesses
+        sliceQuery [] [] queryPos queries = if queryPos < (V.length query) - 1 then
+                                      (V.drop queryPos query) : queries
+                                    else
+                                      queries
+        sliceQuery (b:b2:bs) (g:g2:gs) queryPos queries
+          | queryPos == 1 = sliceQuery betas' guesses' initLastPos (initVHmm : initBHmm : queries)
+          | otherwise = sliceQuery betas' guesses' lastPos (vHmm : bHmm : queries)
+          where endRes = g + len b
+
+                initVHmm = V.slice 0 g query
+                initBHmm = V.slice g (len b) query
+                initLastPos = g + len b
+
+                vHmm = V.slice endRes (g2 - endRes) query
+                bHmm = V.slice g2 (len b2) query
+                lastPos = g2 + len b2
+
+                betas' = if queryPos == 1 then (b:b2:bs) else (b2:bs)
+                guesses' = if queryPos == 1 then (g:g2:gs) else (g2:gs)
+
 
         sliceHmms [] hmmPos hmms atypes = if hmmPos < (V.length hmm) - 1 then
                                             ((V.drop hmmPos hmm) : hmms, Viterbi : atypes)
@@ -91,8 +114,8 @@ score hmm query betas guesses = (0.0, [])
 
                 betas' = if hmmPos == 1 then (b:b2:bs) else (b2:bs)
 
-score hmm query betas guesses = (foldr (+) (0.0 :: Double) $ map (fst . viterbi (False, False) Constants.amino query) miniHmms, [])
-  where miniHmms = []
+-- score hmm query betas guesses = (foldr (+) (0.0 :: Double) $ map (fst . viterbi (False, False) Constants.amino query) miniHmms, []) 
+  -- where miniHmms = [] 
   -- really, mutate' should take the query and hmm as arguments, and call score as appropriate
   -- remaining question: if we want to try deferring Viterbi until later generations, how do we
   -- do this? obviously age needs to be a parameter, but maybe we want a variety of scorers?
