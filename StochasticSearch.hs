@@ -1,6 +1,9 @@
 module StochasticSearch where
 
 import qualified Data.Vector as V
+import qualified Data.List as DL
+
+import Debug.Trace (trace)
 
 import HmmPlus
 import Constants
@@ -49,7 +52,7 @@ search query hmm betas strategy seeds = search' (tail seeds) initialGuess [] 0
           let population = mutate' guesses
               score = fst $ minimum population
               newhist = score : hist
-            in if accept' newhist age then
+            in if trace ("age: " ++ (show age) ++ "--- population: " ++ (show guesses)) $ accept' newhist age then
                   if terminate' newhist age then
                     (minimum population, newhist)
                    else
@@ -66,41 +69,94 @@ data BetaOrViterbi = Beta
 oppAligner Beta = Viterbi
 oppAligner Viterbi = Beta
 
+vfoldr3 :: (BetaResidue -> HmmNode -> Int -> Score -> Score) -> Score -> [BetaResidue] -> HMM -> QuerySequence -> Score
+-- vfoldr3 :: (a -> b -> c -> d -> d) -> d -> [a] -> Vector b -> Vector c -> d 
+vfoldr3 f init [] _ _ = init
+vfoldr3 f init (r:rs) hmm query = f r (n V.! 0) (q V.! 0) $ vfoldr3 f init rs ns qs
+  where (n, ns)  = V.splitAt 1 hmm
+        (q, qs) = V.splitAt 1 query
+
+dupeElements [] = []
+dupeElements (x:xs) = x : x : (dupeElements xs)
+
 score :: HMM -> Scorer
-score hmm query betas guesses = (0.0, [])
--- score hmm query betas guesses = (foldr (+) (0.0 :: Double) $ map (fst . viterbi (False, False) Constants.amino query) miniHmms, []) 
-  where (miniHmms, hmmAlignTypes) = sliceHmms betas 1 [] []
-        miniQueries = sliceQuery betas guesses 1
+score hmm query betas guesses = trace (show guesses) $ (foldr (+) 0.0 $ map viterbiOrBeta $ DL.zip4 hmmAlignTypes miniHmms miniQueries $ dupeElements [0..], guesses)
+  where viterbiOrBeta :: (BetaOrViterbi, HMM, QuerySequence, Int) -> Score
+        viterbiOrBeta (Beta, ns, qs, i) = trace "BETA" $ betaScore (residues ((trace ("6--" ++ (show i)) $ betas !! i))) ns qs
+        viterbiOrBeta (Viterbi, ns, qs, i) = trace "VITERBI" $ fst $ viterbi (False, False) Constants.amino query ns
+
+        (miniHmms, hmmAlignTypes) = sliceHmms betas 1 [] []
+        miniQueries = sliceQuery betas guesses 1 []
+
+        -- invariant: length residues == length hmmSlice == length querySlice
+        betaScore :: [BetaResidue] -> HMM -> QuerySequence -> Score
+        betaScore = vfoldr3 betaScore' 0.0
+
+        betaScore' :: BetaResidue -> HmmNode -> Int -> Score -> Score
+        betaScore' r n q s = s + betaCoeff * betaTableScore + (1 - betaCoeff) * viterbiScore
+          where viterbiScore = transProb + eProb
+                eProb = (matchEmissions $ n) V.! q
+                transProb = case logProbability $ m_m $ transitions n of
+                                 NonZero p -> p
+                                 LogZero -> maxProb
+
+                betaTableScore = foldr tableLookup 0.0 $ pairs r
+                tableLookup pair score = score + lookupScore
+                  where lookupScore = case expose pair of
+                                           Buried -> betaBuried V.! partnerInd V.! q
+                                           Exposed -> betaExposed V.! partnerInd V.! q
+                        partnerInd = query V.! (((trace "7" $ guesses !! (pairStrandSerial pair))) + (residueInd pair) - 1)
 
         -- invariant: length betas == length guesses
-        sliceQuery [] [] queryPos queries = if queryPos < (V.length query) - 1 then
-                                      (V.drop queryPos query) : queries
-                                    else
-                                      queries
-        sliceQuery (b:b2:bs) (g:g2:gs) queryPos queries
-          | queryPos == 1 = sliceQuery betas' guesses' initLastPos (initVHmm : initBHmm : queries)
-          | otherwise = sliceQuery betas' guesses' lastPos (vHmm : bHmm : queries)
+        sliceQuery betas guesses queryPos queries = reverse $ sliceQuery' betas guesses queryPos queries
+
+        sliceQuery' :: [BetaStrand] -> SearchGuess -> Int -> [QuerySequence] -> [QuerySequence]
+        sliceQuery' [] [] queryPos queries = if queryPos < (V.length query) - 1 then
+                                              (V.drop queryPos query) : queries
+                                            else
+                                              queries
+        sliceQuery' [b] [g] queryPos queries = if length betas /= 1 then
+                                             sliceQuery' [] [] queryPos queries
+                                           else
+                                             sliceQuery' [] [] endRes (bQuery : vQuery : [])
+          where firstRes = resPosition . head . residues
+                endRes = firstRes b + len b
+                vQuery = V.slice 0 (firstRes b) query
+                bQuery = V.slice (firstRes b) (len b) query
+        sliceQuery' (b:b2:bs) (g:g2:gs) queryPos queries
+          | queryPos == 1 = sliceQuery' betas' guesses' initLastPos (initBQuery : initVQuery : queries)
+          | otherwise = sliceQuery' betas' guesses' lastPos (bQuery : vQuery : queries)
           where endRes = g + len b
 
-                initVHmm = V.slice 0 g query
-                initBHmm = V.slice g (len b) query
+                initVQuery = V.slice 0 g query
+                initBQuery = V.slice g (len b) query
                 initLastPos = g + len b
 
-                vHmm = V.slice endRes (g2 - endRes) query
-                bHmm = V.slice g2 (len b2) query
+                vQuery = V.slice endRes (g2 - endRes) query
+                bQuery = V.slice g2 (len b2) query
                 lastPos = g2 + len b2
 
                 betas' = if queryPos == 1 then (b:b2:bs) else (b2:bs)
                 guesses' = if queryPos == 1 then (g:g2:gs) else (g2:gs)
 
+        sliceHmms betas hmmPos hmms atypes = (reverse hmms', reverse atypes')
+          where (hmms', atypes') = sliceHmms' betas hmmPos hmms atypes
 
-        sliceHmms [] hmmPos hmms atypes = if hmmPos < (V.length hmm) - 1 then
+        sliceHmms' [] hmmPos hmms atypes = if hmmPos < (V.length hmm) - 1 then
                                             ((V.drop hmmPos hmm) : hmms, Viterbi : atypes)
                                           else
                                             (hmms, atypes)
-        sliceHmms (b:b2:bs) hmmPos hmms atypes
-          | hmmPos == 1 = sliceHmms betas' initLastPos (initVHmm : initBHmm : hmms) (Viterbi : Beta : atypes)
-          | otherwise = sliceHmms betas' lastPos (vHmm : bHmm : hmms) (Viterbi : Beta : atypes)
+        sliceHmms' [b] hmmPos hmms atypes = if length betas /= 1 then
+                                             sliceHmms' [] hmmPos hmms atypes
+                                           else
+                                             sliceHmms' [] endRes (bHmm : vHmm : []) (Beta : Viterbi : [])
+          where firstRes = resPosition . head . residues
+                endRes = firstRes b + len b
+                vHmm = V.slice 0 (firstRes b) hmm
+                bHmm = V.slice (firstRes b) (len b) hmm
+        sliceHmms' (b:b2:bs) hmmPos hmms atypes
+          | hmmPos == 1 = sliceHmms' betas' initLastPos (initBHmm : initVHmm : hmms) (Beta : Viterbi : atypes)
+          | otherwise = sliceHmms' betas' lastPos (bHmm : vHmm : hmms) (Beta : Viterbi : atypes)
           where firstRes = resPosition . head . residues
                 endRes = firstRes b + len b
 

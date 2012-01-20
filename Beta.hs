@@ -67,7 +67,7 @@ instance Eq BetaStrand where
 
 getBetaStrands :: SmurfHeader -> [BetaStrand]
 getBetaStrands h = 
-  addIndexInfo $ mkBetaStrands 1 $ (mkBetaResidues . getBetaPairs) h
+  addIndexInfo $ mkBetaStrands 0 $ (mkBetaResidues . getBetaPairs) h
 
 addIndexInfo :: [BetaStrand] -> [BetaStrand]
 addIndexInfo betas = addIndexInfo' betas

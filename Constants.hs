@@ -7,6 +7,7 @@ type Alphabet = Vector Char
 maxProb = 10e1024 :: Double
 amino = fromList "ACDEFGHIKLMNPQRSTVWYX"
 nucleotide = fromList "ACTG"
+betaCoeff = 0.5
 
 -- amino = fromList aminoS :: Alphabet 
 -- nucleotide = fromList nucleotideS 

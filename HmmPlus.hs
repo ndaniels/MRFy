@@ -12,7 +12,7 @@ module HmmPlus
   , TransitionProbability(..)
   , TransitionProbabilities(..)
   , LogProbability(..)
-  , Exposure
+  , Exposure(..)
   , StrandPair
   , firstStart
   , secondStart
@@ -96,8 +96,8 @@ ws = REd "[\t ]+|$" " "
   }
     
   type ExposureList = [ Exposure ] terminator Try EOR
-  data Exposure = In 'i'
-                | Out 'o'  
+  data Exposure = Buried 'i'
+                | Exposed 'o'  
                 
   data Direction = Parallel "1"
                  | Antiparallel "-1"

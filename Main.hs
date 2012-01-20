@@ -5,6 +5,7 @@ module Main where
 import Data.Array
 import Data.List as DL
 import System.Console.CmdArgs
+import System.Random (getStdGen, randoms)
 import qualified Data.Vector as V
 
 import Beta
@@ -12,6 +13,9 @@ import Beta
 import Viterbi
 import HmmPlus
 import Constants
+
+import StochasticSearch
+import qualified SearchStrategies.RandomHillClimb as RandomHillClimb
 
 data SmurfArgs = SmurfArgs { hmmPlusFile :: FilePath }
   deriving (Show, Data, Typeable)
@@ -38,8 +42,10 @@ temp hmm = showAlignment hmm query sp 61 Constants.amino
 
 main = do sargs <- cmdArgs smurfargs
           (header, hmm, md) <- parse $ hmmPlusFile sargs
+          rgn <- getStdGen
           -- putStrLn $ show $ getBetaStrands header 
-          putStrLn $ show $ viterbi (False, False) Constants.amino query hmm
-          putStrLn $ temp hmm
+          -- putStrLn $ show $ viterbi (False, False) Constants.amino query hmm 
+          -- putStrLn $ temp hmm 
+          putStrLn $ show $ search query hmm (getBetaStrands header) RandomHillClimb.ss ((randoms rgn) :: [Int])
           
 
