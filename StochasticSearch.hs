@@ -52,7 +52,7 @@ search query hmm betas strategy seeds = search' (tail seeds) initialGuess [] 0
           let population = mutate' guesses
               score = fst $ minimum population
               newhist = score : hist
-            in if trace ("age: " ++ (show age) ++ "--- population: " ++ (show guesses)) $ accept' newhist age then
+            in if accept' newhist age then
                   if terminate' newhist age then
                     (minimum population, newhist)
                    else
@@ -80,10 +80,10 @@ dupeElements [] = []
 dupeElements (x:xs) = x : x : (dupeElements xs)
 
 score :: HMM -> Scorer
-score hmm query betas guesses = trace (show guesses) $ (foldr (+) 0.0 $ map viterbiOrBeta $ DL.zip4 hmmAlignTypes miniHmms miniQueries $ dupeElements [0..], guesses)
+score hmm query betas guesses = (foldr (+) 0.0 $ map viterbiOrBeta $ DL.zip4 hmmAlignTypes miniHmms miniQueries $ dupeElements [0..], guesses)
   where viterbiOrBeta :: (BetaOrViterbi, HMM, QuerySequence, Int) -> Score
-        viterbiOrBeta (Beta, ns, qs, i) = trace "BETA" $ betaScore (residues ((trace ("6--" ++ (show i)) $ betas !! i))) ns qs
-        viterbiOrBeta (Viterbi, ns, qs, i) = trace "VITERBI" $ fst $ viterbi (False, False) Constants.amino query ns
+        viterbiOrBeta (Beta, ns, qs, i) = betaScore (residues (betas !! i)) ns qs
+        viterbiOrBeta (Viterbi, ns, qs, i) = fst $ viterbi (False, False) Constants.amino query ns
 
         (miniHmms, hmmAlignTypes) = sliceHmms betas 1 [] []
         miniQueries = sliceQuery betas guesses 1 []
@@ -105,7 +105,7 @@ score hmm query betas guesses = trace (show guesses) $ (foldr (+) 0.0 $ map vite
                   where lookupScore = case expose pair of
                                            Buried -> betaBuried V.! partnerInd V.! q
                                            Exposed -> betaExposed V.! partnerInd V.! q
-                        partnerInd = query V.! (((trace "7" $ guesses !! (pairStrandSerial pair))) + (residueInd pair) - 1)
+                        partnerInd = query V.! ((guesses !! (pairStrandSerial pair)) + (residueInd pair) - 1)
 
         -- invariant: length betas == length guesses
         sliceQuery betas guesses queryPos queries = reverse $ sliceQuery' betas guesses queryPos queries
