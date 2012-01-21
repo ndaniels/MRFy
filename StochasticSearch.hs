@@ -90,25 +90,25 @@ score hmm query betas guesses = (foldr (+) 0.0 $ map viterbiOrBeta $ DL.zip4 hmm
 
         -- invariant: length residues == length hmmSlice == length querySlice
         betaScore :: [BetaResidue] -> HMM -> QuerySequence -> Score
-        betaScore = vfoldr3 betaScore' 0.0
+        betaScore = {-# SCC "betaScore" #-} vfoldr3 betaScore' 0.0
 
         betaScore' :: BetaResidue -> HmmNode -> Int -> Score -> Score
-        betaScore' r n q s = s + betaCoeff * betaTableScore + (1 - betaCoeff) * viterbiScore
-          where viterbiScore = transProb + eProb
-                eProb = (matchEmissions $ n) V.! q
-                transProb = case logProbability $ m_m $ transitions n of
+        betaScore' r n q s = {-# SCC "betaScore'" #-} s + betaCoeff * betaTableScore + (1 - betaCoeff) * viterbiScore
+          where viterbiScore = {-# SCC "viterbiScore" #-}  transProb + eProb
+                eProb = {-# SCC "eProbStochastic" #-} (matchEmissions $ n) V.! q
+                transProb = {-# SCC "transProbStochastic" #-} case logProbability $ m_m $ transitions n of
                                  NonZero p -> p
                                  LogZero -> maxProb
 
-                betaTableScore = foldr tableLookup 0.0 $ pairs r
-                tableLookup pair score = score + lookupScore
-                  where lookupScore = case expose pair of
+                betaTableScore = {-# SCC "betaTableScore" #-} foldr tableLookup 0.0 $ pairs r
+                tableLookup pair score = {-# SCC "tableLookup" #-} score + lookupScore
+                  where lookupScore = {-# SCC "lookupScore" #-} case expose pair of
                                            Buried -> betaBuried V.! partnerInd V.! q
                                            Exposed -> betaExposed V.! partnerInd V.! q
-                        partnerInd = query V.! ((guesses !! (pairStrandSerial pair)) + (residueInd pair) - 1)
+                        partnerInd = {-# SCC "partnerInd" #-} query V.! ((guesses !! (pairStrandSerial pair)) + (residueInd pair) - 1)
 
         -- invariant: length betas == length guesses
-        sliceQuery betas guesses queryPos queries = reverse $ sliceQuery' betas guesses queryPos queries
+        sliceQuery betas guesses queryPos queries = {-# SCC "sliceQuery" #-} reverse $ sliceQuery' betas guesses queryPos queries
 
         sliceQuery' :: [BetaStrand] -> SearchGuess -> Int -> [QuerySequence] -> [QuerySequence]
         sliceQuery' [] [] queryPos queries = if queryPos < (V.length query) - 1 then
@@ -140,7 +140,7 @@ score hmm query betas guesses = (foldr (+) 0.0 $ map viterbiOrBeta $ DL.zip4 hmm
                 guesses' = if queryPos == 1 then (g:g2:gs) else (g2:gs)
 
         sliceHmms betas hmmPos hmms atypes = (reverse hmms', reverse atypes')
-          where (hmms', atypes') = sliceHmms' betas hmmPos hmms atypes
+          where (hmms', atypes') = {-# SCC "sliceHmms" #-} sliceHmms' betas hmmPos hmms atypes
 
         sliceHmms' [] hmmPos hmms atypes = if hmmPos < (V.length hmm) - 1 then
                                             ((V.drop hmmPos hmm) : hmms, Viterbi : atypes)

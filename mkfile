@@ -32,3 +32,5 @@ clean:V:
 	rm -rf .crud
 	rm smurf2
 
+# note: to build profile: ghc --make Main.hs -O3 -rtsopts -o smurf2
+# then, ghc --make Main.hs -O3 -prof -auto-all -caf-all -rtsopts -osuf p_o -o smurf2
