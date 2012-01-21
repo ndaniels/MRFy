@@ -48,20 +48,20 @@ search query hmm betas strategy seeds = search' (tail seeds) initialGuess [] 0
   where initialGuess = map (score hmm query betas) $ initialize strategy (head seeds) query betas
 
         search' :: [Seed] -> [SearchSolution] -> History -> Age -> (SearchSolution, History)
-        search' (s1:s2:seeds) guesses hist age =
-          let population = mutate' guesses
-              score = fst $ minimum population
-              newhist = score : hist
-            in if accept' newhist age then
-                  if terminate' newhist age then
-                    (minimum population, newhist)
-                   else
-                    search' seeds population newhist (age + 1)
+        search' (s1:s2:seeds) oldPop hist age =
+          let newPop = mutate' oldPop
+              score = fst $ minimum newPop
+              newHist = score : hist
+            in if accept' newHist age then
+                  if terminate' newHist age then
+                    (minimum newPop, newHist)
+                  else
+                    search' seeds newPop newHist (age + 1)
                else
                  if terminate' hist age then
-                   (minimum population, hist)
+                   (minimum oldPop, hist)
                  else
-                   search' seeds guesses hist (age + 1)
+                   search' seeds oldPop hist (age + 1)
             where mutate' = mutate strategy s1 query (score hmm) betas
                   terminate' = terminate strategy
                   accept' = accept strategy s2

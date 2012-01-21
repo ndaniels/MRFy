@@ -117,15 +117,15 @@ viterbi (hasStart, hasEnd) alpha query hmm = flipSnd $ DL.minimum $
                                   (Memo.arrayRange (0, seqlen)) 
                                   viterbi'' state node obs
 
-        bestEnd = viterbi' end (numNodes - 1) (seqlen - 1)
+        bestEnd = {-# SCC "bestEnd" #-} viterbi' end (numNodes - 1) (seqlen - 1)
 
         -- we see observation obs with node at state
-        flipSnd pair = (fst pair, DL.reverse $ snd pair)
+        flipSnd pair = {-# SCC "flipSnd" #-} (fst pair, DL.reverse $ snd pair)
 
-        numNodes = Data.Vector.length $ hmm
-        seqlen = Data.Vector.length query
+        numNodes = {-# SCC "numNodes" #-} Data.Vector.length $ hmm
+        seqlen = {-# SCC "seqlen" #-} Data.Vector.length query
 
-        res o = query ! o
+        res o = {-# SCC "res" #-} query ! o
 
         viterbi'' s 1 0 -- node 1 and zeroth observation
           | s == mat = (transProb hmm 0 m_m +
@@ -182,7 +182,7 @@ viterbi (hasStart, hasEnd) alpha query hmm = flipSnd $ DL.minimum $
                                                                         eProb,
                                                                         mat:path
                                                                         )
-                                                               where (score, path) = viterbi' prevstate (n - 1) (o - 1)
+                                                               where (score, path) = {-# SCC "Vit_1" #-} viterbi' prevstate (n - 1) (o - 1)
                                                                      eProb = emissionProb (matchEmissions $ hmm ! n) (res o)
 
                                      
@@ -198,7 +198,7 @@ viterbi (hasStart, hasEnd) alpha query hmm = flipSnd $ DL.minimum $
                                                                emissionProb (insertionEmissions $ hmm ! n) (res o),
                                                                ins:path
                                                                )
-                                                               where (score, path) = viterbi' prevstate n (o - 1)
+                                                               where (score, path) = {-# SCC "Vit_2" #-} viterbi' prevstate n (o - 1)
                                                           in DL.minimum [
                                                                   transition m_i mat,   -- insert came from match
                                                                   transition i_i ins       -- insert came from insert
@@ -208,7 +208,7 @@ viterbi (hasStart, hasEnd) alpha query hmm = flipSnd $ DL.minimum $
                                                                (score + transProb hmm (n-1) trans,
                                                                del:path
                                                                )
-                                                               where (score, path) = viterbi' prevstate (n - 1) o
+                                                               where (score, path) = {-# SCC "Vit_3" #-} viterbi' prevstate (n - 1) o
                                                           in DL.minimum [
                                                                 transition m_d mat, -- delete came from match
                                                                 transition d_d del  -- delete came from delete
@@ -221,7 +221,7 @@ viterbi (hasStart, hasEnd) alpha query hmm = flipSnd $ DL.minimum $
                                                            )
                                                        else
                                                            (score, end:path)
-                                                   where (score, path) = viterbi' prevstate (n-1) o
+                                                   where (score, path) = {-# SCC "Vit_4" #-} viterbi' prevstate (n-1) o
                                                    -- for local to QUERY we would do n, o-1.
                                               in DL.minimum (if n >= 2 then [
                                                     transition m_e mat,
