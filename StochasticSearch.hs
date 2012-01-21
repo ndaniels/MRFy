@@ -58,7 +58,10 @@ search query hmm betas strategy seeds = search' (tail seeds) initialGuess [] 0
                    else
                     search' seeds population newhist (age + 1)
                else
-                 search' seeds guesses hist (age + 1)
+                 if terminate' hist age then
+                   (minimum population, hist)
+                 else
+                   search' seeds guesses hist (age + 1)
             where mutate' = mutate strategy s1 query (score hmm) betas
                   terminate' = terminate strategy
                   accept' = accept strategy s2
