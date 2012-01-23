@@ -1,0 +1,17 @@
+Use fake inheritance in the search strategy modules
+
+Memoize viterbi at top level
+
+quick check
+
+write wrapper functions around indexing and slicing functions
+
+delaying viterbi until BETA scoring reaches some POINT
+
+initial guess Psipred secondary structure prediction
+  since we are sensitive to initial conditions
+
+what happens when the query sequence is shorter than the sum of all beta strands
+
+tons of Main cleanup
+
