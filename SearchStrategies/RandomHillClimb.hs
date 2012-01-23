@@ -26,7 +26,7 @@ accept' _ [s1] _ = True
 accept' _ (s1:s2:scores) _ = s1 < s2
 
 terminate' :: [Score] -> Age -> Bool
-terminate' scores age = not $ age < 20
+terminate' scores age = not $ age < 4
 
 -- invariant: len [SearchSolution] == 1
 mutate' :: Seed -> QuerySequence -> Scorer -> [BetaStrand] -> [SearchSolution] -> [SearchSolution]
