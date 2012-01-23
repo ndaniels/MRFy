@@ -49,8 +49,8 @@ end = 4 :: HMMState
 --   deletion: HMM seq gets model amino acid.
 --             Middle gets space character.
 --             Query seq gets '-' symbol.
-showAlignment :: HMM -> QuerySequence -> StatePath -> Int -> Alphabet -> String
-showAlignment hmm query path len alpha = 
+showAlignment :: HMM -> [BetaStrand] -> QuerySequence -> StatePath -> Int -> Alphabet -> String
+showAlignment hmm betas query path len alpha = 
   niceify $ showA (DL.map (getResidue alpha) $ toList query) path 0 0 [] [] []
   where showA :: String -> StatePath -> Int -> HMMState 
                  -> String -> String -> String -- correspond to the three lines
@@ -59,7 +59,7 @@ showAlignment hmm query path len alpha =
                                   , DL.reverse om
                                   , DL.reverse $ DL.map toUpper oq
                                   )
-        showA (q:qs) (p:ps) i lastp oh om oq
+        showA (q:qs) (p:ps) i lastp oh om oq -- 'i' should be the node number
           | p == mat = showA qs ps (i+1) p (model:oh) ('|':om) (q:oq)
           | p == ins || p == beg || p == end = 
               showA qs ps nextInd p ('-':oh) (' ':om) (q:oq)
