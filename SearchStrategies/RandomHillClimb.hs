@@ -26,7 +26,7 @@ accept' _ [s1] _ = True
 accept' _ (s1:s2:scores) _ = s1 < s2
 
 terminate' :: [Score] -> Age -> Bool
-terminate' scores age = not $ age < 1000
+terminate' scores age = not $ age < 20
 
 -- invariant: len [SearchSolution] == 1
 mutate' :: Seed -> QuerySequence -> Scorer -> [BetaStrand] -> [SearchSolution] -> [SearchSolution]
@@ -40,11 +40,11 @@ mutate' seed query scorer betas solutions = [scorer query betas $ mutate'' guess
                 lo = if i == 0 then
                        1
                      else
-                       (len $ (trace "1" $ betas !! (i - 1)))
-                       + (trace "2" $ guesses !! (i - 1))
+                       (len $ (betas !! (i - 1)))
+                       + (guesses !! (i - 1))
                 hi = if i == (length guesses) - 1 then
-                       V.length query - (len $ (trace "3" $ betas !! i))
+                       V.length query - (len $ betas !! i)
                      else
-                       (trace "4" $ guesses !! (i + 1))
-                       - (trace "5" $ (len $ betas !! i))
+                       (guesses !! (i + 1))
+                       - (len $ betas !! i)
 

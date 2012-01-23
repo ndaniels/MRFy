@@ -37,8 +37,8 @@ query = V.fromList $ DL.map lookup querySeq
 
 -- showAlignment :: HMM -> QuerySequence -> StatePath -> String 
 
-temp hmm = showAlignment hmm query sp 61 Constants.amino
-  where (score, sp) = viterbi (False, False) Constants.amino query hmm
+-- temp hmm = showAlignment hmm query sp 61 Constants.amino
+--   where (score, sp) = viterbi (False, False) Constants.amino query hmm
 
 main = do sargs <- cmdArgs smurfargs
           (header, hmm, md) <- parse $ hmmPlusFile sargs

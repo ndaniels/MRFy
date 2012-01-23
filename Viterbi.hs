@@ -112,20 +112,20 @@ viterbi (hasStart, hasEnd) alpha query hmm = flipSnd $ DL.minimum $
 
 
   -- trace (show state DL.++ " " DL.++ show node DL.++ " " DL.++ show obs) $
-  where viterbi' state node obs = Memo.memo3 (Memo.arrayRange (mat, del)) 
+  where viterbi' state node obs = {-# SCC "viterbi'" #-} Memo.memo3 (Memo.arrayRange (mat, del)) 
                                   (Memo.arrayRange (0, numNodes))
                                   (Memo.arrayRange (0, seqlen)) 
                                   viterbi'' state node obs
 
-        bestEnd = viterbi' end (numNodes - 1) (seqlen - 1)
+        bestEnd = {-# SCC "bestEnd" #-} viterbi' end (numNodes - 1) (seqlen - 1)
 
         -- we see observation obs with node at state
-        flipSnd pair = (fst pair, DL.reverse $ snd pair)
+        flipSnd pair = {-# SCC "flipSnd" #-} (fst pair, DL.reverse $ snd pair)
 
-        numNodes = Data.Vector.length $ hmm
-        seqlen = Data.Vector.length query
+        numNodes = {-# SCC "numNodes" #-} Data.Vector.length $ hmm
+        seqlen = {-# SCC "seqlen" #-} Data.Vector.length query
 
-        res o = query ! o
+        res o = {-# SCC "res" #-} query ! o
 
         viterbi'' s 1 0 -- node 1 and zeroth observation
           | s == mat = (transProb hmm 0 m_m +
@@ -147,14 +147,14 @@ viterbi (hasStart, hasEnd) alpha query hmm = flipSnd $ DL.minimum $
           | s == del = (maxProb, [])
         viterbi'' s 0 o -- node 0 but not zeroth observation
           | s == mat = (maxProb,[]) -- not allowed
-          | s == ins = (transProb hmm 0 i_i +
+          | s == ins = {-# SCC "viterbi''_ins-cycle" #-} (transProb hmm 0 i_i +
                         emissionProb (insertionEmissions $ hmm ! 0) (res o) +
                         score,
                         ins:path
                         ) -- possible self-insert cycle
           | s == del = (maxProb,[]) -- not allowed
           | s == end = (transProb hmm 0 m_e, [mat])
-              where (score, path) = viterbi' ins 0 (o - 1)
+              where (score, path) = {-# SCC "viterbi''_mat-end" #-} viterbi' ins 0 (o - 1)
 
         viterbi'' s 1 (-1) -- node 1 and no more observations (came from begin)
           | s == mat = (maxProb, []) -- not allowed
@@ -164,7 +164,7 @@ viterbi (hasStart, hasEnd) alpha query hmm = flipSnd $ DL.minimum $
         viterbi'' s n (-1) -- not node 1 yet but no more observations (came from delete)
           | s == mat = (maxProb, []) -- not allowed
           | s == ins = (maxProb, []) -- not allowed
-          | s == del = (transProb hmm (n-1) d_d +
+          | s == del = {-# SCC "viterbi''_del-chain" #-} (transProb hmm (n-1) d_d +
                          score,
                          del:path) -- came from delete
                           where (score, path) = viterbi' del (n - 1) (-1)
@@ -172,18 +172,18 @@ viterbi (hasStart, hasEnd) alpha query hmm = flipSnd $ DL.minimum $
           -- consume an observation AND a node
           -- I think only this equation will change when
           -- we incorporate the begin-to-match code
-          | s == mat = let transition trans prevstate = 
-                               if hasStart && prevstate == beg -- hasStart maybe unnecessary?
-                                   then 
-                                       (transProb hmm (n - 1) trans + eProb,
-                                       [mat]
-                                       )
-                                   else (score + transProb hmm (n-1) trans +
-                                        eProb,
-                                        mat:path
-                                        )
-                               where (score, path) = viterbi' prevstate (n - 1) (o - 1)
-                                     eProb = emissionProb (matchEmissions $ hmm ! n) (res o)
+          | s == mat = {-# SCC "viterbi''_mat_n_o" #-} let transition trans prevstate = 
+                                                               if hasStart && prevstate == beg -- hasStart maybe unnecessary?
+                                                                   then 
+                                                                       (transProb hmm (n - 1) trans + eProb,
+                                                                       [mat]
+                                                                       )
+                                                                   else (score + transProb hmm (n-1) trans +
+                                                                        eProb,
+                                                                        mat:path
+                                                                        )
+                                                               where (score, path) = {-# SCC "Vit_1" #-} viterbi' prevstate (n - 1) (o - 1)
+                                                                     eProb = emissionProb (matchEmissions $ hmm ! n) (res o)
 
                                      
                           in DL.minimum $ [
@@ -193,49 +193,49 @@ viterbi (hasStart, hasEnd) alpha query hmm = flipSnd $ DL.minimum $
                                 ] DL.++ (if hasStart then [transition b_m beg] else [])
                                 -- match came from start                                            
           -- consume an observation but not a node
-          | s == ins = let transition trans prevstate =
-                               (score + transProb hmm n trans +
-                               emissionProb (insertionEmissions $ hmm ! n) (res o),
-                               ins:path
-                               )
-                               where (score, path) = viterbi' prevstate n (o - 1)
-                          in DL.minimum [
-                                  transition m_i mat,   -- insert came from match
-                                  transition i_i ins       -- insert came from insert
-                                    ]                                
+          | s == ins = {-# SCC "viterbi''_ins_n_o" #-} let transition trans prevstate =
+                                                               (score + transProb hmm n trans +
+                                                               emissionProb (insertionEmissions $ hmm ! n) (res o),
+                                                               ins:path
+                                                               )
+                                                               where (score, path) = {-# SCC "Vit_2" #-} viterbi' prevstate n (o - 1)
+                                                          in DL.minimum [
+                                                                  transition m_i mat,   -- insert came from match
+                                                                  transition i_i ins       -- insert came from insert
+                                                                    ]                                
           -- consume a node but not an observation
-          | s == del = let transition trans prevstate =
-                               (score + transProb hmm (n-1) trans,
-                               del:path
-                               )
-                               where (score, path) = viterbi' prevstate (n - 1) o
-                          in DL.minimum [
-                                transition m_d mat, -- delete came from match
-                                transition d_d del  -- delete came from delete
-                                  ]
-          | s == end = let transition trans prevstate = 
-                               if prevstate == mat
-                                   then
-                                       (score + transProb hmm (n-1) trans,
-                                       end:path
-                                       )
-                                   else
-                                       (score, end:path)          
-                               where (score, path) = viterbi' prevstate (n-1) o
-                               -- for local to QUERY we would do n, o-1.
-                          in DL.minimum (if n >= 2 then [
-                                transition m_e mat,
-                                transition m_e end
-                                  ] else [transition m_e mat])
+          | s == del = {-# SCC "viterbi''_del_n_o" #-} let transition trans prevstate =
+                                                               (score + transProb hmm (n-1) trans,
+                                                               del:path
+                                                               )
+                                                               where (score, path) = {-# SCC "Vit_3" #-} viterbi' prevstate (n - 1) o
+                                                          in DL.minimum [
+                                                                transition m_d mat, -- delete came from match
+                                                                transition d_d del  -- delete came from delete
+                                                                  ]
+          | s == end = {-# SCC "veno" #-} let transition trans prevstate =
+                                                   if prevstate == mat
+                                                       then
+                                                           (score + transProb hmm (n-1) trans,
+                                                           end:path
+                                                           )
+                                                       else
+                                                           (score, end:path)
+                                                   where (score, path) = {-# SCC "Vit_4" #-} viterbi' prevstate (n-1) o
+                                                   -- for local to QUERY we would do n, o-1.
+                                              in DL.minimum (if n >= 2 then [
+                                                    transition m_e mat,
+                                                    transition m_e end
+                                                      ] else [transition m_e mat])
 -- TODO seqLocal: consider the case where we consume obs, not state, for beg & end.
 
 -- TODO preprocessing: convert hmm to array of nodes with the stateZero and insertZero stuff prepended
 -- this will transform `node` below and `transProb` below
 
 emissionProb :: Vector a -> Int -> a
-emissionProb emissions residue = emissions ! residue
+emissionProb emissions residue = {-# SCC "emissionProb" #-} emissions ! residue
 
 transProb :: HMM -> Int -> StateAcc -> Double
-transProb hmm nodenum state = case logProbability $ state (transitions (hmm ! nodenum)) of
+transProb hmm nodenum state = {-# SCC "transProb" #-} case logProbability $ state (transitions (hmm ! nodenum)) of
                                    NonZero p -> p
                                    LogZero -> maxProb
