@@ -37,8 +37,8 @@ query = V.fromList $ DL.map lookup querySeq
 
 -- showAlignment :: HMM -> QuerySequence -> StatePath -> String 
 
--- temp hmm = showAlignment hmm query sp 61 Constants.amino
---   where (score, sp) = viterbi (False, False) Constants.amino query hmm
+temp hmm betas ss = showAlignment hmm betas query sp 61 Constants.amino
+  where sp = statePath hmm query betas ss
 
 main = do sargs <- cmdArgs smurfargs
           (header, hmm, md) <- parse $ hmmPlusFile sargs
@@ -46,6 +46,9 @@ main = do sargs <- cmdArgs smurfargs
           -- putStrLn $ show $ getBetaStrands header 
           -- putStrLn $ show $ viterbi (False, False) Constants.amino query hmm 
           -- putStrLn $ temp hmm 
-          putStrLn $ show $ search query hmm (getBetaStrands header) RandomHillClimb.ss ((randoms rgn) :: [Int])
+          let betas = getBetaStrands header
+          let (ss, hist) = search query hmm betas RandomHillClimb.ss ((randoms rgn) :: [Int])
+          putStrLn $ show $ (ss, hist)
+          putStrLn $ temp hmm betas ss
           
 

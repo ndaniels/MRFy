@@ -30,21 +30,19 @@ terminate' scores age = not $ age < 20
 
 -- invariant: len [SearchSolution] == 1
 mutate' :: Seed -> QuerySequence -> Scorer -> [BetaStrand] -> [SearchSolution] -> [SearchSolution]
-mutate' seed query scorer betas solutions = [scorer query betas $ mutate'' guesses 0 $ mkStdGen seed] 
+mutate' seed query scorer betas solutions = [scorer query betas $ mutate'' guesses 0 (mkStdGen seed) 0]
   where guesses = snd $ head solutions
 
-        mutate'' :: SearchGuess -> Int -> StdGen -> SearchGuess
-        mutate'' [] _ _ = []
-        mutate'' (g:gs) i gen = g' : mutate'' gs (i+1) gen'
+        mutate'' :: SearchGuess -> Int -> StdGen -> Int -> SearchGuess
+        mutate'' [] _ _ _ = []
+        mutate'' (g:gs) i gen lastGuess = g' : mutate'' gs (i+1) gen' g'
           where (g', gen') = randomR (lo, hi) gen
                 lo = if i == 0 then
-                       1
+                       0
                      else
-                       (len $ (betas !! (i - 1)))
-                       + (guesses !! (i - 1))
+                       (len $ (betas !! (i - 1))) + lastGuess
                 hi = if i == (length guesses) - 1 then
                        V.length query - (len $ betas !! i)
                      else
-                       (guesses !! (i + 1))
-                       - (len $ betas !! i)
+                       (guesses !! (i + 1)) - (len $ betas !! i)
 

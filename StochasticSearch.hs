@@ -41,11 +41,12 @@ data SearchStrategy = SearchStrategy { accept :: Seed -> History -> Age -> Bool
                                      , initialize :: Seed -> QuerySequence -> [BetaStrand]-> [SearchGuess]
                                      }
 
+
 -- invariant: fst SearchSolution == head History
 search :: QuerySequence -> HMM -> [BetaStrand] -> SearchStrategy -> [Seed] -> (SearchSolution, History)
-
-search query hmm betas strategy seeds = search' (tail seeds) initialGuess [] 0
-  where initialGuess = map (score hmm query betas) $ initialize strategy (head seeds) query betas
+search query hmm betas strategy seeds = search' (tail seeds) initialGuessScore [] 0
+  where initialGuessScore = map (score hmm query betas) initialGuess
+        initialGuess = initialize strategy (head seeds) query betas
 
         search' :: [Seed] -> [SearchSolution] -> History -> Age -> (SearchSolution, History)
         search' (s1:s2:seeds) oldPop hist age =
@@ -68,6 +69,7 @@ search query hmm betas strategy seeds = search' (tail seeds) initialGuess [] 0
 
 data BetaOrViterbi = Beta
                      | Viterbi
+                     deriving Show
 
 oppAligner Beta = Viterbi
 oppAligner Viterbi = Beta
@@ -82,38 +84,54 @@ vfoldr3 f init (r:rs) hmm query = f r (n V.! 0) (q V.! 0) $ vfoldr3 f init rs ns
 dupeElements [] = []
 dupeElements (x:xs) = x : x : (dupeElements xs)
 
+statePath :: HMM -> QuerySequence -> [BetaStrand] -> SearchSolution -> StatePath
+statePath hmm query betas (_, guesses) = foldr (++) [] $ map viterbiOrBeta $ DL.zip4 hmmAlignTypes (map traceid miniHmms) miniQueries $ dupeElements [0..]
+  where viterbiOrBeta :: (BetaOrViterbi, HMM, QuerySequence, Int) -> StatePath
+        viterbiOrBeta (Beta, ns, qs, i) = take (len (betas !! i)) $ repeat bmat
+        viterbiOrBeta (Viterbi, ns, qs, i) = snd $ viterbi (False, False) Constants.amino qs ns
+
+        -- traceid hmm = trace (show (V.map nodeNum hmm)) $ id hmm 
+        -- traceid = (trace (show guesses)) id 
+        traceid = id
+
+        (miniHmms, hmmAlignTypes) = sliceHmms hmm betas 1 [] []
+        miniQueries = sliceQuery query betas guesses 1 []
+
 score :: HMM -> Scorer
-score hmm query betas guesses = (foldr (+) 0.0 $ map viterbiOrBeta $ DL.zip4 hmmAlignTypes miniHmms miniQueries $ dupeElements [0..], guesses)
+score hmm query betas guesses = (foldr (+) 0.0 $ map viterbiOrBeta $ DL.zip4 hmmAlignTypes (map traceid miniHmms) miniQueries $ dupeElements [0..], guesses)
   where viterbiOrBeta :: (BetaOrViterbi, HMM, QuerySequence, Int) -> Score
-        viterbiOrBeta (Beta, ns, qs, i) = betaScore (residues (betas !! i)) ns qs
-        viterbiOrBeta (Viterbi, ns, qs, i) = fst $ viterbi (False, False) Constants.amino query ns
+        viterbiOrBeta (Beta, ns, qs, i) = betaScore query guesses (residues (betas !! i)) ns qs
+        viterbiOrBeta (Viterbi, ns, qs, i) = fst $ viterbi (False, False) Constants.amino qs ns
 
-        (miniHmms, hmmAlignTypes) = sliceHmms betas 1 [] []
-        miniQueries = sliceQuery betas guesses 1 []
+        -- traceid hmm = trace (show (V.map nodeNum hmm)) $ id hmm 
+        traceid = id
+        -- traceid = (trace (show hmmAlignTypes)) id 
 
-        -- invariant: length residues == length hmmSlice == length querySlice
-        betaScore :: [BetaResidue] -> HMM -> QuerySequence -> Score
-        betaScore = {-# SCC "betaScore" #-} vfoldr3 betaScore' 0.0
+        (miniHmms, hmmAlignTypes) = sliceHmms hmm betas 1 [] []
+        miniQueries = sliceQuery query betas guesses 1 []
 
-        betaScore' :: BetaResidue -> HmmNode -> Int -> Score -> Score
+-- invariant: length residues == length hmmSlice == length querySlice
+betaScore :: QuerySequence -> SearchGuess -> [BetaResidue] -> HMM -> QuerySequence -> Score
+betaScore query guesses = {-# SCC "betaScore" #-} vfoldr3 betaScore' 0.0
+  where betaScore' :: BetaResidue -> HmmNode -> Int -> Score -> Score
         betaScore' r n q s = {-# SCC "betaScore'" #-} s + betaCoeff * betaTableScore + (1 - betaCoeff) * viterbiScore
           where viterbiScore = {-# SCC "viterbiScore" #-}  transProb + eProb
                 eProb = {-# SCC "eProbStochastic" #-} (matchEmissions $ n) V.! q
                 transProb = {-# SCC "transProbStochastic" #-} case logProbability $ m_m $ transitions n of
                                  NonZero p -> p
                                  LogZero -> maxProb
-
+        
                 betaTableScore = {-# SCC "betaTableScore" #-} foldr tableLookup 0.0 $ pairs r
                 tableLookup pair score = {-# SCC "tableLookup" #-} score + lookupScore
                   where lookupScore = {-# SCC "lookupScore" #-} case expose pair of
                                            Buried -> betaBuried V.! partnerInd V.! q
                                            Exposed -> betaExposed V.! partnerInd V.! q
-                        partnerInd = {-# SCC "partnerInd" #-} query V.! ((guesses !! (pairStrandSerial pair)) + (residueInd pair) - 1)
+                        partnerInd = {-# SCC "partnerInd" #-} query V.! partnerBeta
+                        partnerBeta = (guesses !! (pairStrandSerial pair)) + (residueInd pair)
 
-        -- invariant: length betas == length guesses
-        sliceQuery betas guesses queryPos queries = {-# SCC "sliceQuery" #-} reverse $ sliceQuery' betas guesses queryPos queries
-
-        sliceQuery' :: [BetaStrand] -> SearchGuess -> Int -> [QuerySequence] -> [QuerySequence]
+-- invariant: length betas == length guesses
+sliceQuery query betas guesses queryPos queries = {-# SCC "sliceQuery" #-} reverse $ sliceQuery' betas guesses queryPos queries
+  where sliceQuery' :: [BetaStrand] -> SearchGuess -> Int -> [QuerySequence] -> [QuerySequence]
         sliceQuery' [] [] queryPos queries = if queryPos < (V.length query) - 1 then
                                               (V.drop queryPos query) : queries
                                             else
@@ -130,20 +148,20 @@ score hmm query betas guesses = (foldr (+) 0.0 $ map viterbiOrBeta $ DL.zip4 hmm
           | queryPos == 1 = sliceQuery' betas' guesses' initLastPos (initBQuery : initVQuery : queries)
           | otherwise = sliceQuery' betas' guesses' lastPos (bQuery : vQuery : queries)
           where endRes = g + len b
-
+        
                 initVQuery = V.slice 0 g query
                 initBQuery = V.slice g (len b) query
                 initLastPos = g + len b
-
+        
                 vQuery = V.slice endRes (g2 - endRes) query
                 bQuery = V.slice g2 (len b2) query
                 lastPos = g2 + len b2
-
+        
                 betas' = if queryPos == 1 then (b:b2:bs) else (b2:bs)
                 guesses' = if queryPos == 1 then (g:g2:gs) else (g2:gs)
 
-        sliceHmms betas hmmPos hmms atypes = (reverse hmms', reverse atypes')
-          where (hmms', atypes') = {-# SCC "sliceHmms" #-} sliceHmms' betas hmmPos hmms atypes
+sliceHmms hmm betas hmmPos hmms atypes = (reverse hmms', reverse atypes')
+  where (hmms', atypes') = {-# SCC "sliceHmms" #-} sliceHmms' betas hmmPos hmms atypes
 
         sliceHmms' [] hmmPos hmms atypes = if hmmPos < (V.length hmm) - 1 then
                                             ((V.drop hmmPos hmm) : hmms, Viterbi : atypes)
@@ -162,19 +180,14 @@ score hmm query betas guesses = (foldr (+) 0.0 $ map viterbiOrBeta $ DL.zip4 hmm
           | otherwise = sliceHmms' betas' lastPos (bHmm : vHmm : hmms) (Beta : Viterbi : atypes)
           where firstRes = resPosition . head . residues
                 endRes = firstRes b + len b
-
+        
                 initVHmm = V.slice 0 (firstRes b) hmm
                 initBHmm = V.slice (firstRes b) (len b) hmm
                 initLastPos = firstRes b + len b
-
+        
                 vHmm = V.slice endRes (firstRes b2 - endRes) hmm
                 bHmm = V.slice (firstRes b2) (len b2) hmm
                 lastPos = firstRes b2 + len b2
-
+        
                 betas' = if hmmPos == 1 then (b:b2:bs) else (b2:bs)
 
--- score hmm query betas guesses = (foldr (+) (0.0 :: Double) $ map (fst . viterbi (False, False) Constants.amino query) miniHmms, []) 
-  -- where miniHmms = [] 
-  -- really, mutate' should take the query and hmm as arguments, and call score as appropriate
-  -- remaining question: if we want to try deferring Viterbi until later generations, how do we
-  -- do this? obviously age needs to be a parameter, but maybe we want a variety of scorers?

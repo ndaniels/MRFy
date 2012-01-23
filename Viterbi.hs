@@ -7,6 +7,7 @@ import Data.Char
 import qualified Data.MemoCombinators as Memo
 import qualified Data.List as DL
 
+import Beta
 import HmmPlus
 import Data.Vector
 import Constants
@@ -23,6 +24,7 @@ ins = 1 :: HMMState
 del = 2 :: HMMState
 beg = 3 :: HMMState
 end = 4 :: HMMState
+bmat = 5 :: HMMState
 
 -- Example output:
 -- 
@@ -49,35 +51,45 @@ end = 4 :: HMMState
 --   deletion: HMM seq gets model amino acid.
 --             Middle gets space character.
 --             Query seq gets '-' symbol.
+
+countState s = DL.length . DL.filter ((==) s)
+
 showAlignment :: HMM -> [BetaStrand] -> QuerySequence -> StatePath -> Int -> Alphabet -> String
 showAlignment hmm betas query path len alpha = 
   niceify $ showA (DL.map (getResidue alpha) $ toList query) path 0 0 [] [] []
-  where showA :: String -> StatePath -> Int -> HMMState 
+  where model i = alpha ! ai
+          where (_, ai, _) = Data.Vector.foldr maxWithInd 
+                                      (0, 0, maxProb) 
+                                      (matchEmissions $ hmm ! i)
+                                      -- (trace ("length: " DL.++ (show $ Data.Vector.length hmm) DL.++ " -- index: " DL.++ (show i)) $ (matchEmissions $ hmm ! i)) 
+
+        maxWithInd :: Double -> (Int, Int, Double) -> (Int, Int, Double)                   
+        maxWithInd prob (ind, mi, mp) = if prob < mp then
+                                          (ind + 1, ind, prob)
+                                        else
+                                          (ind + 1, mi, mp)
+  
+        showA :: String -> StatePath -> Int -> HMMState 
                  -> String -> String -> String -- correspond to the three lines
                  -> (String, String, String)
         showA _ [] _ _ oh om oq = ( DL.reverse $ DL.map toLower oh
                                   , DL.reverse om
                                   , DL.reverse $ DL.map toUpper oq
                                   )
+        showA [] (p:ps) i lastp oh om oq
+          | p == del = showA [] ps i lastp ((model i):oh) (' ':om) ('-':oq)
+          | otherwise = error $ (show p) DL.++ " is not a delete state"
         showA (q:qs) (p:ps) i lastp oh om oq -- 'i' should be the node number
-          | p == mat = showA qs ps (i+1) p (model:oh) ('|':om) (q:oq)
+          | p == mat = showA qs ps (i+1) p ((model i):oh) ('|':om) (q:oq)
+          | p == bmat = showA qs ps (i+1) p ((model i):oh) ('B':om) (q:oq)
           | p == ins || p == beg || p == end = 
-              showA qs ps nextInd p ('-':oh) (' ':om) (q:oq)
-          | p == del = showA (q:qs) ps (i+1) p (model:oh) (' ':om) ('-':oq)
+              showA qs ps i p ('-':oh) (' ':om) (q:oq)
+          | p == del = showA (q:qs) ps (i+1) p ((model i):oh) (' ':om) ('-':oq)
 
-          where model = alpha ! ai
-                (_, ai, _) = Data.Vector.foldr maxWithInd 
-                                      (0, 0, maxProb) 
-                                      (matchEmissions $ hmm ! i)
-                maxWithInd :: Double -> (Int, Int, Double) -> (Int, Int, Double)                   
-                maxWithInd prob (ind, mi, mp) = if prob < mp then
-                                                  (ind + 1, ind, prob)
-                                                else
-                                                  (ind + 1, mi, mp)
-
+          where 
                 -- this is only used when we're in an Insert node
                 -- thus, assume the current node is an insert
-                nextInd = if lastp == ins || lastp == beg || lastp == end then 
+                iNextInd = if lastp == ins || lastp == beg || lastp == end then 
                             i 
                           else 
                             i + 1
@@ -130,7 +142,7 @@ viterbi (hasStart, hasEnd) alpha query hmm = flipSnd $ DL.minimum $
         viterbi'' s 1 0 -- node 1 and zeroth observation
           | s == mat = (transProb hmm 0 m_m +
                         (emissionProb (matchEmissions $ hmm ! 1) (res 0)),
-                        []
+                        [mat]
                         ) -- we came from 'begin'
           | s == ins = (maxProb,[]) -- not allowed
           | s == del = (maxProb,[]) -- not allowed

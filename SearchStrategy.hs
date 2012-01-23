@@ -11,10 +11,9 @@ initialGuess :: Seed -> QuerySequence -> [BetaStrand] -> SearchGuess
 initialGuess seed qs betas = initialGuess' betas 0 $ mkStdGen seed
   where initialGuess' :: [BetaStrand] -> Int -> StdGen -> SearchGuess
         initialGuess' [] _ _ = []
-        initialGuess' (b:bs) start gen = pos : initialGuess' bs (start + betaLen) gen'
-          where (pos, gen') = randomR (start, betaSum) gen
-                betaLen = len b
-                betaSum = V.length qs - (foldr (+) 0 $ map len bs)
+        initialGuess' (b:bs) lastGuess gen = pos : initialGuess' bs (pos + len b) gen'
+          where (pos, gen') = randomR (lastGuess, betaSum) gen
+                betaSum = V.length qs - (foldr (+) 0 $ map len (b:bs))
 
         
 
