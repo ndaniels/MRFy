@@ -5,6 +5,8 @@ all:V:
 						 StochasticSearch.hs SearchStrategy.hs \
 						 SearchStrategies/*.hs \
 			-O3 \
+			-threaded \
+			-rtsopts \
 			-o smurf2
 
 optimize:V:
