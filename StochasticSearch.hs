@@ -104,7 +104,7 @@ score :: HMM -> Scorer
 score hmm query betas guesses = (foldr (+) 0.0 $ (parMap rwhnf) viterbiOrBeta $ DL.zip4 hmmAlignTypes (map traceid miniHmms) miniQueries $ dupeElements [0..], guesses)
   where viterbiOrBeta :: (BetaOrViterbi, HMM, QuerySequence, Int) -> Score
         viterbiOrBeta (Beta, ns, qs, i) = betaScore query guesses (residues (betas !! i)) ns qs
-        viterbiOrBeta (Viterbi, ns, qs, i) = fst $ viterbi (False, False) Constants.amino qs ns
+        viterbiOrBeta (Viterbi, ns, qs, i) = viterbiF (False, False) Constants.amino qs ns
 
         -- traceid hmm = trace (show (V.map nodeNum hmm)) $ id hmm 
         traceid = id
