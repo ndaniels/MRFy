@@ -8,8 +8,11 @@ import qualified Data.List as DL
 
 import Debug.Trace (trace)
 
+import qualified Wrappers as W
+
 import HmmPlus
 import Constants
+import ConstantsGen
 import Viterbi
 import Beta
 -- this module will take the random number list or generator, and will
@@ -101,7 +104,7 @@ statePath hmm query betas (_, guesses) = foldr (++) [] $ map viterbiOrBeta $ DL.
         miniQueries = sliceQuery query betas guesses 1 []
 
 score :: HMM -> Scorer
-score hmm query betas guesses = (foldr (+) 0.0 $ (parMap rwhnf) viterbiOrBeta $ DL.zip4 hmmAlignTypes (map traceid miniHmms) miniQueries $ dupeElements [0..], guesses)
+score hmm query betas guesses = (foldr (+) 0.0 $ (parMap rseq) viterbiOrBeta $ DL.zip4 hmmAlignTypes (map traceid miniHmms) miniQueries $ dupeElements [0..], guesses)
   where viterbiOrBeta :: (BetaOrViterbi, HMM, QuerySequence, Int) -> Score
         viterbiOrBeta (Beta, ns, qs, i) = betaScore query guesses (residues (betas !! i)) ns qs
         viterbiOrBeta (Viterbi, ns, qs, i) = viterbiF (False, False) Constants.amino qs ns
@@ -145,19 +148,19 @@ sliceQuery query betas guesses queryPos queries = {-# SCC "sliceQuery" #-} rever
                                              sliceQuery' [] [] endRes (bQuery : vQuery : [])
           where firstRes = resPosition . head . residues
                 endRes = firstRes b + len b
-                vQuery = V.slice 0 (firstRes b) query
-                bQuery = V.slice (firstRes b) (len b) query
+                vQuery = W.slice "1" 0 (firstRes b) query
+                bQuery = W.slice "2" (firstRes b) (len b) query
         sliceQuery' (b:b2:bs) (g:g2:gs) queryPos queries
           | queryPos == 1 = sliceQuery' betas' guesses' initLastPos (initBQuery : initVQuery : queries)
           | otherwise = sliceQuery' betas' guesses' lastPos (bQuery : vQuery : queries)
           where endRes = g + len b
         
-                initVQuery = V.slice 0 g query
-                initBQuery = V.slice g (len b) query
+                initVQuery = W.slice "3" 0 g query
+                initBQuery = W.slice "4" g (len b) query
                 initLastPos = g + len b
         
-                vQuery = V.slice endRes (g2 - endRes) query
-                bQuery = V.slice g2 (len b2) query
+                vQuery = W.slice "5" endRes (g2 - endRes) query
+                bQuery = W.slice "6" g2 (len b2) query
                 lastPos = g2 + len b2
         
                 betas' = if queryPos == 1 then (b:b2:bs) else (b2:bs)
@@ -176,20 +179,20 @@ sliceHmms hmm betas hmmPos hmms atypes = (reverse hmms', reverse atypes')
                                              sliceHmms' [] endRes (bHmm : vHmm : []) (Beta : Viterbi : [])
           where firstRes = resPosition . head . residues
                 endRes = firstRes b + len b
-                vHmm = V.slice 0 (firstRes b) hmm
-                bHmm = V.slice (firstRes b) (len b) hmm
+                vHmm = W.slice "7" 0 (firstRes b) hmm
+                bHmm = W.slice "8" (firstRes b) (len b) hmm
         sliceHmms' (b:b2:bs) hmmPos hmms atypes
           | hmmPos == 1 = sliceHmms' betas' initLastPos (initBHmm : initVHmm : hmms) (Beta : Viterbi : atypes)
           | otherwise = sliceHmms' betas' lastPos (bHmm : vHmm : hmms) (Beta : Viterbi : atypes)
           where firstRes = resPosition . head . residues
                 endRes = firstRes b + len b
         
-                initVHmm = V.slice 0 (firstRes b) hmm
-                initBHmm = V.slice (firstRes b) (len b) hmm
+                initVHmm = W.slice "9" 0 (firstRes b) hmm
+                initBHmm = W.slice "10" (firstRes b) (len b) hmm
                 initLastPos = firstRes b + len b
         
-                vHmm = V.slice endRes (firstRes b2 - endRes) hmm
-                bHmm = V.slice (firstRes b2) (len b2) hmm
+                vHmm = W.slice "11" endRes (firstRes b2 - endRes) hmm
+                bHmm = W.slice "12" (firstRes b2) (len b2) hmm
                 lastPos = firstRes b2 + len b2
         
                 betas' = if hmmPos == 1 then (b:b2:bs) else (b2:bs)

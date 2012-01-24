@@ -51,6 +51,7 @@ main = do sargs <- cmdArgs smurfargs
           -- putStrLn $ show $ viterbi (False, False) Constants.amino query hmm 
           -- putStrLn $ temp hmm 
           let betas = getBetaStrands header
+          putStrLn $ showBetas betas
           let (ss, hist) = search query hmm betas SimulatedAnnealing.ss ((randoms rgn) :: [Int])
           putStrLn $ show $ (ss, hist)
           putStrLn $ temp hmm betas ss

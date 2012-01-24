@@ -20,17 +20,28 @@ module Beta
   , BetaStrand (..)
   , BetaResidue (..)
   , BetaPair (..)
+  , showBetas
   )
 where
 
 import Debug.Trace (trace)
 
-import Data.List (sort, find, elemIndex)
+import Data.List (sort, find, elemIndex, intercalate)
 import qualified Data.Set as Set
 
 import HmmPlus
 
 type BetaPosition = Int
+
+data BetaStrand = BetaStrand { serial :: Int
+                             , len :: Int
+                             , residues :: [BetaResidue]
+                             }
+
+data BetaResidue = BetaResidue { resPosition :: BetaPosition
+                               , resStrandSerial :: Int
+                               , pairs :: [BetaPair]
+                               }
 
 data BetaPair = BetaPair { pairPosition :: BetaPosition
                          , expose :: Exposure
@@ -38,36 +49,42 @@ data BetaPair = BetaPair { pairPosition :: BetaPosition
                          -- info for quick indexing
                          , pairStrandSerial :: Int
                          , residueInd :: Int
-                         } deriving (Show)
-instance Eq BetaPair where
-  p1 == p2 = (pairPosition p1) == (pairPosition p2)
-instance Ord BetaPair where
-  compare p1 p2 = compare (pairPosition p1) (pairPosition p2)
+                         }
 
-data BetaResidue = BetaResidue { resPosition :: BetaPosition
-                               , resStrandSerial :: Int
-                               , pairs :: [BetaPair]
-                               }
+showBetas betas = intercalate "\n" $ map show $ betas
+
+instance Show BetaStrand where
+  show s = "\nBetaStrand " ++ (show $ serial s) ++ 
+           " [Length: " ++ (show $ len s) ++ "]" ++
+           "\n" ++ (intercalate "\n" $ map show $ residues s)
+instance Eq BetaStrand where
+  s1 == s2 = (serial s1) == (serial s2)
+
+
 instance Show BetaResidue where
-  show r = "BetaResidue " ++ (show $ resPosition r) ++ (show $ pairs r)
+  show r = "\tBetaResidue " ++ (show $ resPosition r) 
+           ++ " [Strand serial: " ++ (show $ resStrandSerial r)
+           ++ "\n" ++ (intercalate "\n" $ map show $ pairs r)
 instance Eq BetaResidue where
   r1 == r2 = (resPosition r1) == (resPosition r2)
 instance Ord BetaResidue where
   compare r1 r2 = compare (resPosition r1) (resPosition r2)
 
-data BetaStrand = BetaStrand { serial :: Int
-                             , len :: Int
-                             , residues :: [BetaResidue]
-                             }
-instance Show BetaStrand where
-  show s = "BetaStrand " ++ (show $ serial s) ++ 
-           " [" ++ (show $ residues s) ++ "]"
-instance Eq BetaStrand where
-  s1 == s2 = (serial s1) == (serial s2)
+
+instance Show BetaPair where
+  show p = "\t\tBetaPair " ++ (show $ pairPosition p) ++ 
+           " [Exposure: " ++ (show $ expose p) ++ 
+           ", Strand: " ++ (show $ pairStrandSerial p) ++
+           ", Residue Index: " ++ (show $ residueInd p) ++ "]"
+
+instance Eq BetaPair where
+  p1 == p2 = (pairPosition p1) == (pairPosition p2)
+instance Ord BetaPair where
+  compare p1 p2 = compare (pairPosition p1) (pairPosition p2)
 
 getBetaStrands :: SmurfHeader -> [BetaStrand]
 getBetaStrands h = 
-  addIndexInfo $ mkBetaStrands 0 $ (mkBetaResidues . getBetaPairs) h
+  addIndexInfo $ (mkBetaResidues . getBetaPairs) h
 
 addIndexInfo :: [BetaStrand] -> [BetaStrand]
 addIndexInfo betas = addIndexInfo' betas
@@ -85,40 +102,56 @@ addIndexInfo betas = addIndexInfo' betas
                                  }
                     Nothing -> addToPair bs p
 
-mkBetaResidues :: [StrandPair] -> [BetaResidue]
-mkBetaResidues sps = sort $ decResidues residues
-  where residues = mkBetaResidues' sps
+mkBetaResidues :: [StrandPair] -> [BetaStrand]
+mkBetaResidues sps = mkBetaResidues' sps [] 0
 
-decResidues :: [BetaResidue] -> [BetaResidue]
-decResidues residues = sort $ Set.elems $ Set.fromList $ decorated
-  where decorated = decResidues' residues residues
+mkBetaResidues' :: [StrandPair] -> [BetaStrand] -> Int -> [BetaStrand]
+mkBetaResidues' [] strands i = strands
+mkBetaResidues' (sp:sps) strands i = mkBetaResidues' sps (strands' ++ nstrand1 ++ nstrand2) i''
+  where nstrand1 = if null residues1 then [] else [mkStrand i residues1]
+        nstrand2 = if null residues2 then [] else [mkStrand i' residues2]
+        (residues1, residues2, strands') =  -- residues1 XOR residues2 could be empty!
+          mkResidues (zip3 (exposure sp) [s1..] secondIndexing) [] [] strands
 
-decResidues' :: [BetaResidue] -> [BetaResidue] -> [BetaResidue]
-decResidues' _ [] = []
-decResidues' residues (r:rs) = nr : decResidues' residues rs
-  where nr = foldl merge r $ filter ((==) r) residues
+        -- Don't increment 'i' for a strand we didn't make...
+        i'' = if null residues2 then i' else i' + 1
+        i' = if null residues1 then i else i + 1
 
-        merge :: BetaResidue -> BetaResidue -> BetaResidue
-        merge b b' = b { pairs = Set.elems npairs }
-          where npairs = (Set.fromList $ pairs b) 
-                         `Set.union`
-                         (Set.fromList $ pairs b')
-        
-mkBetaResidues' :: [StrandPair] -> [BetaResidue]
-mkBetaResidues' [] = []
-mkBetaResidues' (sp:sps) = newResidues ++ mkBetaResidues' sps
-  where
-        newResidues = case parallel sp of Parallel -> parallelPairs
-                                          Antiparallel -> antiPairs
-        parallelPairs = mkResidues $ zip3 (exposure sp) [s1..] [s2..]
-        antiPairs = mkResidues $ zip3 (exposure sp) [s1..] [s2, s2-1..]
+        secondIndexing = case parallel sp of Parallel -> [s2..]
+                                             Antiparallel -> [s2, s2-1..]
         s1 = firstStart sp
         s2 = secondStart sp + pairLength sp - 1
 
-        mkResidues :: [(Exposure, BetaPosition, BetaPosition)] -> [BetaResidue]
-        mkResidues [] = []
-        mkResidues ((e, b1, b2):rest) = r1 : r2 : mkResidues rest
-          where r1 = BetaResidue { resPosition = b1
+        mkStrand :: Int -> [BetaResidue] -> BetaStrand
+        mkStrand ind rs = BetaStrand { serial = ind
+                                     , len = length rs
+                                     , residues = map (\r -> r { resStrandSerial = ind }) rs
+                                     }
+
+        -- If ANY strand has ANY residue with position 'b'
+        strandExists :: BetaPosition -> Bool
+        strandExists b = any (\s -> any (\r -> b == resPosition r) (residues s)) strands
+
+        annotate :: [BetaStrand] -> BetaResidue -> [BetaStrand]
+        annotate [] _ = []
+        annotate (s:ss) r = s' : annotate ss r
+          where s' = s { residues = map addPairings $ residues s }
+                addPairings r' = if r' /= r then r'
+                                 else r' { pairs = Set.elems $ (Set.fromList $ pairs r) `Set.union` (Set.fromList $ pairs r') }
+
+        mkResidues :: [(Exposure, BetaPosition, BetaPosition)] -> [BetaResidue] -> [BetaResidue] -> [BetaStrand] -> ([BetaResidue], [BetaResidue], [BetaStrand])
+        mkResidues [] rs1 rs2 ss = (rs1, rs2, ss)
+        mkResidues ((e, b1, b2):rest) rs1 rs2 ss = mkResidues rest rs1' rs2' ss''
+          where rs1' = if b1Exists then rs1 else (r1:rs1)
+                rs2' = if b2Exists then rs2 else (r2:rs2)
+
+                ss'' = if b2Exists then annotate ss' r2 else ss'
+                ss' = if b1Exists then annotate ss r1 else ss
+
+                b1Exists = strandExists b1
+                b2Exists = strandExists b2
+
+                r1 = BetaResidue { resPosition = b1
                                  , resStrandSerial = undefined
                                  , pairs = [p1]
                                  }
@@ -136,23 +169,4 @@ mkBetaResidues' (sp:sps) = newResidues ++ mkBetaResidues' sps
                               , pairStrandSerial = undefined
                               , residueInd = undefined
                               }
-
--- precondition: [BetaResidue] is sorted by 'position' in ascending order
-mkBetaStrands :: Int -> [BetaResidue] -> [BetaStrand]
-mkBetaStrands _ [] = []
-mkBetaStrands i residues = mkBetaStrand : mkBetaStrands (i + 1) (reverse rest)
-  where mkBetaStrand = BetaStrand { serial = i
-                                  , len = length adjacent
-                                  , residues = addSerial $ reverse adjacent 
-                                  }
-        addSerial = map (\r -> r { resStrandSerial = i })
-        (adjacent, rest) = getAdjacentAndRest residues
-        getAdjacentAndRest residues =
-          foldl adjsAndRest ([], []) $ zip [startCount..] residues
-        startCount = resPosition $ head residues
-        adjsAndRest (adj, rest) (cnt, residue) =
-          if cnt == resPosition residue then
-            (residue:adj, rest)
-          else
-            (adj, residue:rest)
 

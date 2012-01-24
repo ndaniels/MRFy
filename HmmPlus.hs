@@ -34,6 +34,7 @@ import Control.Monad
 import System.IO.Unsafe (unsafePerformIO)
 import qualified Data.Vector as V
 import Constants
+import ConstantsGen
 
 ws = REd "[\t ]+|$" " "
 
