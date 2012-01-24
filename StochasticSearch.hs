@@ -8,7 +8,8 @@ import qualified Data.List as DL
 
 import Debug.Trace (trace)
 
-import qualified Wrappers as W
+-- import qualified Wrappers as W 
+import Wrappers
 
 import HmmPlus
 import Constants
@@ -148,19 +149,19 @@ sliceQuery query betas guesses queryPos queries = {-# SCC "sliceQuery" #-} rever
                                              sliceQuery' [] [] endRes (bQuery : vQuery : [])
           where firstRes = resPosition . head . residues
                 endRes = firstRes b + len b
-                vQuery = W.slice "1" 0 (firstRes b) query
-                bQuery = W.slice "2" (firstRes b) (len b) query
+                vQuery = vslice "1" 0 (firstRes b) query
+                bQuery = vslice "2" (firstRes b) (len b) query
         sliceQuery' (b:b2:bs) (g:g2:gs) queryPos queries
           | queryPos == 1 = sliceQuery' betas' guesses' initLastPos (initBQuery : initVQuery : queries)
           | otherwise = sliceQuery' betas' guesses' lastPos (bQuery : vQuery : queries)
           where endRes = g + len b
         
-                initVQuery = W.slice "3" 0 g query
-                initBQuery = W.slice "4" g (len b) query
+                initVQuery = vslice "3" 0 g query
+                initBQuery = vslice "4" g (len b) query
                 initLastPos = g + len b
         
-                vQuery = W.slice "5" endRes (g2 - endRes) query
-                bQuery = W.slice "6" g2 (len b2) query
+                vQuery = vslice "5" endRes (g2 - endRes) query
+                bQuery = vslice "6" g2 (len b2) query
                 lastPos = g2 + len b2
         
                 betas' = if queryPos == 1 then (b:b2:bs) else (b2:bs)
@@ -179,20 +180,21 @@ sliceHmms hmm betas hmmPos hmms atypes = (reverse hmms', reverse atypes')
                                              sliceHmms' [] endRes (bHmm : vHmm : []) (Beta : Viterbi : [])
           where firstRes = resPosition . head . residues
                 endRes = firstRes b + len b
-                vHmm = W.slice "7" 0 (firstRes b) hmm
-                bHmm = W.slice "8" (firstRes b) (len b) hmm
+                vHmm = vslice "7" 0 (firstRes b) hmm
+                bHmm = vslice "8" (firstRes b) (len b) hmm
         sliceHmms' (b:b2:bs) hmmPos hmms atypes
           | hmmPos == 1 = sliceHmms' betas' initLastPos (initBHmm : initVHmm : hmms) (Beta : Viterbi : atypes)
           | otherwise = sliceHmms' betas' lastPos (bHmm : vHmm : hmms) (Beta : Viterbi : atypes)
           where firstRes = resPosition . head . residues
                 endRes = firstRes b + len b
         
-                initVHmm = W.slice "9" 0 (firstRes b) hmm
-                initBHmm = W.slice "10" (firstRes b) (len b) hmm
+                initVHmm = vslice "9" 0 (firstRes b) hmm
+                initBHmm = vslice "10" (firstRes b) (len b) hmm
                 initLastPos = firstRes b + len b
         
-                vHmm = W.slice "11" endRes (firstRes b2 - endRes) hmm
-                bHmm = W.slice "12" (firstRes b2) (len b2) hmm
+                -- the zeroth node should be the LAST BETA node from the previous slice
+                vHmm = vslice "11" endRes (firstRes b2 - endRes) hmm
+                bHmm = vslice "12" (firstRes b2) (len b2) hmm
                 lastPos = firstRes b2 + len b2
         
                 betas' = if hmmPos == 1 then (b:b2:bs) else (b2:bs)

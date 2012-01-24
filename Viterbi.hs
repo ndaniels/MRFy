@@ -116,11 +116,15 @@ showAlignment hmm betas query path len alpha =
 -- when we want to consider sequence-relative local alignment, we
 -- will also need to consider better of seqLocal vs. modLocal
 viterbi :: (Bool, Bool) -> Alphabet -> QuerySequence -> HMM -> (Score, StatePath)
-viterbi (hasStart, hasEnd) alpha query hmm = flipSnd $ DL.minimum $
-  [viterbi' mat (numNodes - 1) (seqlen - 1),
-   viterbi' ins (numNodes - 1) (seqlen - 1),
-   viterbi' del (numNodes - 1) (seqlen - 1)
-  ] DL.++ if hasEnd then [bestEnd] else []
+viterbi (hasStart, hasEnd) alpha query hmm =
+  if numNodes == 0 then
+    (0.0, [])
+  else
+    flipSnd $ DL.minimum $
+    [viterbi' mat (numNodes - 1) (seqlen - 1),
+     viterbi' ins (numNodes - 1) (seqlen - 1),
+     viterbi' del (numNodes - 1) (seqlen - 1)
+    ] DL.++ if hasEnd then [bestEnd] else []
 
 
   -- trace (show state DL.++ " " DL.++ show node DL.++ " " DL.++ show obs) $
@@ -245,11 +249,15 @@ viterbi (hasStart, hasEnd) alpha query hmm = flipSnd $ DL.minimum $
 -- when we want to consider sequence-relative local alignment, we
 -- will also need to consider better of seqLocal vs. modLocal
 viterbiF :: (Bool, Bool) -> Alphabet -> QuerySequence -> HMM -> Score
-viterbiF (hasStart, hasEnd) alpha query hmm = DL.minimum $
-  [viterbiF' mat (numNodes - 1) (seqlen - 1),
-   viterbiF' ins (numNodes - 1) (seqlen - 1),
-   viterbiF' del (numNodes - 1) (seqlen - 1)
-  ] DL.++ if hasEnd then [bestEnd] else []
+viterbiF (hasStart, hasEnd) alpha query hmm = 
+  if numNodes == 0 then
+    0.0
+  else
+    DL.minimum $
+    [viterbiF' mat (numNodes - 1) (seqlen - 1),
+     viterbiF' ins (numNodes - 1) (seqlen - 1),
+     viterbiF' del (numNodes - 1) (seqlen - 1)
+    ] DL.++ if hasEnd then [bestEnd] else []
 
 
   -- trace (show state DL.++ " " DL.++ show node DL.++ " " DL.++ show obs) $

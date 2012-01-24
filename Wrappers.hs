@@ -6,7 +6,7 @@ import qualified Data.Vector as V
 
 import Constants
 
-slice msg start len vector = 
+vslice msg start len vector = 
   if slicing debug then
     trace ("DEBUG: slicing (" ++ (show start) ++ 
            ", " ++ (show len) ++ "): " ++ msg) 
