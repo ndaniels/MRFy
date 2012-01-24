@@ -4,6 +4,8 @@ all:V:
 			--make Beta.hs Constants.hs HmmPlus Main.hs Viterbi.hs \
 						 StochasticSearch.hs SearchStrategy.hs \
 						 SearchStrategies/*.hs \
+						 Wrappers.hs \
+						 ConstantsGen.hs \
 			-O3 \
 			-threaded \
 			-rtsopts \
@@ -15,6 +17,8 @@ optimize:V:
 			--make Beta.hs Constants.hs HmmPlus Main.hs Viterbi.hs \
 						 StochasticSearch.hs SearchStrategy.hs \
 						 SearchStrategies/*.hs \
+						 Wrappers.hs \
+						 ConstantsGen.hs \
 			-O3 \
 			-fllvm \
 			-o smurf2
@@ -25,6 +29,8 @@ unoptimize:V:
 			--make Beta.hs Constants.hs HmmPlus Main.hs Viterbi.hs \
 						 StochasticSearch.hs SearchStrategy.hs \
 						 SearchStrategies/*.hs \
+						 Wrappers.hs \
+						 ConstantsGen.hs \
 			-o smurf2
 
 tags:V:
