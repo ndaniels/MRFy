@@ -193,7 +193,7 @@ sliceHmms hmm betas hmmPos hmms atypes = (reverse hmms', reverse atypes')
                 initLastPos = firstRes b + len b
         
                 -- the zeroth node should be the LAST BETA node from the previous slice
-                vHmm = vslice "11" endRes (firstRes b2 - endRes) hmm
+                vHmm = trace ("firstRes: " ++ (show (firstRes b2)) ++ " endRes: " ++ (show endRes)) $ vslice "11" (endRes - 1) (firstRes b2 - endRes + 1) hmm
                 bHmm = vslice "12" (firstRes b2) (len b2) hmm
                 lastPos = firstRes b2 + len b2
         
