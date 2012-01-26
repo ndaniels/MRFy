@@ -27,6 +27,7 @@ where
 import Debug.Trace (trace)
 
 import Data.List (sort, find, elemIndex, intercalate)
+import qualified Data.Maybe as M
 import qualified Data.Set as Set
 
 import HmmPlus
@@ -86,7 +87,11 @@ instance Ord BetaPair where
   compare p1 p2 = compare (pairPosition p1) (pairPosition p2)
 
 getBetaStrands :: SmurfHeader -> [BetaStrand]
-getBetaStrands h = addIndexInfo $ addStrandSerial $ (mkBetaResidues . getBetaPairs) h
+getBetaStrands h = addIndexInfo 
+                   $ addStrandSerial 
+                   $ mkBetaStrands 
+                   $ addPairings 
+                   $ (mkBetaResidues . getBetaPairs) h
 
 addIndexInfo :: [BetaStrand] -> [BetaStrand]
 addIndexInfo betas = addIndexInfo' betas
@@ -113,61 +118,51 @@ addStrandSerial' i (s:ss) = s' : (addStrandSerial' (i+1) ss)
                , residues = map (\r -> r { resStrandSerial = i }) $ residues s
                }
 
-mkBetaResidues :: [StrandPair] -> [BetaStrand]
-mkBetaResidues sps = mkBetaResidues' sps []
+mkBetaStrands :: [[BetaResidue]] -> [BetaStrand]
+mkBetaStrands [] = []
+mkBetaStrands (s:ss) = bs : mkBetaStrands ss
+  where bs = BetaStrand { serial = undefined
+                        , len = length s
+                        , residues = s
+                        }
 
-mkBetaResidues' :: [StrandPair] -> [BetaStrand] -> [BetaStrand]
-mkBetaResidues' [] strands = strands
-mkBetaResidues' (sp:sps) strands = mkBetaResidues' sps $ strands' ++ nstrand1 ++ nstrand2
-  where nstrand1 = if null residues1 then [] else [mkStrand residues1]
-        nstrand2 = if null residues2 then [] else [mkStrand residues2]
-        (residues1, residues2, strands') =  -- residues1 XOR residues2 could be empty!
-          mkResidues (zip3 (exposure sp) [s1..] secondIndexing) [] [] strands
+-- Using the word 'strand' here even though BetaStrands
+-- haven't been made yet. Effectively, a strand is a list
+-- of beta nodes.
+addPairings :: [[BetaResidue]] -> [[BetaResidue]]
+addPairings strands = addPairings' strands
+  where addPairings' [] = []
+        addPairings' (s:ss) = s' : addPairings' ss
+          where s' = map (annotate strands) s
+
+        annotate :: [[BetaResidue]] -> BetaResidue -> BetaResidue
+        annotate [] r = r
+        annotate (s:ss) r = annotate ss nr
+          where nr = foldl merge r s
+                
+                merge :: BetaResidue -> BetaResidue -> BetaResidue
+                merge r r' = r { pairs = Set.elems $
+                                          (Set.fromList $ pairs r)
+                                          `Set.union`
+                                          (Set.fromList $ pairs r')
+                               }
+
+mkBetaResidues :: [StrandPair] -> [[BetaResidue]]
+mkBetaResidues [] = []
+mkBetaResidues (sp:sps) = residues1 : residues2 : mkBetaResidues sps
+  where (residues1, residues2) = mkResidues (zip3 (exposure sp) [s1..] secondIndexing) [] []
 
         secondIndexing = case parallel sp of Parallel -> [s2..]
                                              Antiparallel -> [s2, s2-1..]
         s1 = firstStart sp
         s2 = secondStart sp + pairLength sp - 1
 
-        mkStrand :: [BetaResidue] -> BetaStrand
-        mkStrand rs = BetaStrand { serial = undefined
-                                 , len = length rs
-                                 , residues = rs
-                                 }
-
-        -- If ANY strand has ANY residue with position 'b'
-        strandExists :: BetaPosition -> Bool
-        strandExists b = any (\s -> any (\r -> b == resPosition r) (residues s)) strands
-
-        annotate :: [BetaStrand] -> BetaResidue -> [BetaStrand]
-        annotate [] _ = []
-        annotate (s:ss) r = s' : annotate ss r
-          where s' = s { residues = map addPairings $ residues s }
-                addPairings r' = 
-                  if r' /= r then 
-                    r'
-                  else 
-                    r' { pairs = Set.elems $ 
-                                  (Set.fromList $ pairs r) 
-                                  `Set.union` 
-                                  (Set.fromList $ pairs r') 
-                       }
-
         mkResidues :: [(Exposure, BetaPosition, BetaPosition)] -> 
-                      [BetaResidue] -> [BetaResidue] -> [BetaStrand] -> 
-                      ([BetaResidue], [BetaResidue], [BetaStrand])
-        mkResidues [] rs1 rs2 ss = (sort rs1, sort rs2, ss)
-        mkResidues ((e, b1, b2):rest) rs1 rs2 ss = mkResidues rest rs1' rs2' ss''
-          where rs1' = if b1Exists then rs1 else (r1:rs1)
-                rs2' = if b2Exists then rs2 else (r2:rs2)
-
-                ss'' = if b2Exists then annotate ss' r2 else ss'
-                ss' = if b1Exists then annotate ss r1 else ss
-
-                b1Exists = strandExists b1
-                b2Exists = strandExists b2
-
-                r1 = BetaResidue { resPosition = b1
+                      [BetaResidue] -> [BetaResidue] ->
+                      ([BetaResidue], [BetaResidue])
+        mkResidues [] rs1 rs2 = (sort rs1, sort rs2)
+        mkResidues ((e, b1, b2):rest) rs1 rs2 = mkResidues rest (r1:rs1) (r2:rs2)
+          where r1 = BetaResidue { resPosition = b1
                                  , resStrandSerial = undefined
                                  , pairs = [p1]
                                  }
