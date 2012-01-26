@@ -32,6 +32,17 @@ unoptimize:V:
 						 Wrappers.hs \
 						 ConstantsGen.hs \
 			-o smurf2
+            
+profile:V:
+    mkdir -p .crud
+    ghc -hidir .crud -odir .crud \
+        --make Main.hs -O3 -fforce-recomp \
+         -rtsopts \
+         -o smurf2
+    ghc -hidir .crud -odir .crud \
+        --make Main.hs -O3 -prof -fforce-recomp \
+         -auto-all -caf-all -rtsopts -osuf p_o \
+         -o smurf2prof
 
 tags:V:
 	hasktags *.hs
