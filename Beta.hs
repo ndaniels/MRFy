@@ -88,11 +88,13 @@ instance Ord BetaPair where
 
 getBetaStrands :: SmurfHeader -> [BetaStrand]
 getBetaStrands h = addIndexInfo 
-                   $ addStrandSerial 
                    $ mkBetaStrands 
+                   $ mergeStrands
                    $ addPairings 
                    $ (mkBetaResidues . getBetaPairs) h
 
+-- Decorates the *pairs* with index information so that
+-- Beta scoring is efficient later on.
 addIndexInfo :: [BetaStrand] -> [BetaStrand]
 addIndexInfo betas = addIndexInfo' betas
   where addIndexInfo' [] = []
@@ -109,43 +111,59 @@ addIndexInfo betas = addIndexInfo' betas
                                  }
                     Nothing -> addToPair bs p
 
-addStrandSerial :: [BetaStrand] -> [BetaStrand]
-addStrandSerial = (addStrandSerial' 0) . sort
-
-addStrandSerial' _ [] = []
-addStrandSerial' i (s:ss) = s' : (addStrandSerial' (i+1) ss)
-  where s' = s { serial = i
-               , residues = map (\r -> r { resStrandSerial = i }) $ residues s
-               }
-
+-- Creates the BetaStrand structures and adds serial
+-- information to each residue.
 mkBetaStrands :: [[BetaResidue]] -> [BetaStrand]
-mkBetaStrands [] = []
-mkBetaStrands (s:ss) = bs : mkBetaStrands ss
-  where bs = BetaStrand { serial = undefined
+mkBetaStrands = (mkBetaStrands' 0) . sort . map sort
+
+mkBetaStrands' :: Int -> [[BetaResidue]] -> [BetaStrand]
+mkBetaStrands' _ [] = []
+mkBetaStrands' i (s:ss) = bs : mkBetaStrands' (i+1) ss
+  where bs = BetaStrand { serial = i
                         , len = length s
-                        , residues = s
+                        , residues = map addSerial s
                         }
+
+        addSerial n = n { resStrandSerial = i }
+
+-- Merges overlapping strands.
+-- In particular, forall S1 and S2 if S1 intersect S2 is not empty, then
+-- merge S1 and S2 into one beta strand and remove S1 and S2.
+mergeStrands :: [[BetaResidue]] -> [[BetaResidue]]
+mergeStrands [] = []
+mergeStrands (s:ss) = s' : (mergeStrands $ filter (emptyIntersection s') ss)
+  where s' = maybeMerge s ss
+  
+        maybeMerge :: [BetaResidue] -> [[BetaResidue]] -> [BetaResidue]
+        maybeMerge strand [] = strand
+        maybeMerge strand (s:ss) = maybeMerge strand' ss
+          where strand' = if emptyIntersection strand s then
+                            strand
+                          else
+                            Set.elems $ (Set.fromList strand)
+                                        `Set.union`
+                                        (Set.fromList s)
+
+        emptyIntersection :: Ord a => [a] -> [a] -> Bool
+        emptyIntersection xs ys = Set.null $ (Set.fromList xs) 
+                                             `Set.intersection` 
+                                             (Set.fromList ys)
 
 -- Using the word 'strand' here even though BetaStrands
 -- haven't been made yet. Effectively, a strand is a list
 -- of beta nodes.
 addPairings :: [[BetaResidue]] -> [[BetaResidue]]
-addPairings strands = addPairings' strands
-  where addPairings' [] = []
-        addPairings' (s:ss) = s' : addPairings' ss
-          where s' = map (annotate strands) s
-
-        annotate :: [[BetaResidue]] -> BetaResidue -> BetaResidue
-        annotate [] r = r
-        annotate (s:ss) r = annotate ss nr
-          where nr = foldl merge r s
-                
-                merge :: BetaResidue -> BetaResidue -> BetaResidue
-                merge r r' = r { pairs = Set.elems $
-                                          (Set.fromList $ pairs r)
-                                          `Set.union`
-                                          (Set.fromList $ pairs r')
-                               }
+addPairings strands = map (map (\n -> foldl annotate n strands)) strands
+  where -- Find one or zero equivalent nodes in a beta strand
+        -- and add any additional pairs found to 'r'
+        annotate :: BetaResidue -> [BetaResidue] -> BetaResidue
+        annotate r = foldl merge r . filter ((==) r)
+          where merge :: BetaResidue -> BetaResidue -> BetaResidue
+                merge r r' = r { pairs = sort npairs }
+                  where npairs = Set.elems $
+                                  (Set.fromList $ pairs r)
+                                  `Set.union`
+                                  (Set.fromList $ pairs r')
 
 mkBetaResidues :: [StrandPair] -> [[BetaResidue]]
 mkBetaResidues [] = []

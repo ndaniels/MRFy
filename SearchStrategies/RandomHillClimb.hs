@@ -6,6 +6,7 @@ import System.Random (mkStdGen, randomR, StdGen)
 import Debug.Trace (trace)
 
 import Beta
+import Constants
 import SearchStrategy
 import StochasticSearch
 import Viterbi
@@ -26,7 +27,11 @@ accept' _ [s1] _ = True
 accept' _ (s1:s2:scores) _ = s1 < s2
 
 terminate' :: [Score] -> Age -> Bool
-terminate' scores age = not $ age < 1000
+terminate' scores age = showMe $ not $ age < generations
+  where showMe = if not $ (10.0 * ((fromIntegral age) / (fromIntegral generations))) `elem` [1.0..10.0] then
+                   id
+                 else
+                   trace ((show age) ++ " generations complete")
 
 -- invariant: len [SearchSolution] == 1
 mutate' :: Seed -> QuerySequence -> Scorer -> [BetaStrand] -> [SearchSolution] -> [SearchSolution]
