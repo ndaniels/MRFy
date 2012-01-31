@@ -56,15 +56,15 @@ countState s = DL.length . DL.filter ((==) s)
 
 showAlignment :: HMM -> [BetaStrand] -> QuerySequence -> StatePath -> Int -> Alphabet -> String
 showAlignment hmm betas query path len alpha = 
-  niceify $ showA (DL.map (getResidue alpha) $ toList query) path 0 0 [] [] []
+  niceify $ showA (DL.map (getResidue alpha) $ toList query) path 1 0 [] [] []
   where model i = alpha ! ai
-          where (_, ai, _) = Data.Vector.foldr maxWithInd 
+          where (_, ai, _) = Data.Vector.foldl minWithInd 
                                       (0, 0, maxProb) 
-                                      (matchEmissions $ hmm ! i)
-                                      -- (trace ("length: " DL.++ (show $ Data.Vector.length hmm) DL.++ " -- index: " DL.++ (show i)) $ (matchEmissions $ hmm ! i)) 
+                                      (Data.Vector.slice 0 ((Data.Vector.length mEmissions) - 1) mEmissions)
+                mEmissions = matchEmissions $ hmm ! i
 
-        maxWithInd :: Double -> (Int, Int, Double) -> (Int, Int, Double)                   
-        maxWithInd prob (ind, mi, mp) = if prob < mp then
+        minWithInd :: (Int, Int, Double) -> Double -> (Int, Int, Double)                   
+        minWithInd (ind, mi, mp) prob = if prob < mp then
                                           (ind + 1, ind, prob)
                                         else
                                           (ind + 1, mi, mp)
@@ -72,12 +72,13 @@ showAlignment hmm betas query path len alpha =
         showA :: String -> StatePath -> Int -> HMMState 
                  -> String -> String -> String -- correspond to the three lines
                  -> (String, String, String)
-        showA _ [] _ _ oh om oq = ( DL.reverse $ DL.map toLower oh
+        -- showA (q:qs) [] _ _ _ _ _ = error ("No more states but we still have " DL.++ (show (q:qs)) DL.++ " query sequence left") 
+        showA _ [] i _ oh om oq = trace (show i) $ ( DL.reverse $ DL.map toLower oh
                                   , DL.reverse om
                                   , DL.reverse $ DL.map toUpper oq
                                   )
         showA [] (p:ps) i lastp oh om oq
-          | p == del = showA [] ps i lastp ((model i):oh) (' ':om) ('-':oq)
+          | p == del = showA [] ps (i+1) lastp ((model i):oh) (' ':om) ('-':oq)
           | otherwise = error $ (show p) DL.++ " is not a delete state"
         showA (q:qs) (p:ps) i lastp oh om oq -- 'i' should be the node number
           | p == mat = showA qs ps (i+1) p ((model i):oh) ('|':om) (q:oq)
@@ -85,14 +86,6 @@ showAlignment hmm betas query path len alpha =
           | p == ins || p == beg || p == end = 
               showA qs ps i p ('-':oh) (' ':om) (q:oq)
           | p == del = showA (q:qs) ps (i+1) p ((model i):oh) (' ':om) ('-':oq)
-
-          where 
-                -- this is only used when we're in an Insert node
-                -- thus, assume the current node is an insert
-                iNextInd = if lastp == ins || lastp == beg || lastp == end then 
-                            i 
-                          else 
-                            i + 1
 
         -- Strictly for cutting up the strings and displaying them nicely.
         -- Note: Assumes each string is in the correct order and that
@@ -154,7 +147,7 @@ viterbi (hasStart, hasEnd) alpha query hmm =
           | s == mat = (maxProb, []) -- not allowed
           | s == ins = {-# SCC "viterbi''_ins_0_0" #-} (transProb hmm 0 m_i +
                         emissionProb (insertionEmissions $ hmm ! 0) (res 0),
-                        []
+                        [ins]
                         ) -- base of insert cycle
           | s == del = (maxProb, []) -- not allowed
         viterbi'' s 0 (-1) -- node 0 and no observations

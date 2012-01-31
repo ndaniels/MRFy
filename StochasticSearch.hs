@@ -139,10 +139,7 @@ betaScore query guesses = {-# SCC "betaScore" #-} vfoldr3 betaScore' 0.0
 -- invariant: length betas == length guesses
 sliceQuery query betas guesses queryPos queries = {-# SCC "sliceQuery" #-} reverse $ sliceQuery' betas guesses queryPos queries
   where sliceQuery' :: [BetaStrand] -> SearchGuess -> Int -> [QuerySequence] -> [QuerySequence]
-        sliceQuery' [] [] queryPos queries = if queryPos < (V.length query) - 1 then
-                                              (V.drop queryPos query) : queries
-                                            else
-                                              queries
+        sliceQuery' [] [] queryPos queries = (V.drop queryPos query) : queries
         sliceQuery' [b] [g] queryPos queries = if length betas /= 1 then
                                              sliceQuery' [] [] queryPos queries
                                            else
@@ -170,10 +167,7 @@ sliceQuery query betas guesses queryPos queries = {-# SCC "sliceQuery" #-} rever
 sliceHmms hmm betas hmmPos hmms atypes = (reverse hmms', reverse atypes')
   where (hmms', atypes') = {-# SCC "sliceHmms" #-} sliceHmms' betas hmmPos hmms atypes
 
-        sliceHmms' [] hmmPos hmms atypes = if hmmPos < (V.length hmm) - 1 then
-                                            ((V.drop hmmPos hmm) : hmms, Viterbi : atypes)
-                                          else
-                                            (hmms, atypes)
+        sliceHmms' [] hmmPos hmms atypes = ((V.drop (hmmPos - 1) hmm) : hmms, Viterbi : atypes)
         sliceHmms' [b] hmmPos hmms atypes = if length betas /= 1 then
                                              sliceHmms' [] hmmPos hmms atypes
                                            else
