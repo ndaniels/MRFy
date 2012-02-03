@@ -29,6 +29,6 @@ accept' seed (s1:s2:scores) age = boltzmann s1 s2 >= (p :: Double)
         boltzmann s1 s2 = exp ((-(s1 - s2)) / (k * temperature))
 
         k = 1.0
-        temperature = (0.9 ^^ age) * initialTemperature
+        temperature = (0.99 ^^ age) * initialTemperature
         initialTemperature = 1000.0
 
