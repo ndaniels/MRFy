@@ -26,6 +26,7 @@ data SmurfArgs = SmurfArgs { hmmPlusFile :: FilePath
                            }
   deriving (Show, Data, Typeable)
 
+-- Maybe use System.Console.getopt instead
 smurfargs = SmurfArgs { hmmPlusFile = def &= typ "HMM Plus file" &= argPos 0 
                       , fastaFile = def &= typ "FASTA file" &= argPos 1
                       }
