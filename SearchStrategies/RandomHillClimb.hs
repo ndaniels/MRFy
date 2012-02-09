@@ -27,8 +27,8 @@ accept' _ [s1] _ = True
 accept' _ (s1:s2:scores) _ = s1 < s2
 
 terminate' :: [Score] -> Age -> Bool
-terminate' scores age = showMe $ not $ age < generations
-  where showMe = if not $ (10.0 * ((fromIntegral age) / (fromIntegral generations))) `elem` [1.0..10.0] then
+terminate' scores age = showMe $ not $ age < Constants.generations
+  where showMe = if not $ (10.0 * ((fromIntegral age) / (fromIntegral Constants.generations))) `elem` [1.0..10.0] then
                    id
                  else
                    trace ((show age) ++ " generations complete")

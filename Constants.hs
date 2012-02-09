@@ -8,7 +8,6 @@ maxProb = 10e1024 :: Double
 amino = fromList "ACDEFGHIKLMNPQRSTVWYX"
 nucleotide = fromList "ACTG"
 betaCoeff = 0.5
-generations = 1000 :: Int
 
 -- amino = fromList aminoS :: Alphabet 
 -- nucleotide = fromList nucleotideS 

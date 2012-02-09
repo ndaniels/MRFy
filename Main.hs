@@ -16,6 +16,7 @@ import Beta
 import Viterbi
 import HmmPlus
 import Constants
+import CommandArgs
 
 import StochasticSearch
 import qualified SearchStrategies.RandomHillClimb as RandomHillClimb
@@ -63,7 +64,7 @@ main = do sargs <- cmdArgs smurfargs
           -- putStrLn $ temp hmm 
           let betas = getBetaStrands header
           let queries = map (translateQuery . toStr . seqdata) querySeqs
-          let results = map (\q -> search q hmm betas SimulatedAnnealing.ss ((randoms rgn) :: [Int])) queries
+          let results = map (\q -> search q hmm betas searchP ((randoms rgn) :: [Int])) queries
           -- putStrLn $ show $ (ss, hist) 
           putStrLn $ foldr (\s ss -> s ++ "\n\n" ++ ss) "" $ map (\((ss, hist), query) -> outputAlignment hmm betas ss query) $ zip results queries
           putStrLn $ "Score: " ++ (show $ fst $ fst $ head results)
