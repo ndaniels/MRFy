@@ -1,0 +1,5 @@
+module SearchStrategies where
+
+import qualified SearchStrategies.RandomHillClimb as RandomHillClimb
+import qualified SearchStrategies.SimulatedAnnealing as SimulatedAnnealing
+
