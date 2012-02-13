@@ -44,6 +44,8 @@ data SearchParameters = SearchParameters { strategy :: SearchStrategy
                                          , mutationRate :: Maybe Double
                                          }
 
+getSearchParm searchP parm = maybe (error "Not a valid parameter.") id (parm searchP)
+
 type SearchGuess = [Int] -- list of *starting* residue positions of each beta strand
 type SearchSolution = (Score, SearchGuess)
 type Temperature = Double
@@ -51,10 +53,10 @@ type Seed = Int
 type Age = Int
 type History = [Score]
 type Scorer = QuerySequence -> [BetaStrand] -> SearchGuess -> SearchSolution
-data SearchStrategy = SearchStrategy { accept :: Seed -> History -> Age -> Bool
-                                     , terminate :: History -> Age -> Bool
-                                     , mutate :: Seed -> QuerySequence -> Scorer -> [BetaStrand] -> [SearchSolution] -> [SearchSolution]
-                                     , initialize :: Seed -> QuerySequence -> [BetaStrand]-> [SearchGuess]
+data SearchStrategy = SearchStrategy { accept :: SearchParameters -> Seed -> History -> Age -> Bool
+                                     , terminate :: SearchParameters -> History -> Age -> Bool
+                                     , mutate :: SearchParameters -> Seed -> QuerySequence -> Scorer -> [BetaStrand] -> [SearchSolution] -> [SearchSolution]
+                                     , initialize :: SearchParameters -> Seed -> QuerySequence -> [BetaStrand]-> [SearchGuess]
                                      }
 
 
@@ -62,7 +64,7 @@ data SearchStrategy = SearchStrategy { accept :: Seed -> History -> Age -> Bool
 search :: QuerySequence -> HMM -> [BetaStrand] -> SearchParameters -> [Seed] -> (SearchSolution, History)
 search query hmm betas searchP seeds = search' (tail seeds) initialGuessScore [] 0
   where initialGuessScore = map (score hmm query betas) initialGuess
-        initialGuess = initialize strat (head seeds) query betas
+        initialGuess = initialize strat searchP (head seeds) query betas
 
         strat = strategy searchP
 
@@ -81,9 +83,9 @@ search query hmm betas searchP seeds = search' (tail seeds) initialGuessScore []
                    (minimum oldPop, hist)
                  else
                    search' seeds oldPop hist (age + 1)
-            where mutate' = mutate strat s1 query (score hmm) betas
-                  terminate' = terminate strat
-                  accept' = accept strat s2
+            where mutate' = mutate strat searchP s1 query (score hmm) betas
+                  terminate' = terminate strat searchP
+                  accept' = accept strat searchP s2
 
 data BetaOrViterbi = Beta
                      | Viterbi
@@ -106,7 +108,7 @@ statePath :: HMM -> QuerySequence -> [BetaStrand] -> SearchSolution -> StatePath
 statePath hmm query betas (_, guesses) = foldr (++) [] $ map viterbiOrBeta $ DL.zip4 hmmAlignTypes (map traceid miniHmms) miniQueries $ dupeElements [0..]
   where viterbiOrBeta :: (BetaOrViterbi, HMM, QuerySequence, Int) -> StatePath
         viterbiOrBeta (Beta, ns, qs, i) = take (len (betas !! i)) $ repeat bmat
-        viterbiOrBeta (Viterbi, ns, qs, i) = snd $ viterbi (False, False) Constants.amino qs ns
+        viterbiOrBeta (Viterbi, ns, qs, i) = snd $ viterbi consPath (False, False) Constants.amino qs ns
 
         -- traceid hmm = trace (show (V.map nodeNum hmm)) $ id hmm 
         -- traceid = (trace (show guesses)) id 
@@ -119,7 +121,7 @@ score :: HMM -> Scorer
 score hmm query betas guesses = (foldr (+) 0.0 $ (parMap rseq) viterbiOrBeta $ DL.zip4 hmmAlignTypes (map traceid miniHmms) miniQueries $ dupeElements [0..], guesses)
   where viterbiOrBeta :: (BetaOrViterbi, HMM, QuerySequence, Int) -> Score
         viterbiOrBeta (Beta, ns, qs, i) = betaScore query guesses (residues (betas !! i)) ns qs
-        viterbiOrBeta (Viterbi, ns, qs, i) = viterbiF (False, False) Constants.amino qs ns
+        viterbiOrBeta (Viterbi, ns, qs, i) = fst $ viterbi consNoPath (False, False) Constants.amino qs ns
 
         -- traceid hmm = trace (show (V.map nodeNum hmm)) $ id hmm 
         traceid = id

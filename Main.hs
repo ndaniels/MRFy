@@ -2,10 +2,13 @@
 
 module Main where
 
+import Control.Parallel (par)
+import Control.Parallel.Strategies
+
 import Data.Array
 import Data.List as DL
 import System.Console.CmdArgs
-import System.Random (getStdGen, randoms)
+import System.Random (getStdGen, mkStdGen, randoms)
 import qualified Data.Vector as V
 
 import Bio.Sequence
@@ -17,10 +20,9 @@ import Viterbi
 import HmmPlus
 import Constants
 import CommandArgs
+import ShowAlignment
 
 import StochasticSearch
-import qualified SearchStrategies.RandomHillClimb as RandomHillClimb
-import qualified SearchStrategies.SimulatedAnnealing as SimulatedAnnealing
 
 data SmurfArgs = SmurfArgs { hmmPlusFile :: FilePath
                            , fastaFile :: FilePath
@@ -55,6 +57,11 @@ outputAlignment :: HMM -> [BetaStrand] -> SearchSolution -> QuerySequence -> Str
 outputAlignment hmm betas ss querySeq = showAlignment hmm betas querySeq sp 60 Constants.amino
   where sp = statePath hmm querySeq betas ss
 
+popSearch :: [QuerySequence -> (SearchSolution, History)] -> QuerySequence -> (SearchSolution, History)
+popSearch searches q = minimum $ (parMap rseq) (\s -> s q) searches
+
+newRandoms s = randoms $ mkStdGen s
+
 main = do sargs <- cmdArgs smurfargs
           (header, hmm, md) <- parse $ hmmPlusFile sargs
           rgn <- getStdGen
@@ -64,7 +71,9 @@ main = do sargs <- cmdArgs smurfargs
           -- putStrLn $ temp hmm 
           let betas = getBetaStrands header
           let queries = map (translateQuery . toStr . seqdata) querySeqs
-          let results = map (\q -> search q hmm betas searchP ((randoms rgn) :: [Int])) queries
+          let searches = map (\r -> (\q -> search q hmm betas searchP (newRandoms r))) $ take (populationSize searchP) ((randoms rgn) :: [Int])
+          -- let results = map (\q -> search q hmm betas searchP ((randoms rgn) :: [Int])) queries 
+          let results = map (popSearch searches) queries
           -- putStrLn $ show $ (ss, hist) 
           putStrLn $ foldr (\s ss -> s ++ "\n\n" ++ ss) "" $ map (\((ss, hist), query) -> outputAlignment hmm betas ss query) $ zip results queries
           putStrLn $ "Score: " ++ (show $ fst $ fst $ head results)

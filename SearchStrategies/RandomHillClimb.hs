@@ -18,24 +18,24 @@ ss = SearchStrategy { accept = accept'
                     , initialize = initialize'
                     }
 
-initialize' :: Seed -> QuerySequence -> [BetaStrand] -> [SearchGuess]
-initialize' seed query betas = [initialGuess seed query betas]
+initialize' :: SearchParameters -> Seed -> QuerySequence -> [BetaStrand] -> [SearchGuess]
+initialize' searchP seed query betas = [initialGuess seed query betas]
 
-accept' :: Seed -> [Score] -> Age -> Bool
-accept' _ [] _ = error "go away"
-accept' _ [s1] _ = True
-accept' _ (s1:s2:scores) _ = s1 < s2
+accept' :: SearchParameters -> Seed -> [Score] -> Age -> Bool
+accept' _ _ [] _ = error "go away"
+accept' _ _ [s1] _ = True
+accept' _ _ (s1:s2:scores) _ = s1 < s2
 
-terminate' :: [Score] -> Age -> Bool
-terminate' scores age = showMe $ not $ age < Constants.generations
-  where showMe = if not $ (10.0 * ((fromIntegral age) / (fromIntegral Constants.generations))) `elem` [1.0..10.0] then
+terminate' :: SearchParameters -> [Score] -> Age -> Bool
+terminate' searchP scores age = showMe $ not $ age < (generations searchP)
+  where showMe = if not $ (10.0 * ((fromIntegral age) / (fromIntegral (generations searchP)))) `elem` [1.0..10.0] then
                    id
                  else
                    trace ((show age) ++ " generations complete")
 
 -- invariant: len [SearchSolution] == 1
-mutate' :: Seed -> QuerySequence -> Scorer -> [BetaStrand] -> [SearchSolution] -> [SearchSolution]
-mutate' seed query scorer betas solutions = [scorer query betas $ mutate'' guesses 0 (mkStdGen seed) 0]
+mutate' :: SearchParameters -> Seed -> QuerySequence -> Scorer -> [BetaStrand] -> [SearchSolution] -> [SearchSolution]
+mutate' searchP seed query scorer betas solutions = [scorer query betas $ mutate'' guesses 0 (mkStdGen seed) 0]
   where guesses = snd $ head solutions
 
         mutate'' :: SearchGuess -> Int -> StdGen -> Int -> SearchGuess
