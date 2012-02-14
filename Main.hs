@@ -71,7 +71,7 @@ main = do sargs <- cmdArgs smurfargs
           -- putStrLn $ temp hmm 
           let betas = getBetaStrands header
           let queries = map (translateQuery . toStr . seqdata) querySeqs
-          let searches = map (\r -> (\q -> search q hmm betas searchP (newRandoms r))) $ take (populationSize searchP) ((randoms rgn) :: [Int])
+          let searches = map (\r -> (\q -> search q hmm betas searchP (newRandoms r))) $ take (multiStartPopSize searchP) ((randoms rgn) :: [Int])
           -- let results = map (\q -> search q hmm betas searchP ((randoms rgn) :: [Int])) queries 
           let results = map (popSearch searches) queries
           -- putStrLn $ show $ (ss, hist) 

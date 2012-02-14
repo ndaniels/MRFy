@@ -111,17 +111,17 @@ viterbi pathCons (hasStart, hasEnd) alpha query hmm =
           -- I think only this equation will change when
           -- we incorporate the begin-to-match code
           | s == mat = let transition trans prevstate = 
-                           if hasStart && prevstate == beg
+                            if hasStart && prevstate == beg
                                then 
                                    (transProb hmm (n - 1) trans + eProb,
                                    [mat]
                                    )
                                else (score + transProb hmm (n-1) trans +
                                     eProb,
-                                    mat:path
+                                    pathCons mat path
                                     )
-                           where (score, path) = viterbi' prevstate (n - 1) (o - 1)
-                                 eProb = emissionProb (matchEmissions $ hmm ! n) (res o)
+                            where (score, path) = viterbi' prevstate (n - 1) (o - 1)
+                                  eProb = emissionProb (matchEmissions $ hmm ! n) (res o)
 
                                      
                           in DL.minimum $ [
@@ -134,7 +134,7 @@ viterbi pathCons (hasStart, hasEnd) alpha query hmm =
           | s == ins = let transition trans prevstate =
                              (score + transProb hmm n trans +
                              emissionProb (insertionEmissions $ hmm ! n) (res o),
-                             ins:path
+                             pathCons ins path
                              )
                              where (score, path) = viterbi' prevstate n (o - 1)
                         in DL.minimum [
@@ -144,7 +144,7 @@ viterbi pathCons (hasStart, hasEnd) alpha query hmm =
           -- consume a node but not an observation
           | s == del = let transition trans prevstate =
                              (score + transProb hmm (n-1) trans,
-                             del:path
+                             pathCons del path
                              )
                              where (score, path) = viterbi' prevstate (n - 1) o
                         in DL.minimum [
@@ -155,10 +155,10 @@ viterbi pathCons (hasStart, hasEnd) alpha query hmm =
                              if prevstate == mat
                                  then
                                      (score + transProb hmm (n-1) trans,
-                                     end:path
+                                     pathCons end path
                                      )
                                  else
-                                     (score, end:path)
+                                     (score, pathCons end path)
                              where (score, path) = viterbi' prevstate (n-1) o
                              -- for local to QUERY we would do n, o-1.
                         in DL.minimum (if n >= 2 then [
