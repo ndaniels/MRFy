@@ -54,7 +54,6 @@ search :: QuerySequence -> HMM -> [BetaStrand] -> SearchStrategy -> [Seed] -> (S
 search query hmm betas strategy seeds = search' (tail seeds) initialGuessScore [] 0
   where initialGuessScore = map (score hmm query betas) initialGuess
         initialGuess = initialize strategy (head seeds) query betas
-
         search' :: [Seed] -> [SearchSolution] -> History -> Age -> (SearchSolution, History)
         search' (s1:s2:seeds) oldPop hist age =
           let newPop = mutate' oldPop
