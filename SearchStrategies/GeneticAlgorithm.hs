@@ -1,5 +1,6 @@
-module SearchStrategies.RandomHillClimb where
+module SearchStrategies.GeneticAlgorithm where
 
+import Data.List
 import qualified Data.Vector as V
 import System.Random (mkStdGen, randomR, StdGen)
 
@@ -50,4 +51,17 @@ mutate' searchP seed query scorer betas solutions = [scorer query betas $ mutate
                        V.length query - (len $ betas !! i)
                      else
                        (guesses !! (i + 1)) - (len $ betas !! i)
+
+crossover :: SearchGuess -> SearchGuess -> SearchGuess
+crossover ps qs = sort $ crossover' ps qs
+
+-- invariant: length ps == length qs
+crossover' :: SearchGuess -> SearchGuess -> SearchGuess
+crossover' [] [] = []
+crossover' [p] [q] = if p < q then [p] else [q]
+crossover' (p:ps) (q:qs) = leftmost:rightmost:crossover' (init ps) (init qs)
+  where leftmost = if p < q then p else q
+        rightmost = if lastp > lastq then lastp else lastq
+        lastp = last ps
+        lastq = last qs
 
