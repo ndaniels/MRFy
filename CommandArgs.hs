@@ -10,7 +10,7 @@ import qualified SearchStrategies.SimulatedAnnealing as SimulatedAnnealing
 searchP = SearchParameters { strategy = GeneticAlgorithm.ss
                            , generations = 1000
                            , multiStartPopSize = 1
-                           , populationSize = Just 2
+                           , populationSize = Just 20
                            , initialTemperature = Just 1000.0
                            , coolingFactor = Just 0.99
                            , boltzmannConstant = Just 1.0

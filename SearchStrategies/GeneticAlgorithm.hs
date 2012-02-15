@@ -40,12 +40,12 @@ terminate' searchP scores age = showMe $ not $ age < (generations searchP)
 mutate' :: SearchParameters -> Seed -> QuerySequence -> Scorer -> [BetaStrand] -> [SearchSolution] -> [SearchSolution]
 mutate' searchP seed query scorer betas solutions = fittest
   where fittest = take (getSearchParm searchP populationSize) $ reverse $ sort $ solutions ++ progeny
-        progeny = map (scorer query betas) $ map (\gs -> mutateChild 0 0 (mkStdGen seed) gs gs) $ trace (show guesses) $ getPairings guesses
+        progeny = map (scorer query betas) $ map (\gs -> mutateChild 0 0 (mkStdGen seed) gs gs) $ getPairings guesses
         guesses = map snd solutions
 
         mutateChild :: Int -> Int -> StdGen -> SearchGuess -> SearchGuess -> SearchGuess
         mutateChild _ _ _ _ [] = []
-        mutateChild i lastGuess gen ogs (g:gs) = g' : mutateChild (i+1) g' gen' gs ogs 
+        mutateChild i lastGuess gen ogs (g:gs) = g' : mutateChild (i+1) g' gen' ogs gs
           where (g', gen') = randomR (lo, hi) gen
                 lo = if i == 0 then
                        0
