@@ -24,14 +24,15 @@ initialize' searchP seed query betas = map (\s -> initialGuess s query betas) $ 
   where rands = (randoms (mkStdGen seed)) :: [Int]
 
 accept' :: SearchParameters -> Seed -> [Score] -> Age -> Bool
-accept' _ _ _ _ = True
--- accept' _ _ [] _ = error "go away" 
--- accept' _ _ [s1] _ = True 
--- accept' _ _ (s1:s2:scores) _ = s1 < s2 
+-- accept' _ _ _ _ = True
+accept' _ _ [] _ = error "go away" 
+accept' _ _ [s1] _ = True 
+accept' _ _ (s1:s2:scores) _ = s1 < s2 
 
 terminate' :: SearchParameters -> [Score] -> Age -> Bool
 terminate' searchP scores age = showMe $ not $ age < (generations searchP)
-  where showMe = if not $ (10.0 * ((fromIntegral age) / (fromIntegral (generations searchP)))) `elem` [1.0..10.0] then
+  where showMe = if not $ (10.0 * ((fromIntegral age) / 
+                 (fromIntegral (generations searchP)))) `elem` [1.0..10.0] then
                    id
                  else
                    trace ((show age) ++ " generations complete")
@@ -39,8 +40,10 @@ terminate' searchP scores age = showMe $ not $ age < (generations searchP)
 -- invariant: len [SearchSolution] == 1
 mutate' :: SearchParameters -> Seed -> QuerySequence -> Scorer -> [BetaStrand] -> [SearchSolution] -> [SearchSolution]
 mutate' searchP seed query scorer betas solutions = fittest
-  where fittest = take (getSearchParm searchP populationSize) $ reverse $ sort $ solutions ++ progeny
-        progeny = map (scorer query betas) $ map (\gs -> mutateChild 0 0 (mkStdGen seed) gs gs) $ getPairings guesses
+  where fittest = take (getSearchParm searchP populationSize) $ 
+            reverse $ sort $ solutions ++ progeny
+        progeny = map (scorer query betas) $ 
+            map (\gs -> mutateChild 0 0 (mkStdGen seed) gs gs) $ getPairings guesses
         guesses = map snd solutions
 
         mutateChild :: Int -> Int -> StdGen -> SearchGuess -> SearchGuess -> SearchGuess
