@@ -8,7 +8,9 @@ import Debug.Trace (trace)
 
 import Beta
 import Constants
+import NonUniform
 import SearchStrategy
+import Shuffle
 import StochasticSearch
 import Viterbi
 
@@ -20,7 +22,7 @@ ss = SearchStrategy { accept = accept'
                     }
 
 initialize' :: SearchParameters -> Seed -> QuerySequence -> [BetaStrand] -> [SearchGuess]
-initialize' searchP seed query betas = map (\s -> initialGuess s query betas) $ take (getSearchParm searchP populationSize) rands
+initialize' searchP seed query betas = map (\s -> geoInitialGuess s query betas) $ take (getSearchParm searchP populationSize) rands
   where rands = (randoms (mkStdGen seed)) :: [Int]
 
 accept' :: SearchParameters -> Seed -> [Score] -> Age -> Bool
@@ -40,9 +42,9 @@ terminate' searchP scores age = showMe $ not $ age < (generations searchP)
 -- invariant: len [SearchSolution] == 1
 mutate' :: SearchParameters -> Seed -> QuerySequence -> Scorer -> [BetaStrand] -> [SearchSolution] -> [SearchSolution]
 mutate' searchP seed query scorer betas solutions = fittest
-  where fittest = take (getSearchParm searchP populationSize) $ 
-            reverse $ sort $ solutions ++ progeny
-        progeny = map (scorer query betas) $ 
+  where fittest = fst $ shuffle (mkStdGen seed) $ take (getSearchParm searchP populationSize) $ 
+            sort $ solutions ++ progeny
+        progeny = map (scorer query betas) $
             map (\gs -> mutateChild 0 0 (mkStdGen seed) gs gs) $ getPairings guesses
         guesses = map snd solutions
 

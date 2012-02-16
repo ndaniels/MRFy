@@ -73,6 +73,9 @@ search query hmm betas searchP seeds = search' (tail seeds) initialGuessScore []
         search' (s1:s2:seeds) oldPop hist age =
           let newPop = mutate' oldPop
               score = fst $ minimum newPop
+              -- score = trace (show initialGuess) $ fst $ minimum newPop 
+              -- score = trace (show $ DL.sort $ map fst newPop) $ fst $ minimum newPop 
+              -- newHist = trace ("New score: " DL.++ (show score) DL.++ "--- History: " DL.++ (show hist)) $ score : hist 
               newHist = score : hist
             in if accept' newHist age then
                   if terminate' newHist age then
@@ -80,10 +83,10 @@ search query hmm betas searchP seeds = search' (tail seeds) initialGuessScore []
                   else
                     search' seeds newPop newHist (age + 1)
                else
-                 if terminate' hist age then
-                   (minimum oldPop, hist)
-                 else
-                   search' seeds oldPop hist (age + 1)
+                  if terminate' hist age then
+                    (minimum oldPop, hist)
+                  else
+                    search' seeds oldPop hist (age + 1)
             where mutate' = mutate strat searchP s1 query (score hmm) betas
                   terminate' = terminate strat searchP
                   accept' = accept strat searchP s2

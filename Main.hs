@@ -77,5 +77,6 @@ main = do sargs <- cmdArgs smurfargs
           -- putStrLn $ show $ (ss, hist) 
           putStrLn $ foldr (\s ss -> s ++ "\n\n" ++ ss) "" $ map (\((ss, hist), query) -> outputAlignment hmm betas ss query) $ zip results queries
           putStrLn $ "Score: " ++ (show $ fst $ fst $ head results)
+          putStrLn $ "History: " ++ (show $ snd $ head results)
           
 
