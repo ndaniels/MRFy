@@ -1,5 +1,5 @@
-{-# LANGUAGE BangPatterns #-}
 module StochasticSearch where
+
 import Control.Parallel (par)
 import Control.Parallel.Strategies
 
