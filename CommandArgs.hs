@@ -9,7 +9,7 @@ import qualified SearchStrategies.SimulatedAnnealing as SimulatedAnnealing
 
 searchP = SearchParameters { strategy = SimulatedAnnealing.ss
                            , generations = 1000
-                           , multiStartPopSize = 10
+                           , multiStartPopSize = 1
                            , populationSize = Just 2000
                            , initialTemperature = Just 1000.0
                            , coolingFactor = Just 0.99
