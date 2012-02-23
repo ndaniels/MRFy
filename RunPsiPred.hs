@@ -12,24 +12,25 @@ import PsiPred
 
 template = "mrfy"
 
-run_psipred :: FilePath -> FilePath -> IO [SSPredictions]
+run_psipred :: FilePath -> FilePath -> IO [SSPrediction]
 run_psipred fasta tempDir =
   do let dataDir = joinPath ["/", "home", "andrew", "data", "graduate", "research", "psipred", "data"]
+     let pdata name = joinPath $ [dataDir, name]
      mtx <- trace (show tempDir) $ openFile (joinPath [tempDir, "mtx"]) WriteMode
      (_, _, _, _) <- createProcess (proc "seq2mtx" [fasta]){ std_out = UseHandle mtx,
-                                                             cwd = tempDir}
+                                                             cwd = Just tempDir}
 
      ss <- openFile (joinPath [tempDir, "ss"]) WriteMode
      (_, _, _, _) <- createProcess (proc "psipred" ["mtx", pdata "weights.dat", pdata "weights.dat2",
-                                                    pdata "weights.dat3"]{ std_out = UseHandle ss,
-                                                                           cwd = tempDir }
+                                                    pdata "weights.dat3"]){ std_out = UseHandle ss,
+                                                                           cwd = Just tempDir }
 
      (_, _, _, _) <- createProcess (proc "psipass2" [pdata "weights_p2.dat", "1", "1.0", "1.0",
-                                                     "ss2" "ss"]{ cwd = tempDir }
+                                                     "ss2", "ss"]){ cwd = Just tempDir }
+     (preds, md) <- parse $ joinPath [tempDir, "ss2"]
+     return preds
+          
 
-     return $ getSecondary $ joinPath [tempDir, "ss2"]
-  where pdata name = joinPath $ [dataDir, name]
-
-getSecondary :: FilePath -> IO [SSPredictions]
+getSecondary :: FilePath -> IO [SSPrediction]
 getSecondary fasta = withTemporaryDirectory template (run_psipred fasta)
 
