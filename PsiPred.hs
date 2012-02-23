@@ -8,13 +8,14 @@ import Language.Pads.GenPretty
 import Control.Monad
 import System.IO.Unsafe (unsafePerformIO)
 
-ws = REd "[\t ]+|$" " "
+ws = REd "[\t\n\r ]+|$" " "
 
 amino = "ACDEFGHIKLMNPQRSTVWY"
 
 [pads|
-  data PsiPredFile = PsiPredFile { header::PsiPredHeader, ws, ss_predictions::[Line SSPrediction] terminator EOF }
+  data PsiPredFile = PsiPredFile { header::PsiPredHeader, ws, BlankLine, ss_predictions::[Line SSPrediction] terminator EOF }
   
+  type BlankLine = (ws, EOR)
   type PsiPredHeader = ('#', ws, StringLn, EOR)
   
   data SSPrediction = SSPrediction { ws,
