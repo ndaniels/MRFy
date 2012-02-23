@@ -23,7 +23,7 @@ run_psipred fasta tempDir =
      ss <- openFile (joinPath [tempDir, "ss"]) WriteMode
      (_, _, _, _) <- createProcess (proc "psipred" ["mtx", pdata "weights.dat", pdata "weights.dat2",
                                                     pdata "weights.dat3"]){ std_out = UseHandle ss,
-                                                                           cwd = Just tempDir }
+                                                                            cwd = Just tempDir }
 
      (_, _, _, _) <- createProcess (proc "psipass2" [pdata "weights_p2.dat", "1", "1.0", "1.0",
                                                      "ss2", "ss"]){ cwd = Just tempDir }
@@ -32,5 +32,6 @@ run_psipred fasta tempDir =
           
 
 getSecondary :: FilePath -> IO [SSPrediction]
-getSecondary fasta = withTemporaryDirectory template (run_psipred fasta)
+-- getSecondary fasta = withTemporaryDirectory template (run_psipred fasta) 
+getSecondary fasta = run_psipred fasta "/tmp/mrftemp"
 
