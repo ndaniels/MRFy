@@ -3,5 +3,5 @@ cmdargs ?>=0.8
 data-memocombinators ?>=0.4.2
 vector ?>=0.9
 Unixutils
-bio-haskell
+bio
 
