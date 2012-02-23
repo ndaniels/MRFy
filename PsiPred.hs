@@ -2,7 +2,7 @@
              MultiParamTypeClasses, FlexibleInstances, UndecidableInstances,
              DeriveDataTypeable, ScopedTypeVariables, NamedFieldPuns #-}
 
-module Smurf.PsiPred where
+module PsiPred where
 import Language.Pads.Padsc
 import Language.Pads.GenPretty
 import Control.Monad

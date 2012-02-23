@@ -16,13 +16,14 @@ import Bio.Sequence.Fasta
 
 import Beta
 -- import HmmAlign
-import Viterbi
-import HmmPlus
-import Constants
 import CommandArgs
+import Constants
+import HmmPlus
+import RunPsiPred
 import ShowAlignment
-
 import StochasticSearch
+import Viterbi
+
 
 data SmurfArgs = SmurfArgs { hmmPlusFile :: FilePath
                            , fastaFile :: FilePath
@@ -66,6 +67,7 @@ main = do sargs <- cmdArgs smurfargs
           (header, hmm, md) <- parse $ hmmPlusFile sargs
           rgn <- getStdGen
           querySeqs <- readFasta $ fastaFile sargs
+          secPred <- getSecondary $ fastaFile sargs
           -- putStrLn $ show $ getBetaStrands header 
           -- putStrLn $ show $ viterbi (False, False) Constants.amino query hmm 
           -- putStrLn $ temp hmm 
