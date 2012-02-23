@@ -35,7 +35,7 @@ amino = "ACDEFGHIKLMNPQRSTVWY"
 
 |]
 
-result = do
-        { (PsiPredFile header ss_predictions, md) <- parseFile "test.ss2"
-        ; return (header, ss_predictions, md)
-        }
+parse :: FilePath -> IO ([SSPrediction], PsiPredFile_md)
+parse f = do (PsiPredFile header ss_pred, md) <- parseFile f
+             return (ss_pred, md)
+
