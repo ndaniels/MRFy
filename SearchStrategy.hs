@@ -69,3 +69,9 @@ checkGuess (b:bs) (g:gs) = noClash && next
                     [] -> True
                     (g':gs') -> g' > g + len b
 
+-- Notes for new initial guess approach:
+-- Greedily consume area under curve proportional to beta strand fraction of total beta length
+-- If the number of residues inadequate, expand area until we have enough residues
+-- generate placement of beta strand start in range from beginning of partition to (end - len beta)
+-- Move start of next position left to end of this beta
+-- This is generative because we can violate constraints.
