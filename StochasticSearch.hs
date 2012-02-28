@@ -12,6 +12,7 @@ import Debug.Trace (trace)
 import Wrappers
 
 import HmmPlus
+import PsiPred
 import Constants
 import ConstantsGen
 import Viterbi
@@ -43,6 +44,7 @@ data SearchParameters = SearchParameters { strategy :: SearchStrategy
                                          , coolingFactor :: Maybe Double
                                          , boltzmannConstant :: Maybe Double
                                          , mutationRate :: Maybe Double
+                                         , secPreds :: Maybe [SSPrediction]
                                          }
 
 getSearchParm searchP parm = maybe (error "Not a valid parameter.") id (parm searchP)

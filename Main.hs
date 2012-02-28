@@ -68,13 +68,14 @@ main = do sargs <- cmdArgs smurfargs
           rgn <- getStdGen
           querySeqs <- readFasta $ fastaFile sargs
           secPred <- getSecondary $ fastaFile sargs
+          let searchParams = searchP { secPreds = Just secPred }
           -- putStrLn $ show $ getBetaStrands header 
           -- putStrLn $ show $ viterbi (False, False) Constants.amino query hmm 
           -- putStrLn $ temp hmm 
           let betas = getBetaStrands header
           let queries = map (translateQuery . toStr . seqdata) querySeqs
-          let searches = map (\r -> (\q -> search q hmm betas searchP (newRandoms r))) $ take (multiStartPopSize searchP) ((randoms rgn) :: [Int])
-          -- let results = map (\q -> search q hmm betas searchP ((randoms rgn) :: [Int])) queries 
+          let searches = map (\r -> (\q -> search q hmm betas searchParams (newRandoms r))) $ take (multiStartPopSize searchParams) ((randoms rgn) :: [Int])
+          -- let results = map (\q -> search q hmm betas searchParams ((randoms rgn) :: [Int])) queries 
           let results = map (popSearch searches) queries
           -- putStrLn $ show $ (ss, hist) 
           putStrLn $ foldr (\s ss -> s ++ "\n\n" ++ ss) "" $ map (\((ss, hist), query) -> outputAlignment hmm betas ss query) $ zip results queries
