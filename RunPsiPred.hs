@@ -14,27 +14,42 @@ template = "mrfy"
 -- dataDir = joinPath ["/", "home", "andrew", "data", "graduate", "research", "psipred", "data"]
 dataDir = joinPath ["/", "Users", "noah", "Downloads", "psipred32", "data"]
 
-runPsiPred :: FilePath -> FilePath -> IO [SSPrediction]
-runPsiPred fasta tempDir =
-  do let pdata name = joinPath $ [dataDir, name]
-     mtx <- trace (show tempDir) $ openFile (joinPath [tempDir, "mtx"]) WriteMode
-     -- NMD note: when I fully specify the path to the process, this works.
-     -- I think the proc function just isn't respecting path.
-     -- easy solution: pull full path from env || hardcode
-     (_, _, _, _) <- createProcess (proc "seq2mtx" [fasta]){ std_out = UseHandle mtx,
+
+run_psipred :: FilePath -> FilePath -> IO [SSPrediction]
+run_psipred fasta tempDir =
+  do let dataDir = joinPath ["/", "home", "andrew", "data", "graduate", "research", "psipred", "data"]
+     let pdata name = joinPath $ [dataDir, name]
+
+     let binDir = "/home/andrew/data/graduate/research/psipred/bin/"
+     let binary name = joinPath $ [binDir, name]
+
+     cwdir <- getCurrentDirectory
+     let fastaFile = joinPath $ [cwdir, fasta]
+
+     mtx <- openFile (joinPath [tempDir, "mtx.mtx"]) WriteMode
+     (_, _, _, seqph) <- createProcess (proc (binary "seq2mtx") [fastaFile]){ std_out = UseHandle mtx,
                                                              cwd = Just tempDir}
 
-     ss <- openFile (joinPath [tempDir, "ss"]) WriteMode
-     (_, _, _, _) <- createProcess (proc "psipred" ["mtx", pdata "weights.dat", pdata "weights.dat2",
-                                                    pdata "weights.dat3"]){ std_out = UseHandle ss,
-                                                                           cwd = Just tempDir }
+     waitForProcess seqph
 
-     (_, _, _, _) <- createProcess (proc "psipass2" [pdata "weights_p2.dat", "1", "1.0", "1.0",
-                                                     "ss2", "ss"]){ cwd = Just tempDir }
+     ss <- openFile (joinPath [tempDir, "ss"]) WriteMode
+     (_, _, _, predh) <- createProcess (proc (binary "psipred") ["mtx.mtx", pdata "weights.dat", pdata "weights.dat2",
+                                                    pdata "weights.dat3"]){ std_out = UseHandle ss,
+                                                                            cwd = Just tempDir }
+
+     waitForProcess predh
+
+     trash <- openFile (joinPath ["/", "dev", "null"]) WriteMode
+     (_, _, _, pred2h) <- createProcess (proc (binary "psipass2") [pdata "weights_p2.dat", "1", "1.0", "1.0",
+                                                     "ss2", "ss"]){ cwd = Just tempDir, std_out = UseHandle trash }
+
+     waitForProcess pred2h
+
      (preds, md) <- parse $ joinPath [tempDir, "ss2"]
+
      return preds
           
 
 getSecondary :: FilePath -> IO [SSPrediction]
-getSecondary fasta = withTemporaryDirectory template (runPsiPred fasta)
-
+getSecondary fasta = withTemporaryDirectory template (run_psipred fasta)
+-- getSecondary fasta = run_psipred fasta "/tmp/mrftemp" 

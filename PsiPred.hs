@@ -2,7 +2,12 @@
              MultiParamTypeClasses, FlexibleInstances, UndecidableInstances,
              DeriveDataTypeable, ScopedTypeVariables, NamedFieldPuns #-}
 
-module PsiPred where
+module PsiPred 
+  ( parse
+  , SSPrediction(..)
+  ) 
+where
+
 import Language.Pads.Padsc
 import Language.Pads.GenPretty
 import Control.Monad

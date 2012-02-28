@@ -22,7 +22,8 @@ ss = SearchStrategy { accept = accept'
                     }
 
 initialize' :: SearchParameters -> Seed -> QuerySequence -> [BetaStrand] -> [SearchGuess]
-initialize' searchP seed query betas = map (\s -> geoInitialGuess s query betas) $ take (getSearchParm searchP populationSize) rands
+initialize' searchP seed query betas = map (\s -> predInitialGuess (getSearchParm searchP secPreds) s query betas) 
+                                        $ take (getSearchParm searchP populationSize) rands
   where rands = (randoms (mkStdGen seed)) :: [Int]
 
 accept' :: SearchParameters -> Seed -> [Score] -> Age -> Bool
