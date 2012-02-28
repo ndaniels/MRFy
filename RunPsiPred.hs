@@ -15,8 +15,8 @@ template = "mrfy"
 dataDir = joinPath ["/", "Users", "noah", "Downloads", "psipred32", "data"]
 
 
-run_psipred :: FilePath -> FilePath -> IO [SSPrediction]
-run_psipred fasta tempDir =
+runPsiPred :: FilePath -> FilePath -> IO [SSPrediction]
+runPsiPred fasta tempDir =
   do let dataDir = joinPath ["/", "home", "andrew", "data", "graduate", "research", "psipred", "data"]
      let pdata name = joinPath $ [dataDir, name]
 
@@ -51,5 +51,5 @@ run_psipred fasta tempDir =
           
 
 getSecondary :: FilePath -> IO [SSPrediction]
-getSecondary fasta = withTemporaryDirectory template (run_psipred fasta)
+getSecondary fasta = withTemporaryDirectory template (runPsiPred fasta)
 -- getSecondary fasta = run_psipred fasta "/tmp/mrftemp" 
