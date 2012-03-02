@@ -75,3 +75,8 @@ checkGuess (b:bs) (g:gs) = noClash && next
 -- generate placement of beta strand start in range from beginning of partition to (end - len beta)
 -- Move start of next position left to end of this beta
 -- This is generative because we can violate constraints.
+
+-- other approaches: 
+-- projection
+-- projection with mutation
+-- distribution of gaps
