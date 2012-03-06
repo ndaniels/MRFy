@@ -10,6 +10,7 @@ import Data.List as DL
 import System.Console.CmdArgs
 import System.Random (getStdGen, mkStdGen, randoms)
 import qualified Data.Vector as V
+import System.Environment
 
 import Bio.Sequence
 import Bio.Sequence.Fasta
@@ -25,15 +26,15 @@ import StochasticSearch
 import Viterbi
 
 
-data SmurfArgs = SmurfArgs { hmmPlusFile :: FilePath
-                           , fastaFile :: FilePath
-                           }
-  deriving (Show, Data, Typeable)
+-- data SmurfArgs = SmurfArgs { hmmPlusFile :: FilePath 
+                           -- , fastaFile :: FilePath 
+                           -- } 
+  -- deriving (Show, Data, Typeable) 
 
 -- Maybe use System.Console.getopt instead
-smurfargs = SmurfArgs { hmmPlusFile = def &= typ "HMM Plus file" &= argPos 0 
-                      , fastaFile = def &= typ "FASTA file" &= argPos 1
-                      }
+-- smurfargs = SmurfArgs { hmmPlusFile = def &= typ "HMM Plus file" &= argPos 0  
+                      -- , fastaFile = def &= typ "FASTA file" &= argPos 1 
+                      -- } 
 
 -- to be removed
 -- qseq = "STVWACIKLMAACDDEADGHSTVMMPQRRDDIKLMNPQSTVWYAGEADGE"
@@ -63,12 +64,16 @@ popSearch searches q = minimum $ (parMap rseq) (\s -> s q) searches
 
 newRandoms s = randoms $ mkStdGen s
 
-main = do sargs <- cmdArgs smurfargs
-          (header, hmm, md) <- parse $ hmmPlusFile sargs
+main = do argv <- getArgs
+          (searchParams, files) <- getOpts argv
+          let hmmPlusFile = hmmPlusF files
+          let fastaFile = fastaF files
+          (header, hmm, md) <- parse $ hmmPlusFile
           rgn <- getStdGen
-          querySeqs <- readFasta $ fastaFile sargs
-          secPred <- getSecondary $ fastaFile sargs
-          let searchParams = searchP { secPreds = Just secPred }
+          querySeqs <- readFasta $ fastaFile
+          secPred <- getSecondary $ fastaFile
+          -- let searchParams = searchP { secPreds = Just secPred } 
+          -- let searchParams = searchP { secPreds = Just secPred } 
           -- putStrLn $ show $ getBetaStrands header 
           -- putStrLn $ show $ viterbi (False, False) Constants.amino query hmm 
           -- putStrLn $ temp hmm 

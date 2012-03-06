@@ -5,6 +5,7 @@ import qualified Data.Vector as V
 import System.Random (mkStdGen, Random, random, randomR, randoms, StdGen)
 
 import Beta
+import HmmPlus
 import NonUniform
 import PsiPred
 import StochasticSearch
@@ -12,16 +13,19 @@ import Viterbi
 
 import Debug.Trace (trace)
 
-initialGuess :: Seed -> QuerySequence -> [BetaStrand] -> SearchGuess
-initialGuess seed qs betas = initialGuess' betas 0 $ mkStdGen seed
+
+type InitialGuesser = HMM -> [SSPrediction] -> Seed -> QuerySequence -> [BetaStrand] -> SearchGuess
+
+initialGuess :: InitialGuesser
+initialGuess _ _ seed qs betas = initialGuess' betas 0 $ mkStdGen seed
   where initialGuess' :: [BetaStrand] -> Int -> StdGen -> SearchGuess
         initialGuess' [] _ _ = []
         initialGuess' (b:bs) lastGuess gen = pos : initialGuess' bs (pos + len b) gen'
           where (pos, gen') = randomR (lastGuess, betaSum) gen
                 betaSum = V.length qs - (foldr (+) 0 $ map len (b:bs))
 
-geoInitialGuess :: Seed -> QuerySequence -> [BetaStrand] -> SearchGuess
-geoInitialGuess seed qs betas = initialGuess' betas 0 $ mkStdGen seed
+geoInitialGuess :: InitialGuesser
+geoInitialGuess _ _ seed qs betas = initialGuess' betas 0 $ mkStdGen seed
   where initialGuess' :: [BetaStrand] -> Int -> StdGen -> SearchGuess
         initialGuess' [] _ _ = []
         initialGuess' (b:bs) lastGuess gen = pos : initialGuess' bs (pos + len b) gen'
@@ -35,22 +39,8 @@ geoInitialGuess seed qs betas = initialGuess' betas 0 $ mkStdGen seed
                         $ take (betaSum - lastGuess)
                         $ map (** 1) ([1.0, 2.0..] :: [Double])) :: [Int]
 
--- predInitialGuess :: [SSPrediction] -> Seed -> QuerySequence -> [BetaStrand] -> SearchGuess 
--- predInitialGuess preds seed qs betas = initialGuess' betas 0 $ mkStdGen seed 
-  -- where initialGuess' :: [BetaStrand] -> Int -> StdGen -> SearchGuess 
-        -- initialGuess' [] _ _ = [] 
-        -- initialGuess' (b:bs) lastGuess gen = pos : initialGuess' bs (pos + len b) gen' 
-          -- where pos = head rand 
-                -- betaSum = V.length qs - (foldr (+) 0 $ map len (b:bs)) 
-                -- (seed, gen') = random gen 
---  
-                -- rand = randomsDist (mkStdGen seed) 
-                        -- $ take (betaSum - lastGuess) 
-                        -- $ drop (lastGuess - 1) 
-                        -- $ map (\p -> (residueNum p, beta_score p)) preds 
-
-predInitialGuess :: [SSPrediction] -> Seed -> QuerySequence -> [BetaStrand] -> SearchGuess
-predInitialGuess preds seed qs betas = initialGuess' $ randoms $ mkStdGen seed
+predInitialGuess :: InitialGuesser
+predInitialGuess _ preds seed qs betas = initialGuess' $ randoms $ mkStdGen seed
   where initialGuess' :: [Int] -> SearchGuess
         initialGuess' [] = error "IMPOSSIBLE!"
         initialGuess' (r:rs) = trace ((show guess) ++ " --- " ++ (show $ checkGuess betas guess)) $ if checkGuess betas guess then guess else initialGuess' rs
@@ -58,6 +48,14 @@ predInitialGuess preds seed qs betas = initialGuess' $ randoms $ mkStdGen seed
 
 genGuess :: (Random r, Fractional r, Ord r) => Seed -> [(Int, r)] -> Int -> SearchGuess
 genGuess seed dist n = DL.sort $ take n $ randomsDist (mkStdGen seed) dist
+
+projInitialGuess :: InitialGuesser
+projInitialGuess hmm _ seed qs betas = initialGuess' betas 0
+  where initialGuess' [] _ = []
+        initialGuess' (b:bs) lastPos = g : initialGuess' bs pos
+          where g = lastPos + (ceiling $ (fromIntegral pos) / (fromIntegral f))
+                f = ceiling $ (fromIntegral $ V.length qs) / (fromIntegral $ V.length hmm)
+                pos = resPosition $ head $ residues b
 
 checkGuess :: [BetaStrand] -> SearchGuess -> Bool
 checkGuess [] [] = True

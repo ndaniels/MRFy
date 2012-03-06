@@ -7,6 +7,7 @@ import Debug.Trace (trace)
 
 import Beta
 import Constants
+import HmmPlus
 import SearchStrategy
 import StochasticSearch
 import Viterbi
@@ -18,15 +19,15 @@ ss = SearchStrategy { accept = accept'
                     , initialize = initialize'
                     }
 
-initialize' :: SearchParameters -> Seed -> QuerySequence -> [BetaStrand] -> [SearchGuess]
-initialize' searchP seed query betas = [initialGuess seed query betas]
+initialize' :: HMM -> SearchParameters -> Seed -> QuerySequence -> [BetaStrand] -> [SearchGuess]
+initialize' hmm searchP seed query betas = [initialGuess hmm (getSecPreds searchP) seed query betas]
 
-accept' :: SearchParameters -> Seed -> [Score] -> Age -> Bool
+accept' :: SearchParameters -> Seed -> History -> Age -> Bool
 accept' _ _ [] _ = error "go away"
 accept' _ _ [s1] _ = True
-accept' _ _ (s1:s2:scores) _ = s1 < s2
+accept' _ _ (s1:s2:scores) _ = fst s1 < fst s2
 
-terminate' :: SearchParameters -> [Score] -> Age -> Bool
+terminate' :: SearchParameters -> History -> Age -> Bool
 terminate' searchP scores age = showMe $ not $ age < (generations searchP)
   where showMe = if not $ (10.0 * ((fromIntegral age) / (fromIntegral (generations searchP)))) `elem` [1.0..10.0] then
                    id

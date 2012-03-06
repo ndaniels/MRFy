@@ -39,6 +39,7 @@ import Beta
 data SearchParameters = SearchParameters { strategy :: SearchStrategy
                                          , generations :: Int
                                          , multiStartPopSize :: Int
+                                         , verbose :: Bool
                                          , populationSize :: Maybe Int
                                          , initialTemperature :: Maybe Double
                                          , coolingFactor :: Maybe Double
@@ -49,17 +50,22 @@ data SearchParameters = SearchParameters { strategy :: SearchStrategy
 
 getSearchParm searchP parm = maybe (error "Not a valid parameter.") id (parm searchP)
 
+getSecPreds :: SearchParameters -> [SSPrediction]
+getSecPreds searchP = case secPreds searchP of
+                        Just preds -> preds
+                        Nothing -> []
+
 type SearchGuess = [Int] -- list of *starting* residue positions of each beta strand
 type SearchSolution = (Score, SearchGuess)
 type Temperature = Double
 type Seed = Int
 type Age = Int
-type History = [Score]
+type History = [(Score, Age)]
 type Scorer = QuerySequence -> [BetaStrand] -> SearchGuess -> SearchSolution
 data SearchStrategy = SearchStrategy { accept :: SearchParameters -> Seed -> History -> Age -> Bool
                                      , terminate :: SearchParameters -> History -> Age -> Bool
                                      , mutate :: SearchParameters -> Seed -> QuerySequence -> Scorer -> [BetaStrand] -> [SearchSolution] -> [SearchSolution]
-                                     , initialize :: SearchParameters -> Seed -> QuerySequence -> [BetaStrand]-> [SearchGuess]
+                                     , initialize :: HMM -> SearchParameters -> Seed -> QuerySequence -> [BetaStrand]-> [SearchGuess]
                                      }
 
 
@@ -68,7 +74,7 @@ search :: QuerySequence -> HMM -> [BetaStrand] -> SearchParameters -> [Seed] -> 
 search query hmm betas searchP seeds = search' (tail seeds) initialGuessScore [] 0
   where initialGuessScore = map (score hmm query betas) initialGuess
 
-        initialGuess = initialize strat searchP (head seeds) query betas
+        initialGuess = (initialize strat) hmm searchP (head seeds) query betas
 
         strat = strategy searchP
         search' :: [Seed] -> [SearchSolution] -> History -> Age -> (SearchSolution, History)
@@ -78,7 +84,7 @@ search query hmm betas searchP seeds = search' (tail seeds) initialGuessScore []
               -- score = trace (show initialGuess) $ fst $ minimum newPop 
               -- score = trace (show $ DL.sort $ map fst newPop) $ fst $ minimum newPop 
               -- newHist = trace ("New score: " DL.++ (show score) DL.++ "--- History: " DL.++ (show hist)) $ score : hist 
-              newHist = score : hist
+              newHist = (score, age) : hist
             in if accept' newHist age then
                   if terminate' newHist age then
                     (minimum newPop, newHist)

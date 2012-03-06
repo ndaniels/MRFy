@@ -19,10 +19,10 @@ ss = SearchStrategy { accept = accept'
                     , initialize = initialize RHC.ss
                     }
 
-accept' :: SearchParameters -> Seed -> [Score] -> Age -> Bool
+accept' :: SearchParameters -> Seed -> History -> Age -> Bool
 accept' _ _ [] _ = error "go away"
-accept' _ _ [s1] _ = True
-accept' searchP seed (s1:s2:scores) age = boltzmann s1 s2 >= (p :: Double)
+accept' _ _ [(s1, _)] _ = True
+accept' searchP seed ((s1, _):(s2, _):scores) age = boltzmann s1 s2 >= (p :: Double)
   where (p, gen) = random (mkStdGen seed)
     
         boltzmann :: Score -> Score -> Double
