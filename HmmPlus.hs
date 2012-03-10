@@ -3,9 +3,9 @@
              DeriveDataTypeable, ScopedTypeVariables, NamedFieldPuns #-}
 module HmmPlus 
   ( SmurfHeader
-  , HMMState
   
   , HMM(..)
+  , HMMState(..)
   , HmmNode(..)
   , Direction(..)
   , StateAcc
@@ -28,6 +28,7 @@ where
 
 import Debug.Trace (trace)
 
+import Data.Ix
 import Language.Pads.Padsc hiding (position, head)
 import Language.Pads.GenPretty
 import Control.Monad
@@ -153,13 +154,13 @@ ws = REd "[\t ]+|$" " "
   -- note that 0 is for a match, 1 for insertion, and 2 for a deletion
   -- 
   data TransitionProbabilitiesP = TransitionProbabilitiesP {
-      m_mP :: TransitionProbability <|(0, 0)|>, ws,
-      m_iP :: TransitionProbability <|(0, 1)|>, ws,
-      m_dP :: TransitionProbability <|(0, 2)|>, ws,
-      i_mP :: TransitionProbability <|(1, 0)|>, ws,
-      i_iP :: TransitionProbability <|(1, 1)|>, ws,
-      d_mP :: TransitionProbability <|(2, 0)|>, ws,
-      d_dP :: TransitionProbability <|(2, 2)|>
+      m_mP :: PTransitionProbability <|(0, 0)|>, ws,
+      m_iP :: PTransitionProbability <|(0, 1)|>, ws,
+      m_dP :: PTransitionProbability <|(0, 2)|>, ws,
+      i_mP :: PTransitionProbability <|(1, 0)|>, ws,
+      i_iP :: PTransitionProbability <|(1, 1)|>, ws,
+      d_mP :: PTransitionProbability <|(2, 0)|>, ws,
+      d_dP :: PTransitionProbability <|(2, 2)|>
   }
   
   type TransitionDescription = [ StringSE ws | ws] terminator (Try EOR)
@@ -209,13 +210,13 @@ ws = REd "[\t ]+|$" " "
                       | NonZero Double
                       
 
-  data TransitionProbability (fState::HMMState, tState::HMMState) = 
-       TransitionProbability { logProbability::LogProbability
-                             , fromState = value fState::HMMState
-                             , toState = value tState::HMMState
-                             }
+  data PTransitionProbability (fState::PHMMState, tState::PHMMState) = 
+       PTransitionProbability { pLogProbability :: LogProbability
+                              , pFromState = value fState :: PHMMState
+                              , pToState = value tState :: PHMMState
+                              }
 
-  type HMMState = Int
+  type PHMMState = Int
                       
   -- do we want these to be types or newtypes? newtype enforces type checking
   -- but might prove cumbersome in the algorithm.
@@ -293,6 +294,10 @@ data HmmNode =
              }
              deriving (Show)
 
+data HMMState = Mat | Ins | Del
+                | Beg | End | BMat
+                deriving (Show, Ord, Eq, Enum, Ix)
+
 data TransitionProbabilities = 
      TransitionProbabilities { m_m :: TransitionProbability
                              , m_i :: TransitionProbability
@@ -305,6 +310,12 @@ data TransitionProbabilities =
                              , m_e :: TransitionProbability
                              }
                              deriving (Show)
+
+data TransitionProbability = 
+     TransitionProbability { logProbability :: LogProbability
+                           , fromState :: HMMState
+                           , toState :: HMMState
+                           } deriving (Show)
 
 -- I don't think this is completely needed, but I feel more comfortable
 -- mirroring the Pads types at the moment.
@@ -325,7 +336,7 @@ getHmmNodes hmm = divOccSum
         divBySum :: HmmNode -> HmmNode
         divBySum node = node { transitions = otran { b_m = newBM } }
           where otran = transitions node
-                newBM = mkDefTransProb newOccProb 3 0
+                newBM = mkDefTransProb newOccProb Beg Mat
                 newOccProb = NonZero $ 
                                (-(log (exp (-(logst b_m node)) / occSum)))
 
@@ -351,21 +362,35 @@ getHmmNodes hmm = divOccSum
                             , transitions = newTrans
                             }
           where otran = transitionsP n
-                m_eDef = mkDefTransProb LogZero 0 4
-                b_mDef = mkDefTransProb LogZero 3 0
-                newTrans = TransitionProbabilities { m_m = m_mP otran
-                                                   , m_i = m_iP otran
-                                                   , m_d = m_dP otran
-                                                   , i_m = i_mP otran
-                                                   , i_i = i_iP otran
-                                                   , d_m = d_mP otran
-                                                   , d_d = d_dP otran
+                m_eDef = mkDefTransProb LogZero Mat End
+                b_mDef = mkDefTransProb LogZero Beg Mat
+                newTrans = TransitionProbabilities { m_m = convTrans $ m_mP otran
+                                                   , m_i = convTrans $ m_iP otran
+                                                   , m_d = convTrans $ m_dP otran
+                                                   , i_m = convTrans $ i_mP otran
+                                                   , i_i = convTrans $ i_iP otran
+                                                   , d_m = convTrans $ d_mP otran
+                                                   , d_d = convTrans $ d_dP otran
                                                    , b_m = b_mDef
                                                    , m_e = m_eDef
                                                    }
                 convertEmissions emissions = emissions ++ [-(log xEmission)]
                   where xEmission = foldr (+) 0 (map xEmission' (zip (V.toList bgFreqs) emissions))
                         xEmission' (f, e)= f * exp (- e)
+
+        convTrans :: PTransitionProbability -> TransitionProbability
+        convTrans ptrans =
+          TransitionProbability { logProbability = pLogProbability ptrans
+                                , fromState = intToAlg $ pFromState ptrans
+                                , toState = intToAlg $ pToState ptrans
+                                }
+          where intToAlg state
+                  | state == 0 = Mat
+                  | state == 1 = Ins
+                  | state == 2 = Del
+                  | state == 3 = Beg
+                  | state == 4 = End
+                  | state == 5 = BMat
 
         mkDefTransProb :: LogProbability -> HMMState -> HMMState 
                           -> TransitionProbability
@@ -380,7 +405,7 @@ getHmmNodes hmm = divOccSum
         -- M_E_k = M_D_k + S_k+1, S_k = S_k+1 + D_D_k
         addMatchEnd :: HmmNode -> (Double, [HmmNode]) -> (Double, [HmmNode])
         addMatchEnd n (sk, nodes) = (sk', n':nodes)
-          where n' = n { transitions = otran { m_e = mkDefTransProb mek 0 4 } }
+          where n' = n { transitions = otran { m_e = mkDefTransProb mek Mat End } }
                 otran = transitions n
                 mek = if null nodes then 
                         NonZero 0
@@ -409,7 +434,7 @@ getHmmNodes hmm = divOccSum
                                  , V.snoc nodes n'
                                  )
           where n' = n { transitions = ntran }
-                ntran = otran { b_m = mkDefTransProb occProb 3 0 }                
+                ntran = otran { b_m = mkDefTransProb occProb Beg Mat }
                 otran = transitions n
                 occProb
                   | i == 0 = NonZero $ 

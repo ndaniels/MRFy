@@ -119,7 +119,7 @@ dupeElements (x:xs) = x : x : (dupeElements xs)
 statePath :: HMM -> QuerySequence -> [BetaStrand] -> SearchSolution -> StatePath
 statePath hmm query betas (_, guesses) = foldr (++) [] $ map viterbiOrBeta $ DL.zip4 hmmAlignTypes (map traceid miniHmms) miniQueries $ dupeElements [0..]
   where viterbiOrBeta :: (BetaOrViterbi, HMM, QuerySequence, Int) -> StatePath
-        viterbiOrBeta (Beta, ns, qs, i) = take (len (betas !! i)) $ repeat bmat
+        viterbiOrBeta (Beta, ns, qs, i) = take (len (betas !! i)) $ repeat BMat
         viterbiOrBeta (Viterbi, ns, qs, i) = snd $ viterbi consPath (False, False) Constants.amino qs ns
 
         -- traceid hmm = trace (show (V.map nodeNum hmm)) $ id hmm 

@@ -38,7 +38,7 @@ import Debug.Trace (trace)
 
 showAlignment :: HMM -> [BetaStrand] -> QuerySequence -> StatePath -> Int -> Alphabet -> String
 showAlignment hmm betas query path len alpha = 
-  niceify $ showA (map (getResidue alpha) $ V.toList query) path 1 0 [] [] []
+  niceify $ showA (map (getResidue alpha) $ V.toList query) path 1 Mat [] [] []
   where model i = alpha V.! ai
           where (_, ai, _) = V.foldl minWithInd 
                                      (0, 0, maxProb) 
@@ -60,14 +60,14 @@ showAlignment hmm betas query path len alpha =
                                   , reverse $ map toUpper oq
                                   )
         showA [] (p:ps) i lastp oh om oq
-          | p == del = showA [] ps (i+1) lastp ((model i):oh) (' ':om) ('-':oq)
+          | p == Del = showA [] ps (i+1) lastp ((model i):oh) (' ':om) ('-':oq)
           | otherwise = error $ (show p) ++ " is not a delete state"
         showA (q:qs) (p:ps) i lastp oh om oq -- 'i' should be the node number
-          | p == mat = showA qs ps (i+1) p ((model i):oh) ('|':om) (q:oq)
-          | p == bmat = showA qs ps (i+1) p ((model i):oh) ('B':om) (q:oq)
-          | p == ins || p == beg || p == end = 
+          | p == Mat = showA qs ps (i+1) p ((model i):oh) ('|':om) (q:oq)
+          | p == BMat = showA qs ps (i+1) p ((model i):oh) ('B':om) (q:oq)
+          | p == Ins || p == Beg || p == End = 
               showA qs ps i p ('-':oh) (' ':om) (q:oq)
-          | p == del = showA (q:qs) ps (i+1) p ((model i):oh) (' ':om) ('-':oq)
+          | p == Del = showA (q:qs) ps (i+1) p ((model i):oh) (' ':om) ('-':oq)
 
         -- Strictly for cutting up the strings and displaying them nicely.
         -- Note: Assumes each string is in the correct order and that
