@@ -117,11 +117,11 @@ viterbi pathCons (hasStart, hasEnd) alpha query hmm =
                                          , trans i_m Ins -- match came from insert
                                          , trans d_m Del -- match came from delete
                                          ]
-          where trans transFn prevstate =
-                  (score + tProb + eProb, pathCons Mat path)
-                  where (score, path) = viterbi' prevstate (j - 1) (i - 1)
-                        eProb = emissionProb (matchEmissions $ hmm ! j) (res i)
-                        tProb = transProb hmm (j - 1) transFn
+          where eProb = emissionProb (matchEmissions $ hmm ! j) (res i)
+                tProb = transProb hmm (j - 1)
+                trans transFn prevstate =
+                  let (score, path) = viterbi' prevstate (j - 1) (i - 1)
+                  in  (score + tProb transFn + eProb, pathCons Mat path)
 
         -- match came from start                                            
         -- consume an observation but not a node
