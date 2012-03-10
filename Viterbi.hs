@@ -65,6 +65,40 @@ viterbi pathCons (hasStart, hasEnd) alpha query hmm =
 
         res i = query ! i
 
+        eProb j i = emissionProb (matchEmissions $ hmm ! j) (res i)
+        tProb f j = transProb hmm j f
+        edge :: State -> State -> StateAcc
+        edge Mat Mat = m_m
+        edge Ins Mat = i_m
+        edge Del Mat = d_m
+        edge _   _   = error "unimplemnted or disallowed HMM edge"
+
+        infix /+/
+
+        type Result = (Score, StatePath)
+
+        (/+/) :: Score -> Result -> Result
+        snoc  :: Result -> State -> Result
+
+        score' /+/ (score, path) = (score' + score, path)
+        snoc (score, path) state = (score, state `pathCons` path)
+
+        -- @ start viterbi.tex -8
+        vpaper Mat j i = (eProb j i /+/ minimum [ from Mat
+                                                , from Ins
+                                                , from Del
+                                                ]) `snoc` Mat
+          where from prev = tProb (edge prev Mat) (j-1) /+/
+                              viterbi' prevstate (j - 1) (i - 1)
+        -- @ end viterbi.tex
+
+        --------------------------------------------------------
+        vpaper' Mat j i =
+          (eProb j i /+/ minimum [from Mat, from Ins, from Del]) 
+                                                       `snoc` Mat
+         where from prev = tProb (edge prev Mat) (j-1) /+/
+                               viterbi' prevstate (j - 1) (i - 1)
+
         -- node 1 and zeroth observation
         viterbi'' Mat 1 0 = ( transProb hmm 0 m_m +
                               emissionProb (matchEmissions $ hmm ! 1) (res 0)
@@ -113,6 +147,8 @@ viterbi pathCons (hasStart, hasEnd) alpha query hmm =
         -- consume an observation AND a node
         -- I think only this equation will change when
         -- we incorporate the begin-to-match code
+        viterbi'' Mat j i = vpaper Mat j i
+
         viterbi'' Mat j i = DL.minimum $ [ trans m_m Mat -- match came from match
                                          , trans i_m Ins -- match came from insert
                                          , trans d_m Del -- match came from delete
