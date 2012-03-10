@@ -113,18 +113,15 @@ viterbi pathCons (hasStart, hasEnd) alpha query hmm =
         -- consume an observation AND a node
         -- I think only this equation will change when
         -- we incorporate the begin-to-match code
-        viterbi'' Mat j i = DL.minimum $ [ transition m_m Mat -- match came from match
-                                         , transition i_m Ins -- match came from insert
-                                         , transition d_m Del -- match came from delete
+        viterbi'' Mat j i = DL.minimum $ [ trans m_m Mat -- match came from match
+                                         , trans i_m Ins -- match came from insert
+                                         , trans d_m Del -- match came from delete
                                          ]
-                                         DL.++ (if hasStart then [transition b_m Beg] else [])
-          where transition trans prevstate =
-                  if hasStart && prevstate == Beg then
-                    (transProb hmm (j - 1) trans + eProb, [Mat])
-                  else
-                    (score + transProb hmm (j - 1) trans + eProb, pathCons Mat path)
+          where trans transFn prevstate =
+                  (score + tProb + eProb, pathCons Mat path)
                   where (score, path) = viterbi' prevstate (j - 1) (i - 1)
                         eProb = emissionProb (matchEmissions $ hmm ! j) (res i)
+                        tProb = transProb hmm (j - 1) transFn
 
         -- match came from start                                            
         -- consume an observation but not a node
