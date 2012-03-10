@@ -25,8 +25,8 @@ type StatePath = [ HMMState ]
 -- end = 4 :: HMMState 
 -- bmat = 5 :: HMMState 
 
-
 type ScorePathCons a = a -> [a] -> [a]
+type Result = (Score, StatePath)
 
 consPath :: ScorePathCons a
 consPath x xs = x:xs
@@ -37,7 +37,7 @@ consNoPath _ _ = []
 -- hasStart and hasEnd are (for now) for model-relative local alignment.
 -- when we want to consider sequence-relative local alignment, we
 -- will also need to consider better of seqLocal vs. modLocal
-viterbi :: ScorePathCons HMMState -> (Bool, Bool) -> Alphabet -> QuerySequence -> HMM -> (Score, StatePath)
+viterbi :: ScorePathCons HMMState -> (Bool, Bool) -> Alphabet -> QuerySequence -> HMM -> Result
 viterbi pathCons (hasStart, hasEnd) alpha query hmm =
   if numNodes == 0 then
     (0.0, [])
@@ -67,7 +67,7 @@ viterbi pathCons (hasStart, hasEnd) alpha query hmm =
 
         eProb j i = emissionProb (matchEmissions $ hmm ! j) (res i)
         tProb f j = transProb hmm j f
-        edge :: State -> State -> StateAcc
+        edge :: HMMState -> HMMState -> StateAcc
         edge Mat Mat = m_m
         edge Ins Mat = i_m
         edge Del Mat = d_m
@@ -75,29 +75,27 @@ viterbi pathCons (hasStart, hasEnd) alpha query hmm =
 
         infix /+/
 
-        type Result = (Score, StatePath)
-
         (/+/) :: Score -> Result -> Result
-        snoc  :: Result -> State -> Result
+        snoc  :: Result -> HMMState -> Result
 
         score' /+/ (score, path) = (score' + score, path)
         snoc (score, path) state = (score, state `pathCons` path)
 
         -- @ start viterbi.tex -8
-        vpaper Mat j i = (eProb j i /+/ minimum [ from Mat
+        vpaper Mat j i = (eProb j i /+/ DL.minimum [ from Mat
                                                 , from Ins
                                                 , from Del
                                                 ]) `snoc` Mat
           where from prev = tProb (edge prev Mat) (j-1) /+/
-                              viterbi' prevstate (j - 1) (i - 1)
+                              viterbi' prev (j - 1) (i - 1)
         -- @ end viterbi.tex
 
         --------------------------------------------------------
         vpaper' Mat j i =
-          (eProb j i /+/ minimum [from Mat, from Ins, from Del]) 
+          (eProb j i /+/ DL.minimum [from Mat, from Ins, from Del]) 
                                                        `snoc` Mat
          where from prev = tProb (edge prev Mat) (j-1) /+/
-                               viterbi' prevstate (j - 1) (i - 1)
+                               viterbi' prev (j - 1) (i - 1)
 
         -- node 1 and zeroth observation
         viterbi'' Mat 1 0 = ( transProb hmm 0 m_m +
