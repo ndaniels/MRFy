@@ -1,55 +1,49 @@
+STRATS=`echo SearchStrategies/*.hs`
+SRC=$STRATS Beta.hs Constants.hs HmmPlus.hs Main.hs Viterbi.hs \
+         StochasticSearch.hs SearchStrategy.hs \
+         Wrappers.hs ConstantsGen.hs
+
+TGT=smurf2
+CRUDOPTS= -hidir .crud -odir .crud
+OPTS= -fspec-constr-count=6
+
 all:V:
 	mkdir -p .crud
-	ghc -hidir .crud -odir .crud \
-			--make Beta.hs Constants.hs HmmPlus Main.hs Viterbi.hs \
-						 StochasticSearch.hs SearchStrategy.hs \
-						 SearchStrategies/*.hs \
-						 Wrappers.hs \
-						 ConstantsGen.hs \
+	ghc $OPTS $CRUDOPTS --make $SRC \
 			-O3 \
 			-threaded \
 			-rtsopts \
-			-o smurf2
+			-o $TGT
 
 optimize:V:
 	mkdir -p .crud
-	ghc -hidir .crud -odir .crud \
-			--make Beta.hs Constants.hs HmmPlus Main.hs Viterbi.hs \
-						 StochasticSearch.hs SearchStrategy.hs \
-						 SearchStrategies/*.hs \
-						 Wrappers.hs \
-						 ConstantsGen.hs \
+	ghc $OPTS $CRUDOPTS --make $SRC \
 			-O3 \
 			-fllvm \
-			-o smurf2
+			-o $TGT
 
+unopt:V: unoptimize
 unoptimize:V:
 	mkdir -p .crud
-	ghc -hidir .crud -odir .crud \
-			--make Beta.hs Constants.hs HmmPlus Main.hs Viterbi.hs \
-						 StochasticSearch.hs SearchStrategy.hs \
-						 SearchStrategies/*.hs \
-						 Wrappers.hs \
-						 ConstantsGen.hs \
-			-o smurf2
+	ghc $OPTS $CRUDOPTS --make $SRC -o $TGT
             
 profile:V:
     mkdir -p .crud
-    ghc -hidir .crud -odir .crud \
+    ghc $OPTS $CRUDOPTS \
         --make Main.hs -O3 -fforce-recomp \
          -rtsopts \
-         -o smurf2
-    ghc -hidir .crud -odir .crud \
+         -o $TGT
+    ghc $OPTS $CRUDOPTS \
         --make Main.hs -O3 -prof -fforce-recomp \
          -auto-all -caf-all -rtsopts -osuf p_o \
-         -o smurf2prof
+         -o ${TGT}prof
 
 tags:V:
 	hasktags *.hs
 
 clean:V: 
 	rm -rf .crud
-	rm smurf2
+	rm -f $TGT
 
-# note: to build profile: ghc --make Main.hs -O3 -rtsopts -o smurf2
-# then, ghc --make Main.hs -O3 -prof -auto-all -caf-all -rtsopts -osuf p_o -o smurf2
+# note: to build profile: ghc --make Main.hs -O3 -rtsopts -o $TGT
+# then, ghc --make Main.hs -O3 -prof -auto-all -caf-all -rtsopts -osuf p_o -o $TGT
