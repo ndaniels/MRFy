@@ -8,7 +8,7 @@ import qualified Data.List as DL
 
 import Beta
 import HmmPlus
-import Data.Vector
+import Data.Vector hiding (minimum, (++))
 import Constants
 
 type QuerySequence = Vector Int -- indices into Constants.amino
@@ -36,6 +36,9 @@ consPath x xs = x:xs
 
 consNoPath :: ScorePathCons a
 consNoPath _ _ = []
+
+type TProb = TransitionProbability
+type TProbs = TransitionProbabilities
 
 -- hasStart and hasEnd are (for now) for model-relative local alignment.
 -- when we want to consider sequence-relative local alignment, we
@@ -70,7 +73,9 @@ viterbi pathCons (hasStart, hasEnd) alpha query hmm =
 
         eProb j i = emissionProb (matchEmissions $ hmm ! j) (res i)
         tProb f j = transProb hmm j f
-        edge :: HMMState -> HMMState -> StateAcc
+        -- @ start edge.tex -8
+        edge :: HMMState -> HMMState -> (TProbs -> TProb)
+        -- @ end edge.tex
         edge Mat Mat = m_m
         edge Mat Ins = m_i
         edge Mat Del = m_d
@@ -80,7 +85,8 @@ viterbi pathCons (hasStart, hasEnd) alpha query hmm =
         edge Del Del = d_d
         edge Beg Mat = b_m
         edge Mat End = m_e
-        edge _   _   = error "unimplemnted or disallowed HMM edge"
+        edge f   t   = error $ "HMM edge " ++ show f ++ " -> " ++ show t ++
+                               "is allowed in the Plan7 architecture"
 
         insertProb j i = emissionProb (insertionEmissions $ hmm ! j) (res i)
         matchProb  j i = emissionProb (matchEmissions     $ hmm ! j) (res i)
