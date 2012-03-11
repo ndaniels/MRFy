@@ -1,3 +1,20 @@
+1. rename SearchGuess to Placement
+2. pull [BetaStrand] out of SearchStrategy and capture it in a closure
+
+
+try
+
+  data Scored a = Scored a Score
+  (/+/) :: Score -> Scored a -> Scored a
+  x /+/ Scored a y = Scored a (x + y)
+
+  instance Functor Scored where
+     fmap f (Scored a x) = Scored (f a) x
+
+  scoremin :: [Scored a] -> Scored a
+  scoremax :: [Scored a] -> Scored a
+
+
 Use fake inheritance in the search strategy modules
 
 Memoize viterbi at top level

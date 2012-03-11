@@ -28,6 +28,9 @@ type StatePath = [ HMMState ]
 type ScorePathCons a = a -> [a] -> [a]
 type Result = (Score, StatePath)
 
+unscore :: Scored a -> (Score, a)
+unscore (Scored a x) = (x, a)
+
 consPath :: ScorePathCons a
 consPath x xs = x:xs
 
@@ -73,70 +76,53 @@ viterbi pathCons (hasStart, hasEnd) alpha query hmm =
         edge Del Mat = d_m
         edge _   _   = error "unimplemnted or disallowed HMM edge"
 
-        infix /+/
+        insertProb j i = emissionProb (insertionEmissions $ hmm ! j) (res i)
+        matchProb  j i = emissionProb (matchEmisssios     $ hmm ! j) (res i)
 
-        (/+/) :: Score -> Result -> Result
-        snoc  :: Result -> HMMState -> Result
-
-        score' /+/ (score, path) = (score' + score, path)
-        snoc (score, path) state = (score, state `pathCons` path)
-
-        -- @ start viterbi.tex -8
-        vpaper Mat j i = (eProb j i /+/ DL.minimum [ from Mat
-                                                , from Ins
-                                                , from Del
-                                                ]) `snoc` Mat
-          where from prev = tProb (edge prev Mat) (j-1) /+/
-                              viterbi' prev (j - 1) (i - 1)
-        -- @ end viterbi.tex
+        disallowed = Scored [] maxProb
 
         --------------------------------------------------------
-        vpaper' Mat j i =
-          (eProb j i /+/ DL.minimum [from Mat, from Ins, from Del]) 
-                                                       `snoc` Mat
+        -- @ start viterbi.tex -8
+        vpaper' Mat j i = fmap (pathCons Mat)
+          (eProb j i /+/ minimum [from Mat, from Ins, from Del]) 
          where from prev = tProb (edge prev Mat) (j-1) /+/
-                               viterbi' prev (j - 1) (i - 1)
+                                       viterbi' prev (j-1) (i-1)
+        -- @ end viterbi.tex
 
         -- node 1 and zeroth observation
-        viterbi'' Mat 1 0 = ( transProb hmm 0 m_m +
-                              emissionProb (matchEmissions $ hmm ! 1) (res 0)
-                            , [Mat]
-                            ) -- we came from 'begin'
-        viterbi'' Ins 1 0 = (maxProb, []) -- not allowed
-        viterbi'' Del 1 0 = (maxProb, []) -- not allowed
+        viterbi'' Mat 1 0 = Scored [Mat] (tProb m_m 0 + matchProb 1 0)
+                            --           ^^^^^^^^^^^^^ is this right?  ---NR
+                            -- we came from 'begin'
+        viterbi'' Ins 1 0 = disallowed
+        viterbi'' Del 1 0 = disallowed
 
         -- node 0 and zeroth observation, base of self-insert
-        viterbi'' Mat 0 0 = (maxProb, []) -- not allowed
-        viterbi'' Ins 0 0 = ( transProb hmm 0 m_i +
-                              emissionProb (insertionEmissions $ hmm ! 0) (res 0)
-                            , [Ins]
-                            )
-        viterbi'' Del 0 0 = (maxProb, []) -- not allowed
+        viterbi'' Mat 0 0 = disallowed
+        viterbi'' Ins 0 0 = Scored [Ins] (tProb m_i 0 + insertProb 0 0)
+        viterbi'' Del 0 0 = disallowed
 
         -- node 0 and no observations
-        viterbi'' Mat 0 (-1) = (transProb hmm 0 m_m, [])
-        viterbi'' Ins 0 (-1) = (maxProb, [])
-        viterbi'' Del 0 (-1) = (maxProb, [])
+        viterbi'' Mat 0 (-1) = Scored [] (tProb m_m 0)
+        viterbi'' Ins 0 (-1) = disallowed
+        viterbi'' Del 0 (-1) = disallowed
 
         -- node 0 but not zeroth observation
-        viterbi'' Mat 0 i = (maxProb,[]) -- not allowed
-        viterbi'' Ins 0 i = ( transProb hmm 0 i_i +
-                              emissionProb (insertionEmissions $ hmm ! 0) (res i) +
-                              score
-                            , pathCons Ins path
-                            ) -- possible self-insert cycle
-          where (score, path) = viterbi' Ins 0 (i - 1)
-        viterbi'' Del 0 i = (maxProb, []) -- not allowed
-        viterbi'' End 0 i = (transProb hmm 0 m_e, [Mat])
+        viterbi'' Mat 0 i = disallowed
+        viterbi'' Ins 0 i = fmap (pathCons Ins) $
+                            (tProb i_i 0 + insertProb 0 i) /+/ viterbi' Ins 0 (i-1)
+                            -- possible self-insert cycle
+
+        viterbi'' Del 0 i = disallowed
+        viterbi'' End 0 i = Scored [Mat] (tProb m_e 0)
 
         -- node 1 and no more observations (came from begin)
-        viterbi'' Mat 1 (-1) = (maxProb, []) -- not allowed
-        viterbi'' Ins 1 (-1) = (maxProb, []) -- not allowed
-        viterbi'' Del 1 (-1) = (transProb hmm 0 m_d, [Del]) -- came from begin
+        viterbi'' Mat 1 (-1) = disallowed
+        viterbi'' Ins 1 (-1) = disallowed
+        viterbi'' Del 1 (-1) = Scored [Del] (transProb hmm 0 m_d) -- came from begin
 
         -- not node 1 yet, but not more observations (came from delete)
-        viterbi'' Mat j (-1) = (maxProb, []) -- not allowed
-        viterbi'' Ins j (-1) = (maxProb, []) -- not allowed
+        viterbi'' Mat j (-1) = disallowed
+        viterbi'' Ins j (-1) = disallowed
         viterbi'' Del j (-1) = ( transProb hmm (j - 1) d_d + score
                                , pathCons Del path
                                ) -- came from delete
@@ -145,17 +131,7 @@ viterbi pathCons (hasStart, hasEnd) alpha query hmm =
         -- consume an observation AND a node
         -- I think only this equation will change when
         -- we incorporate the begin-to-match code
-        viterbi'' Mat j i = vpaper Mat j i
-
-        viterbi'' Mat j i = DL.minimum $ [ trans m_m Mat -- match came from match
-                                         , trans i_m Ins -- match came from insert
-                                         , trans d_m Del -- match came from delete
-                                         ]
-          where eProb = emissionProb (matchEmissions $ hmm ! j) (res i)
-                tProb = transProb hmm (j - 1)
-                trans transFn prevstate =
-                  let (score, path) = viterbi' prevstate (j - 1) (i - 1)
-                  in  (score + tProb transFn + eProb, pathCons Mat path)
+        viterbi'' Mat j i = vpaper' Mat j i
 
         -- match came from start                                            
         -- consume an observation but not a node
@@ -198,3 +174,10 @@ transProb :: HMM -> Int -> StateAcc -> Double
 transProb hmm nodenum state = case logProbability $ state (transitions (hmm ! nodenum)) of
                                    NonZero p -> p
                                    LogZero -> maxProb
+
+-- @ start vscore.tex
+data Scored a = Scored a Score
+(/+/) :: Score -> Scored a -> Scored a
+-- @ end vscore.tex
+infix /+/
+x /+/ Scored a y = Scored a (x + y)
