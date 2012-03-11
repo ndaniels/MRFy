@@ -77,14 +77,14 @@ viterbi pathCons (hasStart, hasEnd) alpha query hmm =
         edge _   _   = error "unimplemnted or disallowed HMM edge"
 
         insertProb j i = emissionProb (insertionEmissions $ hmm ! j) (res i)
-        matchProb  j i = emissionProb (matchEmisssios     $ hmm ! j) (res i)
+        matchProb  j i = emissionProb (matchEmissions     $ hmm ! j) (res i)
 
         disallowed = Scored [] maxProb
 
         --------------------------------------------------------
         -- @ start viterbi.tex -8
         vpaper' Mat j i = fmap (pathCons Mat)
-          (eProb j i /+/ minimum [from Mat, from Ins, from Del]) 
+          (eProb j i /+/ DL.minimum [from Mat, from Ins, from Del]) 
          where from prev = tProb (edge prev Mat) (j-1) /+/
                                        viterbi' prev (j-1) (i-1)
         -- @ end viterbi.tex
