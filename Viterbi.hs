@@ -123,42 +123,40 @@ viterbi pathCons (hasStart, hasEnd) alpha query hmm =
         -- not node 1 yet, but not more observations (came from delete)
         viterbi'' Mat j (-1) = disallowed
         viterbi'' Ins j (-1) = disallowed
-        viterbi'' Del j (-1) = ( transProb hmm (j - 1) d_d + score
-                               , pathCons Del path
-                               ) -- came from delete
-          where (score, path) = viterbi' Del (j - 1) (-1)
+        viterbi'' Del j (-1) = fmap (pathCons Del) $
+                               tProb d_d (j - 1) /+/ viterbi' Del (j - 1) (-1)
 
         -- consume an observation AND a node
         -- I think only this equation will change when
         -- we incorporate the begin-to-match code
         viterbi'' Mat j i = vpaper' Mat j i
 
+        -- vpaper' Mat j i = fmap (pathCons Mat) 
+          -- (eProb j i /+/ DL.minimum [from Mat, from Ins, from Del])  
+         -- where from prev = tProb (edge prev Mat) (j-1) /+/ 
+                                       -- viterbi' prev (j-1) (i-1) 
+
         -- match came from start                                            
         -- consume an observation but not a node
-        viterbi'' Ins j i = DL.minimum [ transition m_i Mat, transition i_i Ins ]
-          where transition trans prevstate =
-                  (score + transProb hmm j trans +
-                    emissionProb (insertionEmissions $ hmm ! j) (res i)
-                  , pathCons Ins path
-                  )
-                  where (score, path) = viterbi' prevstate j (i - 1)
+        viterbi'' Ins j i = fmap (pathCons Ins) $ eProb j i /+/
+                              DL.minimum [from Mat, from Ins]
+          where from prev = tProb (edge prev Ins) j /+/ viterbi' prev j (i - 1)
 
         -- consume a node but not an observation
-        viterbi'' Del j i = DL.minimum [ transition m_d Mat, transition d_d Del ]
-          where transition trans prevstate =
-                  (score + transProb hmm (j - 1) trans, pathCons Del path)
-                  where (score, path) = viterbi' prevstate (j - 1) i
+        viterbi'' Del j i = fmap (pathCons Del) $
+                              DL.minimum [from Mat, from Del]
+          where from prev = tProb (edge prev Del) (j - 1) /+/
+                              viterbi' prev (j - 1) i
 
-        viterbi'' End j i = DL.minimum $
+        viterbi'' End j i = fmap (pathCons End) $ DL.minimum $
                               if j >= 2 then
-                                [ transition m_e Mat, transition m_e End ]
+                                [from Mat, from End]
                               else
-                                [ transition m_e Mat ]
-          where transition trans prevstate =
-                  case prevstate of
-                    Mat -> (score + transProb hmm (j - 1) trans, pathCons End path)
-                    otherwise -> (score, pathCons End path)
-                  where (score, path) = viterbi' prevstate (j - 1) i
+                                [from Mat]
+          where from prev = case prev of
+                              Mat -> tProb (edge prev Mat) (j - 1) /+/
+                                       viterbi' prev (j - 1) i
+                              otherwise -> viterbi' prev (j - 1) i
                         -- for local to QUERY we would do j, i-1.
 
 -- TODO seqLocal: consider the case where we consume obs, not state, for beg & end.
@@ -179,5 +177,17 @@ transProb hmm nodenum state = case logProbability $ state (transitions (hmm ! no
 data Scored a = Scored a Score
 (/+/) :: Score -> Scored a -> Scored a
 -- @ end vscore.tex
+
+instance Eq (Scored a) where
+  x == x' = scoreOf x == scoreOf x'
+instance Ord (Scored a) where
+  x < x' = scoreOf x < scoreOf x'
+
+instance Functor Scored where
+  fmap f (Scored a x) = Scored (f a) x
+
+scoreOf :: Scored a -> Score
+scoreOf (Scored _ x) = x
+
 infix /+/
 x /+/ Scored a y = Scored a (x + y)
