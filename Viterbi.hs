@@ -45,21 +45,20 @@ viterbi pathCons (hasStart, hasEnd) alpha query hmm =
   if numNodes == 0 then
     (0.0, [])
   else
-    flipSnd $ unscore $ viterbi' Mat 2 0
-    -- flipSnd $ DL.minimum $ DL.map unscore $ 
-    -- [viterbi' Mat (numNodes - 1) (seqlen - 1), 
-     -- viterbi' Ins (numNodes - 1) (seqlen - 1), 
-     -- viterbi' Del (numNodes - 1) (seqlen - 1) 
-    -- ] DL.++ if hasEnd then [bestEnd] else [] 
+    flipSnd $ DL.minimum $ DL.map unscore $
+    [viterbi' Mat (numNodes - 1) (seqlen - 1),
+     viterbi' Ins (numNodes - 1) (seqlen - 1),
+     viterbi' Del (numNodes - 1) (seqlen - 1)
+    ] DL.++ if hasEnd then [bestEnd] else []
 
 
   -- trace (show state DL.++ " " DL.++ show node DL.++ " " DL.++ show obs) $
-  where viterbi' state j i = trace ((show state) DL.++ "::" DL.++ (show j) DL.++ "::" DL.++ (show i)) $ Memo.memo3 (Memo.arrayRange (Mat, End)) 
+  where viterbi' state j i = Memo.memo3 (Memo.arrayRange (Mat, End)) 
                                   (Memo.arrayRange (0, numNodes))
                                   (Memo.arrayRange (0, seqlen)) 
                                   viterbi'' state j i
 
-        -- bestEnd = viterbi' End (numNodes - 1) (seqlen - 1) 
+        bestEnd = viterbi' End (numNodes - 1) (seqlen - 1)
 
         -- we see observation obs with node at state
         flipSnd pair = (fst pair, DL.reverse $ snd pair)
@@ -73,8 +72,14 @@ viterbi pathCons (hasStart, hasEnd) alpha query hmm =
         tProb f j = transProb hmm j f
         edge :: HMMState -> HMMState -> StateAcc
         edge Mat Mat = m_m
+        edge Mat Ins = m_i
+        edge Mat Del = m_d
         edge Ins Mat = i_m
+        edge Ins Ins = i_i
         edge Del Mat = d_m
+        edge Del Del = d_d
+        edge Beg Mat = b_m
+        edge Mat End = m_e
         edge _   _   = error "unimplemnted or disallowed HMM edge"
 
         insertProb j i = emissionProb (insertionEmissions $ hmm ! j) (res i)
@@ -86,11 +91,7 @@ viterbi pathCons (hasStart, hasEnd) alpha query hmm =
         -- @ start viterbi.tex -8
         vpaper' Mat j i = fmap (pathCons Mat)
           -- BLOWS THE STACK
-          (eProb j i /+/ DL.minimum [from Mat, from Ins, from Del])
-          -- DOES NOT BLOW THE STACK
-          -- (eProb j i /+/ DL.minimum [from Mat, from Ins]) 
-          -- DOES NOT BLOW THE STACK
-          -- (eProb j i /+/ from Del) 
+          (eProb j i /+/ myminimum [from Mat, from Ins, from Del])
          where from prev = tProb (edge prev Mat) (j-1) /+/
                                        viterbi' prev (j-1) (i-1)
         -- @ end viterbi.tex
@@ -137,24 +138,19 @@ viterbi pathCons (hasStart, hasEnd) alpha query hmm =
         -- we incorporate the begin-to-match code
         viterbi'' Mat j i = vpaper' Mat j i
 
-        -- vpaper' Mat j i = fmap (pathCons Mat) 
-          -- (eProb j i /+/ DL.minimum [from Mat, from Ins, from Del])  
-         -- where from prev = tProb (edge prev Mat) (j-1) /+/ 
-                                       -- viterbi' prev (j-1) (i-1) 
-
         -- match came from start                                            
         -- consume an observation but not a node
         viterbi'' Ins j i = fmap (pathCons Ins) $ eProb j i /+/
-                              DL.minimum [from Mat, from Ins]
+                              myminimum [from Mat, from Ins]
           where from prev = tProb (edge prev Ins) j /+/ viterbi' prev j (i - 1)
 
         -- consume a node but not an observation
         viterbi'' Del j i = fmap (pathCons Del) $
-                              DL.minimum [from Mat, from Del]
+                              myminimum [from Mat, from Del]
           where from prev = tProb (edge prev Del) (j - 1) /+/
                               viterbi' prev (j - 1) i
 
-        viterbi'' End j i = fmap (pathCons End) $ DL.minimum $
+        viterbi'' End j i = fmap (pathCons End) $ myminimum $
                               if j >= 2 then
                                 [from Mat, from End]
                               else
@@ -178,6 +174,13 @@ transProb :: HMM -> Int -> StateAcc -> Double
 transProb hmm nodenum state = case logProbability $ state (transitions (hmm ! nodenum)) of
                                    NonZero p -> p
                                    LogZero -> maxProb
+
+myminimum :: Ord a => [Scored a] -> Scored a
+myminimum [] = error "naughty"
+myminimum (s:ss) = minimum' s ss
+  where minimum' min [] = min
+        minimum' min (s:ss) = minimum' min' ss
+          where min' = if s < min then s else min
 
 -- @ start vscore.tex
 data Scored a = Scored a Score
