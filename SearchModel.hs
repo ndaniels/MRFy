@@ -26,7 +26,7 @@ type Scorer = Placement -> Scored Placement
 -- @ end scoredecl.tex
 -- @ start strategy.tex
 type Age  = Int -- number of generations explored
-type Seed = Int
+type Seed = Int -- source of stochastic variation
 data SearchStrategy = 
  SS { gen0    :: Seed -> [Placement]
     , nextGen :: Seed -> Scorer 
