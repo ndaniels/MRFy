@@ -184,9 +184,10 @@ data Scored a = Scored a Score
 (/+/) :: Score -> Scored a -> Scored a
 -- @ end vscore.tex
 
-instance Eq (Scored a) where
-  x == x' = scoreOf x == scoreOf x'
-instance Ord (Scored a) where
+instance Eq a => Eq (Scored a) where
+  x == x' = scoreOf x == scoreOf x' && value x == value x'
+    where value (Scored a _) = a
+instance Eq a => Ord (Scored a) where
   x < x' = scoreOf x < scoreOf x'
 
 instance Functor Scored where

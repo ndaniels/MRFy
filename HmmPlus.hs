@@ -81,7 +81,6 @@ ws = REd "[\t ]+|$" " "
                        values :: [Double | ws] terminator Try EOR }
     | BETA -> Beta StrandPair -- consensus beta-strand pairing
     | Other tag -> BadTag StringLn
-    | otherwise -> OtherTag StringLn
     
   type VersionString = StringLn
   
