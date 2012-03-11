@@ -49,23 +49,23 @@ viterbi pathCons (hasStart, hasEnd) alpha query hmm =
     (0.0, [])
   else
     flipSnd $ DL.minimum $ DL.map unscore $
-    [viterbi' Mat (numNodes - 1) (seqlen - 1),
-     viterbi' Ins (numNodes - 1) (seqlen - 1),
-     viterbi' Del (numNodes - 1) (seqlen - 1)
+    [vee' Mat (numNodes - 1) (seqlen - 1),
+     vee' Ins (numNodes - 1) (seqlen - 1),
+     vee' Del (numNodes - 1) (seqlen - 1)
     ] DL.++ if hasEnd then [bestEnd] else []
 
 
   -- trace (show state DL.++ " " DL.++ show node DL.++ " " DL.++ show obs) $
   where 
         -- @ start memo.tex -8
-        viterbi' state j i =
+        vee' state j i =
           Memo.memo3 (Memo.arrayRange (Mat, End)) 
                      (Memo.arrayRange (0, numNodes))
                      (Memo.arrayRange (0, seqlen)) 
-                     viterbi'' state j i
+                     vee'' state j i
         -- @ end memo.tex
 
-        bestEnd = viterbi' End (numNodes - 1) (seqlen - 1)
+        bestEnd = vee' End (numNodes - 1) (seqlen - 1)
 
         -- we see observation obs with node at state
         flipSnd pair = (fst pair, DL.reverse $ snd pair)
@@ -97,77 +97,76 @@ viterbi pathCons (hasStart, hasEnd) alpha query hmm =
 
         disallowed = Scored [] maxProb
 
-        --------------------------------------------------------
-        -- @ start viterbi.tex -8
-        vpaper' Mat j i = fmap (pathCons Mat)
-          (eProb j i /+/ myminimum [from Mat, from Ins, from Del])
-         where from prev = tProb (edge prev Mat) (j-1) /+/
-                                       viterbi' prev (j-1) (i-1)
-        -- @ end viterbi.tex
-
         -- node 1 and zeroth observation
-        viterbi'' Mat 1 0 = Scored [Mat] (tProb m_m 0 + matchProb 1 0)
+        vee'' Mat 1 0 = Scored [Mat] (tProb m_m 0 + matchProb 1 0)
                             --           ^^^^^^^^^^^^^ is this right?  ---NR
                             -- we came from 'begin'
-        viterbi'' Ins 1 0 = disallowed
-        viterbi'' Del 1 0 = disallowed
+        vee'' Ins 1 0 = disallowed
+        vee'' Del 1 0 = disallowed
 
         -- node 0 and zeroth observation, base of self-insert
-        viterbi'' Mat 0 0 = disallowed
-        viterbi'' Ins 0 0 = Scored [Ins] (tProb m_i 0 + insertProb 0 0)
-        viterbi'' Del 0 0 = disallowed
+        vee'' Mat 0 0 = disallowed
+        vee'' Ins 0 0 = Scored [Ins] (tProb m_i 0 + insertProb 0 0)
+        vee'' Del 0 0 = disallowed
 
         -- node 0 and no observations
-        viterbi'' Mat 0 (-1) = Scored [] (tProb m_m 0)
-        viterbi'' Ins 0 (-1) = disallowed
-        viterbi'' Del 0 (-1) = disallowed
+        vee'' Mat 0 (-1) = Scored [] (tProb m_m 0)
+        vee'' Ins 0 (-1) = disallowed
+        vee'' Del 0 (-1) = disallowed
 
         -- node 0 but not zeroth observation
-        viterbi'' Mat 0 i = disallowed
-        viterbi'' Ins 0 i = fmap (pathCons Ins) $
-                            (tProb i_i 0 + insertProb 0 i) /+/ viterbi' Ins 0 (i-1)
+        vee'' Mat 0 i = disallowed
+        vee'' Ins 0 i = fmap (pathCons Ins) $
+                            (tProb i_i 0 + insertProb 0 i) /+/ vee' Ins 0 (i-1)
                             -- possible self-insert cycle
 
-        viterbi'' Del 0 i = disallowed
-        viterbi'' End 0 i = Scored [Mat] (tProb m_e 0)
+        vee'' Del 0 i = disallowed
+        vee'' End 0 i = Scored [Mat] (tProb m_e 0)
 
         -- node 1 and no more observations (came from begin)
-        viterbi'' Mat 1 (-1) = disallowed
-        viterbi'' Ins 1 (-1) = disallowed
-        viterbi'' Del 1 (-1) = Scored [Del] (tProb m_d 0) -- came from begin
+        vee'' Mat 1 (-1) = disallowed
+        vee'' Ins 1 (-1) = disallowed
+        vee'' Del 1 (-1) = Scored [Del] (tProb m_d 0) -- came from begin
 
         -- not node 1 yet, but not more observations (came from delete)
-        viterbi'' Mat j (-1) = disallowed
-        viterbi'' Ins j (-1) = disallowed
-        viterbi'' Del j (-1) = fmap (pathCons Del) $
-                               tProb d_d (j - 1) /+/ viterbi' Del (j - 1) (-1)
+        vee'' Mat j (-1) = disallowed
+        vee'' Ins j (-1) = disallowed
+        vee'' Del j (-1) = fmap (pathCons Del) $
+                               tProb d_d (j - 1) /+/ vee' Del (j - 1) (-1)
 
         -- consume an observation AND a node
         -- I think only this equation will change when
         -- we incorporate the begin-to-match code
-        viterbi'' Mat j i = vpaper' Mat j i
+        --------------------------------------------------------
+        -- @ start viterbi.tex -8
+        vee'' Mat j i = fmap (pathCons Mat)
+          (eProb j i /+/ myminimum (DL.map from [Mat, Ins, Del]))
+         where from prev = tProb (edge prev Mat) (j-1) /+/
+                                       vee' prev (j-1) (i-1)
+        -- @ end viterbi.tex
+        
 
         -- match came from start                                            
         -- consume an observation but not a node
-        viterbi'' Ins j i = fmap (pathCons Ins) $ eProb j i /+/
-                              myminimum [from Mat, from Ins]
-          where from prev = tProb (edge prev Ins) j /+/ viterbi' prev j (i - 1)
+        vee'' Ins j i = fmap (pathCons Ins) $ eProb j i /+/
+                              myminimum (DL.map from [Mat, Ins])
+          where from prev = tProb (edge prev Ins) j /+/ vee' prev j (i - 1)
 
         -- consume a node but not an observation
-        viterbi'' Del j i = fmap (pathCons Del) $
-                              myminimum [from Mat, from Del]
+        vee'' Del j i = fmap (pathCons Del) $
+                              myminimum (DL.map from [Mat, Del])
           where from prev = tProb (edge prev Del) (j - 1) /+/
-                              viterbi' prev (j - 1) i
+                              vee' prev (j - 1) i
 
-        viterbi'' End j i = fmap (pathCons End) $ myminimum $
+        vee'' End j i = fmap (pathCons End) $ myminimum $
                               if j >= 2 then
-                                [from Mat, from End]
+                                (DL.map from [Mat, End])
                               else
                                 [from Mat]
           where from prev = case prev of
                               Mat -> tProb (edge prev Mat) (j - 1) /+/
-                                       viterbi' prev (j - 1) i
-                              otherwise -> viterbi' prev (j - 1) i
+                                       vee' prev (j - 1) i
+                              otherwise -> vee' prev (j - 1) i
                         -- for local to QUERY we would do j, i-1.
 
 -- TODO seqLocal: consider the case where we consume obs, not state, for beg & end.
