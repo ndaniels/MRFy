@@ -56,10 +56,14 @@ viterbi pathCons (hasStart, hasEnd) alpha query hmm =
 
 
   -- trace (show state DL.++ " " DL.++ show node DL.++ " " DL.++ show obs) $
-  where viterbi' state j i = Memo.memo3 (Memo.arrayRange (Mat, End)) 
-                                  (Memo.arrayRange (0, numNodes))
-                                  (Memo.arrayRange (0, seqlen)) 
-                                  viterbi'' state j i
+  where 
+        -- @ start memo.tex -8
+        viterbi' state j i =
+          Memo.memo3 (Memo.arrayRange (Mat, End)) 
+                     (Memo.arrayRange (0, numNodes))
+                     (Memo.arrayRange (0, seqlen)) 
+                     viterbi'' state j i
+        -- @ end memo.tex
 
         bestEnd = viterbi' End (numNodes - 1) (seqlen - 1)
 
@@ -96,7 +100,6 @@ viterbi pathCons (hasStart, hasEnd) alpha query hmm =
         --------------------------------------------------------
         -- @ start viterbi.tex -8
         vpaper' Mat j i = fmap (pathCons Mat)
-          -- BLOWS THE STACK
           (eProb j i /+/ myminimum [from Mat, from Ins, from Del])
          where from prev = tProb (edge prev Mat) (j-1) /+/
                                        viterbi' prev (j-1) (i-1)
