@@ -45,20 +45,21 @@ viterbi pathCons (hasStart, hasEnd) alpha query hmm =
   if numNodes == 0 then
     (0.0, [])
   else
-    flipSnd $ DL.minimum $
-    [viterbi' Mat (numNodes - 1) (seqlen - 1),
-     viterbi' Ins (numNodes - 1) (seqlen - 1),
-     viterbi' Del (numNodes - 1) (seqlen - 1)
-    ] DL.++ if hasEnd then [bestEnd] else []
+    flipSnd $ unscore $ viterbi' Mat 2 0
+    -- flipSnd $ DL.minimum $ DL.map unscore $ 
+    -- [viterbi' Mat (numNodes - 1) (seqlen - 1), 
+     -- viterbi' Ins (numNodes - 1) (seqlen - 1), 
+     -- viterbi' Del (numNodes - 1) (seqlen - 1) 
+    -- ] DL.++ if hasEnd then [bestEnd] else [] 
 
 
   -- trace (show state DL.++ " " DL.++ show node DL.++ " " DL.++ show obs) $
-  where viterbi' state j i = Memo.memo3 (Memo.arrayRange (Mat, End)) 
+  where viterbi' state j i = trace ((show state) DL.++ "::" DL.++ (show j) DL.++ "::" DL.++ (show i)) $ Memo.memo3 (Memo.arrayRange (Mat, End)) 
                                   (Memo.arrayRange (0, numNodes))
                                   (Memo.arrayRange (0, seqlen)) 
                                   viterbi'' state j i
 
-        bestEnd = viterbi' End (numNodes - 1) (seqlen - 1)
+        -- bestEnd = viterbi' End (numNodes - 1) (seqlen - 1) 
 
         -- we see observation obs with node at state
         flipSnd pair = (fst pair, DL.reverse $ snd pair)
@@ -84,7 +85,12 @@ viterbi pathCons (hasStart, hasEnd) alpha query hmm =
         --------------------------------------------------------
         -- @ start viterbi.tex -8
         vpaper' Mat j i = fmap (pathCons Mat)
-          (eProb j i /+/ DL.minimum [from Mat, from Ins, from Del]) 
+          -- BLOWS THE STACK
+          (eProb j i /+/ DL.minimum [from Mat, from Ins, from Del])
+          -- DOES NOT BLOW THE STACK
+          -- (eProb j i /+/ DL.minimum [from Mat, from Ins]) 
+          -- DOES NOT BLOW THE STACK
+          -- (eProb j i /+/ from Del) 
          where from prev = tProb (edge prev Mat) (j-1) /+/
                                        viterbi' prev (j-1) (i-1)
         -- @ end viterbi.tex
@@ -118,7 +124,7 @@ viterbi pathCons (hasStart, hasEnd) alpha query hmm =
         -- node 1 and no more observations (came from begin)
         viterbi'' Mat 1 (-1) = disallowed
         viterbi'' Ins 1 (-1) = disallowed
-        viterbi'' Del 1 (-1) = Scored [Del] (transProb hmm 0 m_d) -- came from begin
+        viterbi'' Del 1 (-1) = Scored [Del] (tProb m_d 0) -- came from begin
 
         -- not node 1 yet, but not more observations (came from delete)
         viterbi'' Mat j (-1) = disallowed
@@ -186,8 +192,12 @@ instance Ord (Scored a) where
 instance Functor Scored where
   fmap f (Scored a x) = Scored (f a) x
 
+instance Show (Scored a) where
+  show (Scored a x) = show x
+
 scoreOf :: Scored a -> Score
 scoreOf (Scored _ x) = x
 
 infix /+/
 x /+/ Scored a y = Scored a (x + y)
+
