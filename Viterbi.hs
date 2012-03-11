@@ -8,7 +8,7 @@ import qualified Data.List as DL
 
 import Beta
 import HmmPlus
-import Data.Vector hiding (minimum, (++))
+import Data.Vector hiding (minimum, (++), map)
 import Constants
 
 type QuerySequence = Vector Int -- indices into Constants.amino
@@ -140,7 +140,7 @@ viterbi pathCons (hasStart, hasEnd) alpha query hmm =
         --------------------------------------------------------
         -- @ start viterbi.tex -8
         vee'' Mat j i = fmap (pathCons Mat)
-          (eProb j i /+/ myminimum (DL.map from [Mat, Ins, Del]))
+          (eProb j i /+/ myminimum (map from [Mat, Ins, Del]))
          where from prev = tProb (edge prev Mat) (j-1) /+/
                                        vee' prev (j-1) (i-1)
         -- @ end viterbi.tex
