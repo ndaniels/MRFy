@@ -11,3 +11,5 @@ smurf2prof
 smurf2prof.*
 output
 *~
+/dist
+/mrfy
