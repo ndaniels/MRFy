@@ -1,23 +1,7 @@
 module SearchModel 
 where
   
-type Score = Double
-
-data Scored a = Scored a Score
-infix /+/
-(/+/) :: Score -> Scored a -> Scored a
-x /+/ Scored a y = Scored a (x + y)
-
-instance Eq (Scored a) where
-  x == x' = scoreOf x == scoreOf x'
-instance Ord (Scored a) where
-  x < x' = scoreOf x < scoreOf x'
-
-instance Functor Scored where
-  fmap f (Scored a x) = Scored (f a) x
-
-scoreOf :: Scored a -> Score
-scoreOf (Scored _ x) = x
+import Score
 --------------------------------------------------------
 data Placement = Placement String
 
