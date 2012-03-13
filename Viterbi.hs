@@ -48,7 +48,7 @@ viterbi pathCons (hasStart, hasEnd) alpha query hmm =
   if numNodes == 0 then
     Scored [] negLogOne
   else
-    minimum $ [vee'' s (numNodes - 1) (seqlen - 1) | s <- [Mat, Ins, Del]] ++
+    myminimum $ [vee'' s (numNodes - 1) (seqlen - 1) | s <- [Mat, Ins, Del]] ++
               if hasEnd then [bestEnd] else []
 
   -- trace (show state ++ " " ++ show node ++ " " ++ show obs) $
