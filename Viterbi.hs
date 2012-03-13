@@ -11,7 +11,9 @@ import HmmPlus
 import Data.Vector hiding (minimum, (++), map)
 import Constants
 
-type QuerySequence = Vector Int -- indices into Constants.amino
+type QuerySequence = Vector Int
+-- newtype QCQuerySequence = QuerySequence 
+
 type Score = Double
 type StatePath = [ HMMState ]
 
