@@ -74,6 +74,8 @@ Executable mrfy
 
   -- Packages needed in order to build this package.
   Build-depends: base >= 4.0,
+                 array >= 0.3,
+                 bio >= 0.5,
                  containers >= 0.4,
                  directory >= 1.1,
                  parallel >= 3.2,
