@@ -22,7 +22,7 @@ Homepage:            http://bcb.cs.tufts.edu/mrfy
 License:             MIT
 
 -- The file containing the license text.
-License-file:        LICENSE
+--License-file:        LICENSE
 
 -- The package author(s).
 Author:              Noah M. Daniels
@@ -45,22 +45,53 @@ Build-type:          Simple
 -- Constraint on the version of Cabal needed to build this package.
 Cabal-version:       >=1.2
 
+Extra-source-files: *.hs, SearchStrategies/*.hs
 
 Executable mrfy
-  -- .hs or .lhs file containing the Main module.
-  -- Main-is:Main.hs
+  Main-is: Main.hs
   
+  Other-modules: Beta,
+                 CommandArgs,
+                 Constants,
+                 ConstantsGen,
+                 Fasta,
+                 HmmPlus,
+                 NonUniform,
+                 PsiPred,
+                 QCTesting,
+                 RunPsiPred,
+                 SearchModel,
+                 SearchStrategy,
+                 ShowAlignment,
+                 Shuffle,
+                 StochasticSearch,
+                 Viterbi,
+                 Wrappers,
+                 SearchStrategies.GeneticAlgorithm,
+                 SearchStrategies.RandomHillClimb,
+                 SearchStrategies.SimulatedAnnealing
+
+
   -- Packages needed in order to build this package.
-  -- Build-depends: pads-haskell >=0.2.1,
-                    cmdargs >=0.8,
-                    data-memocombinators >=0.4.2,
-                    vector >=0.9,
-                    Unixutils >= 1.48.1,
-                    template-haskell == 2.5.0.0
+  Build-depends: base >= 4.0,
+                 containers >= 0.4,
+                 directory >= 1.1,
+                 parallel >= 3.2,
+                 process >= 1.0,
+                 random >= 1.0,
+                 filepath >= 1.2,
+                 pads-haskell >=0.2.1,
+                 cmdargs >=0.8,
+                 data-memocombinators >=0.4.2,
+                 vector >=0.9,
+                 Unixutils >= 1.48.1,
+                 template-haskell ==2.5.0.0,
+                 haskell-src-meta
                     -- cabal install --constraint="template-haskell == 2.5.0.0" haskell-src-meta
   
   -- Modules not exported by this package.
-  -- Other-modules:       
+  -- Other-modules:      
+ 
   
   -- Extra tools (e.g. alex, hsc2hs, ...) needed to build the source.
   -- Build-tools:         
