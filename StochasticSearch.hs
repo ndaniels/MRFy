@@ -15,6 +15,7 @@ import HmmPlus
 import PsiPred
 import Constants
 import ConstantsGen
+import qualified Score
 import Viterbi
 import Beta
 -- this module will take the random number list or generator, and will
@@ -55,6 +56,7 @@ getSecPreds searchP = case secPreds searchP of
                         Just preds -> preds
                         Nothing -> []
 
+type Score = Double
 type SearchGuess = [Int] -- list of *starting* residue positions of each beta strand
 type SearchSolution = (Score, SearchGuess)
 type Temperature = Double
@@ -120,7 +122,8 @@ statePath :: HMM -> QuerySequence -> [BetaStrand] -> SearchSolution -> StatePath
 statePath hmm query betas (_, guesses) = foldr (++) [] $ map viterbiOrBeta $ DL.zip4 hmmAlignTypes (map traceid miniHmms) miniQueries $ dupeElements [0..]
   where viterbiOrBeta :: (BetaOrViterbi, HMM, QuerySequence, Int) -> StatePath
         viterbiOrBeta (Beta, ns, qs, i) = take (len (betas !! i)) $ repeat BMat
-        viterbiOrBeta (Viterbi, ns, qs, i) = snd $ viterbi consPath (False, False) Constants.amino qs ns
+        viterbiOrBeta (Viterbi, ns, qs, i) =
+          Score.unScored $ viterbi consPath (False, False) Constants.amino qs ns
 
         -- traceid hmm = trace (show (V.map nodeNum hmm)) $ id hmm 
         -- traceid = (trace (show guesses)) id 
@@ -133,7 +136,9 @@ score :: HMM -> Scorer
 score hmm query betas guesses = (foldr (+) 0.0 $ (parMap rseq) viterbiOrBeta $ DL.zip4 hmmAlignTypes (map traceid miniHmms) miniQueries $ dupeElements [0..], guesses)
   where viterbiOrBeta :: (BetaOrViterbi, HMM, QuerySequence, Int) -> Score
         viterbiOrBeta (Beta, ns, qs, i) = betaScore query guesses (residues (betas !! i)) ns qs
-        viterbiOrBeta (Viterbi, ns, qs, i) = fst $ viterbi consNoPath (False, False) Constants.amino qs ns
+        viterbiOrBeta (Viterbi, ns, qs, i) =
+          Score.unScore $ Score.scoreOf $
+          viterbi consNoPath (False, False) Constants.amino qs ns
 
         -- traceid hmm = trace (show (V.map nodeNum hmm)) $ id hmm 
         traceid = id
@@ -143,7 +148,7 @@ score hmm query betas guesses = (foldr (+) 0.0 $ (parMap rseq) viterbiOrBeta $ D
         miniQueries = sliceQuery query betas guesses 1 []
 
 -- invariant: length residues == length hmmSlice == length querySlice
-betaScore :: QuerySequence -> SearchGuess -> [BetaResidue] -> HMM -> QuerySequence -> Score
+betaScore :: QuerySequence -> SearchGuess -> [BetaResidue] -> HMM -> QuerySequence -> Double
 betaScore query guesses = {-# SCC "betaScore" #-} vfoldr3 betaScore' 0.0
   where betaScore' :: BetaResidue -> HmmNode -> Int -> Score -> Score
         betaScore' r n q s = {-# SCC "betaScore'" #-} s + betaCoeff * betaTableScore + (1 - betaCoeff) * viterbiScore

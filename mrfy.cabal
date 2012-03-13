@@ -45,8 +45,6 @@ Build-type:          Simple
 -- Constraint on the version of Cabal needed to build this package.
 Cabal-version:       >=1.2
 
-Extra-source-files: *.hs, SearchStrategies/*.hs
-
 Executable mrfy
   Main-is: Main.hs
   

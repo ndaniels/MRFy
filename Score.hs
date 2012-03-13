@@ -1,16 +1,18 @@
 module Score
-       ( Score(..), negLogZero
-       , Scored(..), scoreOf
+       ( Score(..), negLogZero, negLogOne
+       , Scored(..), (/+/)
        )
 where
   
-newtype Score = Score Double
+newtype Score = Score { unScore :: Double }
   deriving (Eq, Ord)
  -- ^ A "score" is the negated logarithm of a probability
                 
 negLogZero :: Score -- ^ Stands in for - log 0
 negLogZero = Score 10e1024 
 
+negLogOne :: Score -- ^ - log 1
+negLogOne = Score 0.0
 
 instance Show Score where
   show (Score x) = show x
@@ -24,9 +26,11 @@ instance Num Score where
   signum (Score _) = error "signum of Score is senseless"
   fromInteger = Score . fromInteger
 
-data Scored a = Scored a Score
-infix /+/
+-- @ start vscore.tex
+data Scored a = Scored { unScored :: a, scoreOf :: Score }
 (/+/) :: Score -> Scored a -> Scored a
+-- @ end vscore.tex
+infix /+/
 x /+/ Scored a y = Scored a (x + y)
 
 instance Eq (Scored a) where
@@ -36,6 +40,3 @@ instance Ord (Scored a) where
 
 instance Functor Scored where
   fmap f (Scored a x) = Scored (f a) x
-
-scoreOf :: Scored a -> Score
-scoreOf (Scored _ x) = x
