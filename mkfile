@@ -1,14 +1,11 @@
-STRATS=`echo SearchStrategies/*.hs`
-SRC=$STRATS Beta.hs Constants.hs HmmPlus.hs Main.hs Viterbi.hs \
-         StochasticSearch.hs SearchStrategy.hs \
-         Wrappers.hs ConstantsGen.hs
+SRC=`echo *.hs SearchStrategies/*.hs | sed 's/ Setup.hs / /'`
 
 TGT=mrfy
 CRUDOPTS= -hidir .crud -odir .crud
 OPTS= -fspec-constr-count=6
 
 all:V: $TGT
-$TGT:
+$TGT: $SRC
 	mkdir -p .crud
 	ghc $OPTS $CRUDOPTS --make $SRC \
 			-O3 \
