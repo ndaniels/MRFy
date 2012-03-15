@@ -89,6 +89,7 @@ Executable mrfy
                  Unixutils >= 1.48.1,
                  template-haskell ==2.5.0.0,
                  haskell-src-meta
+
                     -- cabal install --constraint="template-haskell == 2.5.0.0" haskell-src-meta
   
   -- Modules not exported by this package.
