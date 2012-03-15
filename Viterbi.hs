@@ -86,6 +86,16 @@ viterbi pathCons (hasStart, hasEnd) alpha query hmm =
 
         vee' :: HMMState -> Int -> Int -> Scored [HMMState]
 
+        -- 1  0 Mat
+        -- 0  0 Ins
+        -- 0 -1 Mat
+        -- 1 -1 Del
+        -- 0  i Ins
+        -- 0  i End
+        -- j -1 Del
+        -- j  i Ins, Mat, Del, End
+
+
         -- node 1 and zeroth observation
         vee' Mat 1 0 = Scored [Mat] (aScore Mat Mat 0 + eScore Mat 1 0) -- from Beg
         vee' Ins 1 0 = disallowed
