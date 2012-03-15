@@ -1,20 +1,21 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 module SearchModel 
 where
   
 import Score
 --------------------------------------------------------
-data Placement = Placement String
 
 -- @ start scoredecl.tex
-type Scorer = Placement -> Scored Placement
+type Scorer placement = placement -> Scored placement
 -- @ end scoredecl.tex
 -- @ start strategy.tex
 type Age  = Int -- number of generations explored
 type Seed = Int -- source of stochastic variation
-data SearchStrategy = 
- SS { gen0    :: Seed -> [Placement]
-    , nextGen :: Seed -> Scorer 
-              -> [Scored Placement] -> [Scored Placement]
+-- is there a better name for seed?
+data SearchStrategy placement = 
+ SS { gen0    :: Seed -> [placement]
+    , nextGen :: Seed -> Scorer placement
+              -> [Scored placement] -> [Scored placement]
     , accept  :: Seed -> [Scored Age] -> Age -> Bool
     , quit    ::         [Scored Age] -> Age -> Bool
     }
@@ -22,15 +23,18 @@ data SearchStrategy =
 
 --------------------------------------------------------
 -- @ start search.tex
-search :: SearchStrategy -> Scorer -> [Seed]
-       -> (Scored Placement, [Scored Age])
-search strat score (s0:seeds) = runFrom seeds firstGen [] 0
+search :: forall placement 
+        . SearchStrategy placement 
+       -> Scorer placement 
+       -> [Seed]
+       -> (Scored placement, [Scored Age])
+search strat scorer (s0:seeds) = runFrom seeds firstGen [] 0
  where
-  firstGen = map score $ gen0 strat s0
-  runFrom :: [Seed] -> [Scored Placement] -> [Scored Age]
-          -> Age -> (Scored Placement, [Scored Age])
+  firstGen = map scorer $ gen0 strat s0
+  runFrom :: [Seed] -> [Scored placement] -> [Scored Age]
+          -> Age -> (Scored placement, [Scored Age])
   runFrom (s1:s2:seeds) oldPop oldHist age =
-    let trialPop  = nextGen strat s1 score oldPop
+    let trialPop  = nextGen strat s1 scorer oldPop
         trialHist = (fmap (const age) $ minimum trialPop)
                   : oldHist
         (newPop, newHist) =

@@ -48,26 +48,17 @@ instance Arbitrary HmmNode where
 
 instance Arbitrary TransitionProbabilities where
   arbitrary = do
-    transProbs <- vectorOf 9 arbitrary :: Gen [TransitionProbability]
-    return $ TransitionProbabilities { m_m = transProbs !! 0
-                                     , m_i = transProbs !! 1
-                                     , m_d = transProbs !! 2
-                                     , i_m = transProbs !! 3
-                                     , i_i = transProbs !! 4
-                                     , d_m = transProbs !! 5
-                                     , d_d = transProbs !! 6
-                                     , b_m = transProbs !! 7
-                                     , m_e = transProbs !! 8
-                                     }
+    ((p1, p2, p3, p4), (p5, p6, p7, p8, p9)) <- arbitrary   
+    return $ TransitionProbabilities p1 p2 p3 p4 p5 p6 p7 p8 p9
 
 instance Arbitrary TransitionProbability where
   arbitrary = do
     rLogProb <- arbitrary :: Gen LogProbability
-    rstate1 <- elements [Mat, Ins, Del] :: Gen HMMState
-    rstate2 <- elements [Mat, Ins, Del] :: Gen HMMState
+    from <- elements [Mat, Ins, Del] :: Gen HMMState
+    to <- elements [Mat, Ins, Del] :: Gen HMMState
     return $ TransitionProbability { logProbability = rLogProb
-                                   , fromState = rstate1
-                                   , toState = rstate2
+                                   , fromState = from
+                                   , toState = to
                                    }
 
 instance Arbitrary LogProbability where
@@ -78,28 +69,11 @@ instance Arbitrary LogProbability where
     else do return $ HmmPlus.NonZero $ toLogProb f
 
 instance Arbitrary HMMState where
-  -- This is not working... It returns 'BMat' every time
-  -- arbitrary = elements [Mat, Ins, Del, Beg, End, BMat] 
-  arbitrary = do
-    n <- choose (0, 5) :: Gen Int
-    return $ trace ("##" ++ show n ++ "##") $ case n of
-                  0 -> Mat
-                  1 -> Ins
-                  2 -> Del
-                  3 -> Beg
-                  4 -> End
-                  5 -> BMat
+  -- Test this with sample (arbitrary :: Gen HMMState)
+  arbitrary = elements [Mat, Ins, Del, Beg, End, BMat] 
 
 toLogProb :: Double -> Double
 toLogProb f = if f == 0.0 then maxProb else (-(log f))
  
 
-genQuery :: Int -> Int -> [QuerySequence]
-genQuery seed upper = unGen arbitrary (mkStdGen seed) upper
-
-genNodes :: Int -> Int -> HmmNode
-genNodes seed upper = (unGen arbitrary) (mkStdGen seed) upper
-
-genState :: Int -> HMMState
-genState seed = (unGen arbitrary) (mkStdGen seed) 1000
 
