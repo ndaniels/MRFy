@@ -77,3 +77,22 @@ toLogProb f = if f == 0.0 then maxProb else (-(log f))
  
 
 
+-- possibly useful idea
+
+class Probabilities a where
+    normalize :: a -> a  -- normalize a group of probabilities
+
+instance Probabilities (Double, Double, Double) where
+    normalize (x, y, z) = if sum == 0.0 then (x, y, z)
+                          else (x / sum, y / sum, z / sum)
+      where sum = x + y + z
+
+instance Probabilities (Double, Double) where
+    normalize (x, y) = if sum == 0.0 then (x, y)
+                          else (x / sum, y / sum)
+      where sum = x + y
+
+instance Probabilities (V.Vector Double) where
+  normalize xs = if sum == 0.0 then xs
+                 else V.map (/ sum) xs
+    where sum = V.foldl' (+) 0.0 xs
