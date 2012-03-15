@@ -36,6 +36,7 @@ import System.IO.Unsafe (unsafePerformIO)
 import qualified Data.Vector as V
 import Constants
 import ConstantsGen
+import qualified Test.QuickCheck as QC
 
 ws = REd "[\t ]+|$" " "
 
