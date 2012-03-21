@@ -9,14 +9,16 @@ import qualified Data.List as DL
 import Debug.Trace (trace)
 
 -- import qualified Wrappers as W 
-import Wrappers
-
-import HmmPlus
-import PsiPred
+import Beta
 import Constants
 import ConstantsGen
+import HmmPlus
+import PsiPred
+import Score
+import SearchModel
 import Viterbi
-import Beta
+import Wrappers
+
 -- this module will take the random number list or generator, and will
 -- pass random numbers to the mutating function, possibly the initialization function,
 -- and possibly the accepting function
@@ -55,49 +57,47 @@ getSecPreds searchP = case secPreds searchP of
                         Just preds -> preds
                         Nothing -> []
 
-type SearchGuess = [Int] -- list of *starting* residue positions of each beta strand
-type SearchSolution = (Score, SearchGuess)
+type Placement = [Int] -- list of *starting* residue positions of each beta strand
+
 type Temperature = Double
-type Seed = Int
-type Age = Int
-type History = [(Score, Age)]
-type Scorer = QuerySequence -> [BetaStrand] -> SearchGuess -> SearchSolution
-data SearchStrategy = SearchStrategy { accept :: SearchParameters -> Seed -> History -> Age -> Bool
-                                     , terminate :: SearchParameters -> History -> Age -> Bool
-                                     , mutate :: SearchParameters -> Seed -> QuerySequence -> Scorer -> [BetaStrand] -> [SearchSolution] -> [SearchSolution]
-                                     , initialize :: HMM -> SearchParameters -> Seed -> QuerySequence -> [BetaStrand]-> [SearchGuess]
-                                     }
+
+-- type Scorer = QuerySequence -> [BetaStrand] -> SearchGuess -> SearchSolution
+-- data SearchStrategy = SearchStrategy { accept :: SearchParameters -> Seed -> History -> Age -> Bool
+--                                      , terminate :: SearchParameters -> History -> Age -> Bool
+--                                      , mutate :: SearchParameters -> Seed -> QuerySequence -> Scorer -> [BetaStrand] -> [SearchSolution] -> [SearchSolution]
+--                                      , initialize :: HMM -> SearchParameters -> Seed -> QuerySequence -> [BetaStrand]-> [SearchGuess]
+--                                      }
 
 
 -- invariant: fst SearchSolution == head History
-search :: QuerySequence -> HMM -> [BetaStrand] -> SearchParameters -> [Seed] -> (SearchSolution, History)
-search query hmm betas searchP seeds = search' (tail seeds) initialGuessScore [] 0
-  where initialGuessScore = map (score hmm query betas) initialGuess
-
-        initialGuess = (initialize strat) hmm searchP (head seeds) query betas
-
-        strat = strategy searchP
-        search' :: [Seed] -> [SearchSolution] -> History -> Age -> (SearchSolution, History)
-        search' (s1:s2:seeds) oldPop hist age =
-          let newPop = mutate' oldPop
-              score = fst $ minimum newPop
-              -- score = trace (show initialGuess) $ fst $ minimum newPop 
-              -- score = trace (show $ DL.sort $ map fst newPop) $ fst $ minimum newPop 
-              -- newHist = trace ("New score: " DL.++ (show score) DL.++ "--- History: " DL.++ (show hist)) $ score : hist 
-              newHist = (score, age) : hist
-            in if accept' newHist age then
-                  if terminate' newHist age then
-                    (minimum newPop, newHist)
-                  else
-                    search' seeds newPop newHist (age + 1)
-               else
-                  if terminate' hist age then
-                    (minimum oldPop, hist)
-                  else
-                    search' seeds oldPop hist (age + 1)
-            where mutate' = mutate strat searchP s1 query (score hmm) betas
-                  terminate' = terminate strat searchP
-                  accept' = accept strat searchP s2
+-- search :: QuerySequence -> HMM -> [BetaStrand] -> SearchParameters -> [Seed] -> (SearchSolution, History)
+-- search query hmm betas searchP seeds = search' (tail seeds) initialGuessScore [] 0
+--   where initialGuessScore = map (score hmm query betas) initialGuess
+-- 
+--         initialGuess = (initialize strat) hmm searchP (head seeds) query betas
+-- 
+--         strat = strategy searchP
+--         search' :: [Seed] -> [SearchSolution] -> History -> Age -> (SearchSolution, History)
+--         search' (s1:s2:seeds) oldPop hist age =
+--           let newPop = mutate' oldPop
+--               score = fst $ minimum newPop
+--               -- score = trace (show initialGuess) $ fst $ minimum newPop 
+--               -- score = trace (show $ DL.sort $ map fst newPop) $ fst $ minimum newPop 
+--               -- newHist = trace ("New score: " DL.++ (show score) DL.++ "--- History: " DL.++ (show hist)) $ score : hist 
+--               newHist = (score, age) : hist
+--             in if accept' newHist age then
+--                   if terminate' newHist age then
+--                     (minimum newPop, newHist)
+--                   else
+--                     search' seeds newPop newHist (age + 1)
+--                else
+--                   if terminate' hist age then
+--                     (minimum oldPop, hist)
+--                   else
+--                     search' seeds oldPop hist (age + 1)
+--             where mutate' = mutate strat searchP s1 query (score hmm) betas
+--                   terminate' = terminate strat searchP
+--                   accept' = accept strat searchP s2
 
 data BetaOrViterbi = Beta
                      | Viterbi
@@ -116,8 +116,8 @@ vfoldr3 f init (r:rs) hmm query = f r (n V.! 0) (q V.! 0) $ vfoldr3 f init rs ns
 dupeElements [] = []
 dupeElements (x:xs) = x : x : (dupeElements xs)
 
-statePath :: HMM -> QuerySequence -> [BetaStrand] -> SearchSolution -> StatePath
-statePath hmm query betas (_, guesses) = foldr (++) [] $ map viterbiOrBeta $ DL.zip4 hmmAlignTypes (map traceid miniHmms) miniQueries $ dupeElements [0..]
+statePath :: HMM -> QuerySequence -> [BetaStrand] -> Scored Placement -> StatePath
+statePath hmm query betas ps = foldr (++) [] $ map viterbiOrBeta $ DL.zip4 hmmAlignTypes (map traceid miniHmms) miniQueries $ dupeElements [0..]
   where viterbiOrBeta :: (BetaOrViterbi, HMM, QuerySequence, Int) -> StatePath
         viterbiOrBeta (Beta, ns, qs, i) = take (len (betas !! i)) $ repeat BMat
         viterbiOrBeta (Viterbi, ns, qs, i) = snd $ viterbi consPath (False, False) Constants.amino qs ns
@@ -127,12 +127,12 @@ statePath hmm query betas (_, guesses) = foldr (++) [] $ map viterbiOrBeta $ DL.
         traceid = id
 
         (miniHmms, hmmAlignTypes) = sliceHmms hmm betas 1 [] []
-        miniQueries = sliceQuery query betas guesses 1 []
+        miniQueries = sliceQuery query betas ps 1 []
 
-score :: HMM -> Scorer
-score hmm query betas guesses = (foldr (+) 0.0 $ (parMap rseq) viterbiOrBeta $ DL.zip4 hmmAlignTypes (map traceid miniHmms) miniQueries $ dupeElements [0..], guesses)
+score :: HMM -> QuerySequence -> [BetaStrand] -> Scorer
+score hmm query betas ps = (foldr (+) 0.0 $ (parMap rseq) viterbiOrBeta $ DL.zip4 hmmAlignTypes (map traceid miniHmms) miniQueries $ dupeElements [0..], ps)
   where viterbiOrBeta :: (BetaOrViterbi, HMM, QuerySequence, Int) -> Score
-        viterbiOrBeta (Beta, ns, qs, i) = betaScore query guesses (residues (betas !! i)) ns qs
+        viterbiOrBeta (Beta, ns, qs, i) = betaScore query ps (residues (betas !! i)) ns qs
         viterbiOrBeta (Viterbi, ns, qs, i) = fst $ viterbi consNoPath (False, False) Constants.amino qs ns
 
         -- traceid hmm = trace (show (V.map nodeNum hmm)) $ id hmm 
@@ -140,30 +140,30 @@ score hmm query betas guesses = (foldr (+) 0.0 $ (parMap rseq) viterbiOrBeta $ D
         -- traceid = (trace (show hmmAlignTypes)) id 
 
         (miniHmms, hmmAlignTypes) = sliceHmms hmm betas 1 [] []
-        miniQueries = sliceQuery query betas guesses 1 []
+        miniQueries = sliceQuery query betas ps 1 []
 
 -- invariant: length residues == length hmmSlice == length querySlice
-betaScore :: QuerySequence -> SearchGuess -> [BetaResidue] -> HMM -> QuerySequence -> Score
-betaScore query guesses = {-# SCC "betaScore" #-} vfoldr3 betaScore' 0.0
+betaScore :: QuerySequence -> Placement -> [BetaResidue] -> HMM -> QuerySequence -> Score
+betaScore query guesses = vfoldr3 betaScore' 0.0
   where betaScore' :: BetaResidue -> HmmNode -> Int -> Score -> Score
-        betaScore' r n q s = {-# SCC "betaScore'" #-} s + betaCoeff * betaTableScore + (1 - betaCoeff) * viterbiScore
-          where viterbiScore = {-# SCC "viterbiScore" #-}  transProb + eProb
-                eProb = {-# SCC "eProbStochastic" #-} (matchEmissions $ n) V.! q
-                transProb = {-# SCC "transProbStochastic" #-} case logProbability $ m_m $ transitions n of
+        betaScore' r n q s = s + betaCoeff * betaTableScore + (1 - betaCoeff) * viterbiScore
+          where viterbiScore = transProb + eProb
+                eProb = (matchEmissions $ n) V.! q
+                transProb = case logProbability $ m_m $ transitions n of
                                  NonZero p -> p
                                  LogZero -> maxProb
         
-                betaTableScore = {-# SCC "betaTableScore" #-} foldr tableLookup 0.0 $ pairs r
-                tableLookup pair score = {-# SCC "tableLookup" #-} score + lookupScore
-                  where lookupScore = {-# SCC "lookupScore" #-} case expose pair of
+                betaTableScore = foldr tableLookup 0.0 $ pairs r
+                tableLookup pair score = score + lookupScore
+                  where lookupScore = case expose pair of
                                            Buried -> betaBuried V.! partnerInd V.! q
                                            Exposed -> betaExposed V.! partnerInd V.! q
-                        partnerInd = {-# SCC "partnerInd" #-} query V.! partnerBeta
+                        partnerInd = query V.! partnerBeta
                         partnerBeta = (guesses !! (pairStrandSerial pair)) + (residueInd pair)
 
 -- invariant: length betas == length guesses
-sliceQuery query betas guesses queryPos queries = {-# SCC "sliceQuery" #-} reverse $ sliceQuery' betas guesses queryPos queries
-  where sliceQuery' :: [BetaStrand] -> SearchGuess -> Int -> [QuerySequence] -> [QuerySequence]
+sliceQuery query betas guesses queryPos queries = reverse $ sliceQuery' betas guesses queryPos queries
+  where sliceQuery' :: [BetaStrand] -> Placement -> Int -> [QuerySequence] -> [QuerySequence]
         sliceQuery' [] [] queryPos queries = (V.drop queryPos query) : queries
         sliceQuery' [b] [g] queryPos queries = if length betas /= 1 then
                                              sliceQuery' [] [] queryPos queries
@@ -190,7 +190,7 @@ sliceQuery query betas guesses queryPos queries = {-# SCC "sliceQuery" #-} rever
                 guesses' = if queryPos == 1 then (g:g2:gs) else (g2:gs)
 
 sliceHmms hmm betas hmmPos hmms atypes = (reverse hmms', reverse atypes')
-  where (hmms', atypes') = {-# SCC "sliceHmms" #-} sliceHmms' betas hmmPos hmms atypes
+  where (hmms', atypes') = sliceHmms' betas hmmPos hmms atypes
 
         sliceHmms' [] hmmPos hmms atypes = ((V.drop (hmmPos - 1) hmm) : hmms, Viterbi : atypes)
         sliceHmms' [b] hmmPos hmms atypes = if length betas /= 1 then

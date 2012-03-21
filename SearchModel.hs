@@ -1,5 +1,12 @@
 {-# LANGUAGE ScopedTypeVariables #-}
-module SearchModel 
+module SearchModel
+       ( Scorer(..)
+       , Age
+       , Seed
+       , SearchStrategy(..)
+       , search
+       )
+
 where
   
 import Score

@@ -10,11 +10,10 @@ import Beta
 import HmmPlus
 import Data.Vector hiding (minimum, (++), map)
 import Constants
+import Score
 
 type QuerySequence = Vector Int
--- newtype QCQuerySequence = QuerySequence 
 
-type Score = Double
 type StatePath = [ HMMState ]
 
 -- Remember, for states, 0 is a match, 1 is insertion and 2 is deletion.
@@ -28,7 +27,6 @@ type StatePath = [ HMMState ]
 -- bmat = 5 :: HMMState 
 
 type ScorePathCons a = a -> [a] -> [a]
-type Result = (Score, StatePath)
 
 unscore :: Scored a -> (Score, a)
 unscore (Scored a x) = (x, a)
@@ -45,17 +43,15 @@ type TProbs = TransitionProbabilities
 -- hasStart and hasEnd are (for now) for model-relative local alignment.
 -- when we want to consider sequence-relative local alignment, we
 -- will also need to consider better of seqLocal vs. modLocal
-viterbi :: ScorePathCons HMMState -> (Bool, Bool) -> Alphabet -> QuerySequence -> HMM -> Result
+viterbi :: ScorePathCons HMMState -> (Bool, Bool) -> Alphabet ->
+           QuerySequence -> HMM -> Scored StatePath
 viterbi pathCons (hasStart, hasEnd) alpha query hmm =
   if numNodes == 0 then
-    (0.0, [])
+    Scored [] negLogOne
   else
-    flipSnd $ DL.minimum $ DL.map unscore $
-    [vee'' Mat (numNodes - 1) (seqlen - 1),
-     vee'' Ins (numNodes - 1) (seqlen - 1),
-     vee'' Del (numNodes - 1) (seqlen - 1)
-    ] DL.++ if hasEnd then [bestEnd] else []
-
+    myminimum $ [vee'' s (numNodes - 1) (seqlen - 1) | 
+                 s <- [Mat, Ins, Del]] ++ 
+                 if hasEnd then [bestEnd] else []
 
   -- trace (show state DL.++ " " DL.++ show node DL.++ " " DL.++ show obs) $
   where 
@@ -69,16 +65,103 @@ viterbi pathCons (hasStart, hasEnd) alpha query hmm =
 
         bestEnd = vee' End (numNodes - 1) (seqlen - 1)
 
-        -- we see observation obs with node at state
-        flipSnd pair = (fst pair, DL.reverse $ snd pair)
-
         numNodes = Data.Vector.length $ hmm
         seqlen = Data.Vector.length query
 
         res i = query ! i
+        
+        extend :: HMMState -> Scored StatePath -> Scored StatePath
+        extend s = fmap (pathCons s)
+        
+        aScore :: HMMState -> HMMState -> Int -> Score
+        aScore = transScore hmm
+        
+        eScore :: HMMState -> Int -> Int -> Score
+        eScore Mat j i = Score $ emissionProb (matchEmissions     $ hmm ! j) (res i)
+        eScore Ins j i = Score $ emissionProb (insertionEmissions $ hmm ! j) (res i)
+        eScore s   _ _ = error $ "State " ++ show s ++ " has no emission score"
+        
+        disallowed = Scored [] negLogZero -- outcome of zero likelihood
+        
+        vee' :: HMMState -> Int -> Int -> Scored [HMMState]
+        
+        -- 1  0 Mat
+        -- 0  0 Ins
+        -- 0 -1 Mat
+        -- 1 -1 Del
+        -- 0  i Ins
+        -- 0  i End
+        -- j -1 Del
+        -- j  i Ins, Mat, Del, End
 
-        eProb j i = emissionProb (matchEmissions $ hmm ! j) (res i)
-        tProb f j = transProb hmm j f
+        -- node 1 and zeroth observation
+        vee' Mat 1 0 = Scored [Mat] (aScore Mat Mat 0 + eScore Mat 1 0) -- from Beg
+        vee' Ins 1 0 = disallowed
+        vee' Del 1 0 = disallowed
+
+        -- node 0 and zeroth observation, base of self-insert
+        vee' Mat 0 0 = disallowed
+        vee' Ins 0 0 = Scored [Ins] (aScore Mat Ins 0 + eScore Ins 0 0)
+        vee' Del 0 0 = disallowed
+
+        -- node 0 and no observations
+        vee' Mat 0 (-1) = Scored [] (aScore Mat Mat 0)
+        vee' Ins 0 (-1) = disallowed
+        vee' Del 0 (-1) = disallowed
+
+        -- node 0 but not zeroth observation
+        vee' Mat 0 i = disallowed
+        vee' Ins 0 i = extend Ins $     -- possible self-insert cycle
+                       (aScore Ins Ins 0 + eScore Ins 0 i) /+/ vee'' Ins 0 (i-1)
+
+        vee' Del 0 i = disallowed
+        vee' End 0 i = Scored [Mat] (aScore Mat End 0)
+
+        -- node 1 and no more observations (came from begin)
+        vee' Mat 1 (-1) = disallowed
+        vee' Ins 1 (-1) = disallowed
+        vee' Del 1 (-1) = Scored [Del] (aScore Mat Del 0) -- came from begin
+
+        -- not node 1 yet, but not more observations (came from delete)
+        vee' Mat j (-1) = disallowed
+        vee' Ins j (-1) = disallowed
+        vee' Del j (-1) = extend Del $
+                          aScore Del Del (j - 1) /+/ vee'' Del (j - 1) (-1)
+
+        -- consume an observation AND a node
+        --------------------------------------------------------
+        -- @ start viterbi.tex -8
+        vee' Mat j i = extend Mat
+                      (eScore Mat j i /+/ myminimum (map from [Mat, Ins, Del]))
+         where from prev = aScore prev Mat (j-1) /+/ vee'' prev (j-1) (i-1)
+        -- @ end viterbi.tex
+
+        -- consume an observation but not a node
+        vee' Ins j i = extend Ins
+                       (eScore Ins j i /+/ myminimum (map from [Mat, Ins]))
+         where from prev = aScore prev Ins j /+/ vee'' prev j (i-1)
+
+        -- consume a node but not an observation
+        vee' Del j i = extend Del $ myminimum (map from [Mat, Del])
+          where from prev = aScore prev Del (j-1) /+/ vee'' prev (j-1) i
+
+        vee' End j i = extend End $ myminimum (map from preds)
+         where preds = if j >= 2 then [Mat, End] else [Mat]
+               from Mat  = aScore Mat Mat (j-1) /+/ vee'' Mat  (j-1) i
+               from prev =                          vee'' prev (j-1) i
+                        -- for local to QUERY we would do j, i-1.
+
+-- TODO seqLocal: consider the case where we consume obs, not state, for beg & end.
+
+emissionProb :: Vector a -> Int -> a
+emissionProb emissions residue = emissions ! residue
+
+transScore :: HMM -> HMMState -> HMMState -> Int -> Score
+transScore hmm from to nodenum =
+  case logProbability $ edge from to (transitions (hmm ! nodenum)) of
+    NonZero p -> Score p
+    LogZero -> negLogZero
+ where
         -- @ start edge.tex -8
         edge :: HMMState -> HMMState -> (TProbs -> TProb)
         -- @ end edge.tex
@@ -92,92 +175,7 @@ viterbi pathCons (hasStart, hasEnd) alpha query hmm =
         edge Beg Mat = b_m
         edge Mat End = m_e
         edge f   t   = error $ "HMM edge " ++ show f ++ " -> " ++ show t ++
-                               "is allowed in the Plan7 architecture"
-
-        insertProb j i = emissionProb (insertionEmissions $ hmm ! j) (res i)
-        matchProb  j i = emissionProb (matchEmissions     $ hmm ! j) (res i)
-
-        disallowed = Scored [] maxProb
-
-        -- node 1 and zeroth observation
-        vee' Mat 1 0 = Scored [Mat] (tProb m_m 0 + matchProb 1 0)
-                            --           ^^^^^^^^^^^^^ is this right?  ---NR
-                            -- we came from 'begin'
-        vee' Ins 1 0 = disallowed
-        vee' Del 1 0 = disallowed
-
-        -- node 0 and zeroth observation, base of self-insert
-        vee' Mat 0 0 = disallowed
-        vee' Ins 0 0 = Scored [Ins] (tProb m_i 0 + insertProb 0 0)
-        vee' Del 0 0 = disallowed
-
-        -- node 0 and no observations
-        vee' Mat 0 (-1) = Scored [] (tProb m_m 0)
-        vee' Ins 0 (-1) = disallowed
-        vee' Del 0 (-1) = disallowed
-
-        -- node 0 but not zeroth observation
-        vee' Mat 0 i = disallowed
-        vee' Ins 0 i = fmap (pathCons Ins) $
-                            (tProb i_i 0 + insertProb 0 i) /+/ vee'' Ins 0 (i-1)
-                            -- possible self-insert cycle
-
-        vee' Del 0 i = disallowed
-        vee' End 0 i = Scored [Mat] (tProb m_e 0)
-
-        -- node 1 and no more observations (came from begin)
-        vee' Mat 1 (-1) = disallowed
-        vee' Ins 1 (-1) = disallowed
-        vee' Del 1 (-1) = Scored [Del] (tProb m_d 0) -- came from begin
-
-        -- not node 1 yet, but not more observations (came from delete)
-        vee' Mat j (-1) = disallowed
-        vee' Ins j (-1) = disallowed
-        vee' Del j (-1) = fmap (pathCons Del) $
-                               tProb d_d (j - 1) /+/ vee'' Del (j - 1) (-1)
-
-        -- consume an observation AND a node
-        -- I think only this equation will change when
-        -- we incorporate the begin-to-match code
-        --------------------------------------------------------
-        -- @ start viterbi.tex -8
-        vee' Mat j i = fmap (pathCons Mat)
-          (eProb j i /+/ myminimum (map from [Mat, Ins, Del]))
-         where from prev = tProb (edge prev Mat) (j-1) /+/
-                                       vee'' prev (j-1) (i-1)
-        -- @ end viterbi.tex
-        
-
-        -- match came from start                                            
-        -- consume an observation but not a node
-        vee' Ins j i = fmap (pathCons Ins) $ eProb j i /+/
-                              myminimum (DL.map from [Mat, Ins])
-          where from prev = tProb (edge prev Ins) j /+/ vee'' prev j (i - 1)
-
-        -- consume a node but not an observation
-        vee' Del j i = fmap (pathCons Del) $
-                              myminimum (DL.map from [Mat, Del])
-          where from prev = tProb (edge prev Del) (j - 1) /+/
-                              vee'' prev (j - 1) i
-
-        vee' End j i = fmap (pathCons End) $ myminimum $
-                              if j >= 2 then
-                                (DL.map from [Mat, End])
-                              else
-                                [from Mat]
-          where from prev = case prev of
-                              Mat -> tProb (edge prev Mat) (j - 1) /+/
-                                       vee'' prev (j - 1) i
-                              otherwise -> vee'' prev (j - 1) i
-                        -- for local to QUERY we would do j, i-1.
-
--- TODO seqLocal: consider the case where we consume obs, not state, for beg & end.
-
--- TODO preprocessing: convert hmm to array of nodes with the stateZero and insertZero stuff prepended
--- this will transform `node` below and `transProb` below
-
-emissionProb :: Vector a -> Int -> a
-emissionProb emissions residue = emissions ! residue
+                               " is not allowed in the Plan7 architecture"
 
 -- possible speedup: avoid this case analysis; substitute for maxProb in HmmPlus
 transProb :: HMM -> Int -> StateAcc -> Double
@@ -191,27 +189,3 @@ myminimum (s:ss) = minimum' s ss
   where minimum' min [] = min
         minimum' min (s:ss) = minimum' min' ss
           where min' = if s < min then s else min
-
--- @ start vscore.tex
-data Scored a = Scored a Score
-(/+/) :: Score -> Scored a -> Scored a
--- @ end vscore.tex
-
-instance Eq a => Eq (Scored a) where
-  x == x' = scoreOf x == scoreOf x' && value x == value x'
-    where value (Scored a _) = a
-instance Eq a => Ord (Scored a) where
-  x < x' = scoreOf x < scoreOf x'
-
-instance Functor Scored where
-  fmap f (Scored a x) = Scored (f a) x
-
-instance Show (Scored a) where
-  show (Scored a x) = show x
-
-scoreOf :: Scored a -> Score
-scoreOf (Scored _ x) = x
-
-infix /+/
-x /+/ Scored a y = Scored a (x + y)
-

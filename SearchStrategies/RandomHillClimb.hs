@@ -8,6 +8,9 @@ import Debug.Trace (trace)
 import Beta
 import Constants
 import HmmPlus
+import qualified Score
+import qualified SearchModel as S
+import SearchModel (gen0, nextGen, quit)
 import SearchStrategy
 import StochasticSearch
 import Viterbi
@@ -18,7 +21,26 @@ ss = SearchStrategy { accept = accept'
                     , mutate = mutate'
                     , initialize = initialize'
                     }
+                    
+wrap_scorer :: Scorer -> S.Scorer SearchGuess
+wrap_scorer = undefined
 
+unwrap_scorer :: S.Scorer SearchGuess -> Scorer
+unwrap_scorer = undefined
+
+wrap   :: SearchSolution -> Score.Scored SearchGuess
+unwrap :: Score.Scored SearchGuess -> SearchSolution
+
+wrap = undefined
+unwrap = undefined
+
+nss :: HMM -> SearchParameters -> QuerySequence -> [BetaStrand] -> S.SearchStrategy SearchGuess
+nss hmm searchP query betas =
+      S.SS { gen0 = \seed -> initialize' hmm searchP seed query betas 
+           , nextGen = \seed scorer solutions -> map wrap $ mutate' searchP seed query (unwrap scorer) betas (map unwrap solutions)
+           , S.accept = undefined
+           , quit = undefined
+           }
 initialize' :: HMM -> SearchParameters -> Seed -> QuerySequence -> [BetaStrand] -> [SearchGuess]
 initialize' hmm searchP seed query betas = [initialGuess hmm (getSecPreds searchP) seed query betas]
 
