@@ -8,17 +8,18 @@ import Beta
 import HmmPlus
 import NonUniform
 import PsiPred
+import SearchModel (Seed)
 import StochasticSearch
 import Viterbi
 
 import Debug.Trace (trace)
 
 
-type InitialGuesser = HMM -> [SSPrediction] -> Seed -> QuerySequence -> [BetaStrand] -> SearchGuess
+type InitialGuesser = HMM -> [SSPrediction] -> Seed -> QuerySequence -> [BetaStrand] -> Placement
 
 initialGuess :: InitialGuesser
 initialGuess _ _ seed qs betas = initialGuess' betas 0 $ mkStdGen seed
-  where initialGuess' :: [BetaStrand] -> Int -> StdGen -> SearchGuess
+  where initialGuess' :: [BetaStrand] -> Int -> StdGen -> Placement
         initialGuess' [] _ _ = []
         initialGuess' (b:bs) lastGuess gen = pos : initialGuess' bs (pos + len b) gen'
           where (pos, gen') = randomR (lastGuess, betaSum) gen
@@ -26,7 +27,7 @@ initialGuess _ _ seed qs betas = initialGuess' betas 0 $ mkStdGen seed
 
 geoInitialGuess :: InitialGuesser
 geoInitialGuess _ _ seed qs betas = initialGuess' betas 0 $ mkStdGen seed
-  where initialGuess' :: [BetaStrand] -> Int -> StdGen -> SearchGuess
+  where initialGuess' :: [BetaStrand] -> Int -> StdGen -> Placement
         initialGuess' [] _ _ = []
         initialGuess' (b:bs) lastGuess gen = pos : initialGuess' bs (pos + len b) gen'
           where pos = head rand
@@ -41,12 +42,12 @@ geoInitialGuess _ _ seed qs betas = initialGuess' betas 0 $ mkStdGen seed
 
 predInitialGuess :: InitialGuesser
 predInitialGuess _ preds seed qs betas = initialGuess' $ randoms $ mkStdGen seed
-  where initialGuess' :: [Int] -> SearchGuess
+  where initialGuess' :: [Int] -> Placement
         initialGuess' [] = error "IMPOSSIBLE!"
         initialGuess' (r:rs) = trace ((show guess) ++ " --- " ++ (show $ checkGuess betas guess)) $ if checkGuess betas guess then guess else initialGuess' rs
           where guess = genGuess r (map (\p -> (residueNum p, beta_score p)) preds) $ length betas
 
-genGuess :: (Random r, Fractional r, Ord r) => Seed -> [(Int, r)] -> Int -> SearchGuess
+genGuess :: (Random r, Fractional r, Ord r) => Seed -> [(Int, r)] -> Int -> Placement
 genGuess seed dist n = DL.sort $ take n $ randomsDist (mkStdGen seed) dist
 
 projInitialGuess :: InitialGuesser
@@ -57,7 +58,7 @@ projInitialGuess hmm _ seed qs betas = initialGuess' betas 0
                 f = ceiling $ (fromIntegral $ V.length qs) / (fromIntegral $ V.length hmm)
                 pos = resPosition $ head $ residues b
 
-checkGuess :: [BetaStrand] -> SearchGuess -> Bool
+checkGuess :: [BetaStrand] -> Placement -> Bool
 checkGuess [] [] = True
 checkGuess [] [g] = False
 checkGuess [b] [] = False

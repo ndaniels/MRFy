@@ -4,7 +4,9 @@ module Viterbi
        , StatePath
        , viterbi
        , transScore
+       , transScoreNode
        , emissionScore
+       , emissionScoreNode
        , consPath
        , consNoPath
        )
@@ -24,16 +26,6 @@ import Score
 type QuerySequence = Vector Int
 
 type StatePath = [ HMMState ]
-
--- Remember, for states, 0 is a match, 1 is insertion and 2 is deletion.
--- It must be this way because the Pads parser does not support non-base
--- types as the parameter for an algebraic parser type. *sigh*
--- mat = 0 :: HMMState 
--- ins = 1 :: HMMState 
--- del = 2 :: HMMState 
--- beg = 3 :: HMMState 
--- end = 4 :: HMMState 
--- bmat = 5 :: HMMState 
 
 type ScorePathCons a = a -> [a] -> [a]
 
@@ -160,16 +152,18 @@ viterbi pathCons (hasStart, hasEnd) alpha query hmm =
 
 -- TODO seqLocal: consider the case where we consume obs, not state, for beg & end.
 
-emissionScore :: HMM -> QuerySequence -> HMMState -> Int -> Int -> Score
-emissionScore hmm qs state j i =
+emissionScoreNode :: HmmNode -> Int -> HMMState -> Score
+emissionScoreNode n q state = 
     case state of
-      Mat -> (matchEmissions     $ hmm ! j) ! (qs ! i)
-      Ins -> (insertionEmissions $ hmm ! j) ! (qs ! i)
+      Mat -> (matchEmissions     n) ! q 
+      Ins -> (insertionEmissions n) ! q 
       _   -> error ("State " ++ (show state) ++ "cannot emit")
 
-transScore :: HMM -> HMMState -> HMMState -> Int -> Score
-transScore hmm from to nodenum =
-  case logProbability $ edge from to (transitions (hmm ! nodenum)) of
+emissionScore :: HMM -> QuerySequence -> HMMState -> Int -> Int -> Score
+emissionScore hmm qs state j i = emissionScoreNode (hmm ! j) (qs ! i) state
+
+transScoreNode n from to =
+  case logProbability $ edge from to (transitions n) of
     NonZero p -> Score p
     LogZero -> negLogZero
  where
@@ -187,6 +181,9 @@ transScore hmm from to nodenum =
         edge Mat End = m_e
         edge f   t   = error $ "HMM edge " ++ show f ++ " -> " ++ show t ++
                                " is not allowed in the Plan7 architecture"
+
+transScore :: HMM -> HMMState -> HMMState -> Int -> Score
+transScore hmm from to nodenum = transScoreNode (hmm ! nodenum) from to
 
 myminimum :: Ord a => [Scored a] -> Scored a
 myminimum [] = error "naughty"

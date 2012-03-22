@@ -43,3 +43,4 @@ instance Ord (Scored a) where
 
 instance Functor Scored where
   fmap f (Scored a x) = Scored (f a) x
+

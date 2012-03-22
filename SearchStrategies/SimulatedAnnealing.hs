@@ -6,26 +6,34 @@ import System.Random (mkStdGen, random, StdGen)
 import Debug.Trace (trace)
 
 import Beta
+import HmmPlus
+import Score
+import SearchModel
 import SearchStrategy
 import StochasticSearch
 import Viterbi
 
 import qualified SearchStrategies.RandomHillClimb as RHC
 
-ss :: SearchStrategy
-ss = SearchStrategy { accept = accept'
-                    , terminate = terminate RHC.ss
-                    , mutate = mutate RHC.ss
-                    , initialize = initialize RHC.ss
-                    }
+nss :: HMM -> SearchParameters -> QuerySequence -> [BetaStrand] -> SearchStrategy Placement
+nss hmm searchP query betas =
+      SS { gen0 = \seed -> RHC.initialize' hmm searchP seed query betas 
+         , nextGen = \seed scorer placements ->
+                      RHC.mutate' searchP query betas seed scorer placements
+         , accept = \seed hist age ->
+                     accept' searchP seed hist age
+         , quit = \hist age ->
+                   RHC.terminate' searchP hist age
+         }
 
-accept' :: SearchParameters -> Seed -> History -> Age -> Bool
+accept' :: SearchParameters -> Seed -> [Scored Age] -> Age -> Bool
 accept' _ _ [] _ = error "go away"
-accept' _ _ [(s1, _)] _ = True
-accept' searchP seed ((s1, _):(s2, _):scores) age = boltzmann s1 s2 >= (p :: Double)
-  where (p, gen) = random (mkStdGen seed)
+accept' _ _ [s] _ = True
+accept' searchP seed (a1:a2:_) age = boltzmann s1 s2 >= (p :: Double)
+  where (s1, s2) = (unScore $ scoreOf a1, unScore $ scoreOf a2)
+        (p, gen) = random (mkStdGen seed)
     
-        boltzmann :: Score -> Score -> Double
+        boltzmann :: Double -> Double -> Double
         boltzmann s1 s2 = exp ((-(s1 - s2)) 
                                / (constBoltzmann * temperature))
 

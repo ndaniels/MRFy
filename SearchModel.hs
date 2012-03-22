@@ -54,3 +54,4 @@ search strat scorer (s0:seeds) = runFrom seeds firstGen [] 0
         else
           runFrom seeds newPop newHist (age + 1)
 -- @ end search.tex
+

@@ -39,16 +39,16 @@ import Wrappers
 -- need a representation of a solution
 
 data SearchParameters = SearchParameters { strategy :: SearchStrategy Placement
-                                             , generations :: Int
-                                             , multiStartPopSize :: Int
-                                             , verbose :: Bool
-                                             , populationSize :: Maybe Int
-                                             , initialTemperature :: Maybe Double
-                                             , coolingFactor :: Maybe Double
-                                             , boltzmannConstant :: Maybe Double
-                                             , mutationRate :: Maybe Double
-                                             , secPreds :: Maybe [SSPrediction]
-                                             }
+                                         , generations :: Int
+                                         , multiStartPopSize :: Int
+                                         , verbose :: Bool
+                                         , populationSize :: Maybe Int
+                                         , initialTemperature :: Maybe Double
+                                         , coolingFactor :: Maybe Double
+                                         , boltzmannConstant :: Maybe Double
+                                         , mutationRate :: Maybe Double
+                                         , secPreds :: Maybe [SSPrediction]
+                                         }
 
 getSearchParm searchP parm = maybe (error "Not a valid parameter.") id (parm searchP)
 
@@ -60,44 +60,6 @@ getSecPreds searchP = case secPreds searchP of
 type Placement = [Int] -- list of *starting* residue positions of each beta strand
 
 type Temperature = Double
-
--- type Scorer = QuerySequence -> [BetaStrand] -> SearchGuess -> SearchSolution
--- data SearchStrategy = SearchStrategy { accept :: SearchParameters -> Seed -> History -> Age -> Bool
---                                      , terminate :: SearchParameters -> History -> Age -> Bool
---                                      , mutate :: SearchParameters -> Seed -> QuerySequence -> Scorer -> [BetaStrand] -> [SearchSolution] -> [SearchSolution]
---                                      , initialize :: HMM -> SearchParameters -> Seed -> QuerySequence -> [BetaStrand]-> [SearchGuess]
---                                      }
-
-
--- invariant: fst SearchSolution == head History
--- search :: QuerySequence -> HMM -> [BetaStrand] -> SearchParameters -> [Seed] -> (SearchSolution, History)
--- search query hmm betas searchP seeds = search' (tail seeds) initialGuessScore [] 0
---   where initialGuessScore = map (score hmm query betas) initialGuess
--- 
---         initialGuess = (initialize strat) hmm searchP (head seeds) query betas
--- 
---         strat = strategy searchP
---         search' :: [Seed] -> [SearchSolution] -> History -> Age -> (SearchSolution, History)
---         search' (s1:s2:seeds) oldPop hist age =
---           let newPop = mutate' oldPop
---               score = fst $ minimum newPop
---               -- score = trace (show initialGuess) $ fst $ minimum newPop 
---               -- score = trace (show $ DL.sort $ map fst newPop) $ fst $ minimum newPop 
---               -- newHist = trace ("New score: " DL.++ (show score) DL.++ "--- History: " DL.++ (show hist)) $ score : hist 
---               newHist = (score, age) : hist
---             in if accept' newHist age then
---                   if terminate' newHist age then
---                     (minimum newPop, newHist)
---                   else
---                     search' seeds newPop newHist (age + 1)
---                else
---                   if terminate' hist age then
---                     (minimum oldPop, hist)
---                   else
---                     search' seeds oldPop hist (age + 1)
---             where mutate' = mutate strat searchP s1 query (score hmm) betas
---                   terminate' = terminate strat searchP
---                   accept' = accept strat searchP s2
 
 data BetaOrViterbi = Beta
                      | Viterbi
@@ -151,17 +113,14 @@ betaScore :: QuerySequence -> Placement -> [BetaResidue] -> HMM -> QuerySequence
 betaScore query guesses = vfoldr3 betaScore' negLogOne
   where betaScore' :: BetaResidue -> HmmNode -> Int -> Score -> Score
         betaScore' r n q s = s + Score (betaCoeff * unScore betaTableScore) + Score ((1 - betaCoeff) * unScore viterbiScore)
-          where viterbiScore = transProb + eProb -- replace with transScore and emissionScore
-                                                 -- also, not blindly m_m
-                                                 -- do we have to look at neighboring states?
-                                                 -- e.g. came from i or d rather than m?
-                                                 -- do we need a prevState, usually m?
-                eProb = (matchEmissions $ n) V.! q
-                transProb = case logProbability $ m_m $ transitions n of
-                                 NonZero p -> p
-                                 LogZero -> maxProb
-        
-                betaTableScore = foldr tableLookup 0.0 $ pairs r
+          where viterbiScore = transScoreNode n Mat Mat + emissionScoreNode n q Mat
+                -- also, not blindly m_m
+                -- do we have to look at neighboring states?
+                -- e.g. came from i or d rather than m?
+                -- do we need a prevState, usually m?
+                -- We're punting on this bug for now and forcing
+                -- a m_m transition.
+                betaTableScore = foldr tableLookup negLogOne $ pairs r
                 tableLookup pair score = score + lookupScore
                   where lookupScore = case expose pair of
                                            Buried -> betaBuried V.! partnerInd V.! q

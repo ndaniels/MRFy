@@ -43,13 +43,13 @@ data Files = Files { hmmPlusF :: String
 
 getFiles :: [String] -> Files
 getFiles [hmmPlus, fasta] = Files { hmmPlusF = hmmPlus
-                                   , fastaF = fasta
-                                   , outputF = "stdout"
-                                   }
+                                  , fastaF = fasta
+                                  , outputF = "stdout"
+                                  }
 getFiles [hmmPlus, fasta, output] = Files { hmmPlusF = hmmPlus
-                                            , fastaF = fasta
-                                            , outputF = output
-                                            }
+                                          , fastaF = fasta
+                                          , outputF = output
+                                          }
 getFiles _ = error "fool"
 
 getParams :: [Flag] -> SearchParameters
