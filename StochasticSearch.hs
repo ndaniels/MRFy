@@ -148,6 +148,10 @@ betaScore query guesses = vfoldr3 betaScore' negLogOne
   where betaScore' :: BetaResidue -> HmmNode -> Int -> Score -> Score
         betaScore' r n q s = s + Score (betaCoeff * unScore betaTableScore) + Score ((1 - betaCoeff) * unScore viterbiScore)
           where viterbiScore = transProb + eProb -- replace with transScore and emissionScore
+                                                 -- also, not blindly m_m
+                                                 -- do we have to look at neighboring states?
+                                                 -- e.g. came from i or d rather than m?
+                                                 -- do we need a prevState, usually m?
                 eProb = (matchEmissions $ n) V.! q
                 transProb = case logProbability $ m_m $ transitions n of
                                  NonZero p -> p
