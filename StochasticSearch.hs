@@ -132,6 +132,10 @@ statePath hmm query betas ps = foldr (++) [] $ map viterbiOrBeta $ DL.zip4 hmmAl
 score :: HMM -> QuerySequence -> [BetaStrand] -> Scorer Placement
 score hmm query betas ps = Scored ps (foldr (+) negLogOne $ (parMap rseq) viterbiOrBeta $ DL.zip4 hmmAlignTypes (map traceid miniHmms) miniQueries $ dupeElements [0..])
   where viterbiOrBeta :: (BetaOrViterbi, HMM, QuerySequence, Int) -> Score
+        -- NMD note: I think we'll have to do something with seq here
+        -- to force evaluation of the Viterbis before the Betas (Vs can still be in parallel)
+        -- so we can use the last node of a Viterbi segment to inform the transition
+        -- to Match for the Beta score.
         viterbiOrBeta (Beta, ns, qs, i) = betaScore query ps (residues (betas !! i)) ns qs
         viterbiOrBeta (Viterbi, ns, qs, i) = scoreOf $ viterbi consNoPath (False, False) Constants.amino qs ns
 
