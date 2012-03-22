@@ -1,5 +1,14 @@
 {-# LANGUAGE BangPatterns #-}
-module Viterbi where
+module Viterbi
+       ( QuerySequence
+       , StatePath
+       , viterbi
+       , transScore
+       , emissionScore
+       , consPath
+       , consNoPath
+       )
+where
 
 import Debug.Trace (trace)
 -- import Debug.Trace.LocationTH (check) 
@@ -77,9 +86,7 @@ viterbi pathCons (hasStart, hasEnd) alpha query hmm =
         aScore = transScore hmm
         
         eScore :: HMMState -> Int -> Int -> Score
-        eScore Mat j i = Score $ emissionProb (matchEmissions     $ hmm ! j) (res i)
-        eScore Ins j i = Score $ emissionProb (insertionEmissions $ hmm ! j) (res i)
-        eScore s   _ _ = error $ "State " ++ show s ++ " has no emission score"
+        eScore = emissionScore hmm query
         
         disallowed = Scored [] negLogZero -- outcome of zero likelihood
         
@@ -153,8 +160,12 @@ viterbi pathCons (hasStart, hasEnd) alpha query hmm =
 
 -- TODO seqLocal: consider the case where we consume obs, not state, for beg & end.
 
-emissionProb :: Vector a -> Int -> a
-emissionProb emissions residue = emissions ! residue
+emissionScore :: HMM -> QuerySequence -> HMMState -> Int -> Int -> Score
+emissionScore hmm qs state j i =
+    case state of
+      Mat -> (matchEmissions     $ hmm ! j) ! (qs ! i)
+      Ins -> (insertionEmissions $ hmm ! j) ! (qs ! i)
+      _   -> error ("State " ++ (show state) ++ "cannot emit")
 
 transScore :: HMM -> HMMState -> HMMState -> Int -> Score
 transScore hmm from to nodenum =
@@ -176,12 +187,6 @@ transScore hmm from to nodenum =
         edge Mat End = m_e
         edge f   t   = error $ "HMM edge " ++ show f ++ " -> " ++ show t ++
                                " is not allowed in the Plan7 architecture"
-
--- possible speedup: avoid this case analysis; substitute for maxProb in HmmPlus
-transProb :: HMM -> Int -> StateAcc -> Double
-transProb hmm nodenum state = case logProbability $ state (transitions (hmm ! nodenum)) of
-                                   NonZero p -> p
-                                   LogZero -> maxProb
 
 myminimum :: Ord a => [Scored a] -> Scored a
 myminimum [] = error "naughty"

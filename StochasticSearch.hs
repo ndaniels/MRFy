@@ -38,17 +38,17 @@ import Wrappers
 
 -- need a representation of a solution
 
-data SearchParameters = SearchParameters { strategy :: SearchStrategy
-                                         , generations :: Int
-                                         , multiStartPopSize :: Int
-                                         , verbose :: Bool
-                                         , populationSize :: Maybe Int
-                                         , initialTemperature :: Maybe Double
-                                         , coolingFactor :: Maybe Double
-                                         , boltzmannConstant :: Maybe Double
-                                         , mutationRate :: Maybe Double
-                                         , secPreds :: Maybe [SSPrediction]
-                                         }
+data SearchParameters = SearchParameters { strategy :: SearchStrategy Placement
+                                             , generations :: Int
+                                             , multiStartPopSize :: Int
+                                             , verbose :: Bool
+                                             , populationSize :: Maybe Int
+                                             , initialTemperature :: Maybe Double
+                                             , coolingFactor :: Maybe Double
+                                             , boltzmannConstant :: Maybe Double
+                                             , mutationRate :: Maybe Double
+                                             , secPreds :: Maybe [SSPrediction]
+                                             }
 
 getSearchParm searchP parm = maybe (error "Not a valid parameter.") id (parm searchP)
 
@@ -120,20 +120,20 @@ statePath :: HMM -> QuerySequence -> [BetaStrand] -> Scored Placement -> StatePa
 statePath hmm query betas ps = foldr (++) [] $ map viterbiOrBeta $ DL.zip4 hmmAlignTypes (map traceid miniHmms) miniQueries $ dupeElements [0..]
   where viterbiOrBeta :: (BetaOrViterbi, HMM, QuerySequence, Int) -> StatePath
         viterbiOrBeta (Beta, ns, qs, i) = take (len (betas !! i)) $ repeat BMat
-        viterbiOrBeta (Viterbi, ns, qs, i) = snd $ viterbi consPath (False, False) Constants.amino qs ns
+        viterbiOrBeta (Viterbi, ns, qs, i) = unScored $ viterbi consPath (False, False) Constants.amino qs ns
 
         -- traceid hmm = trace (show (V.map nodeNum hmm)) $ id hmm 
         -- traceid = (trace (show guesses)) id 
         traceid = id
 
         (miniHmms, hmmAlignTypes) = sliceHmms hmm betas 1 [] []
-        miniQueries = sliceQuery query betas ps 1 []
+        miniQueries = sliceQuery query betas (unScored ps) 1 []
 
-score :: HMM -> QuerySequence -> [BetaStrand] -> Scorer
-score hmm query betas ps = (foldr (+) 0.0 $ (parMap rseq) viterbiOrBeta $ DL.zip4 hmmAlignTypes (map traceid miniHmms) miniQueries $ dupeElements [0..], ps)
+score :: HMM -> QuerySequence -> [BetaStrand] -> Scorer Placement
+score hmm query betas ps = Scored ps (foldr (+) negLogOne $ (parMap rseq) viterbiOrBeta $ DL.zip4 hmmAlignTypes (map traceid miniHmms) miniQueries $ dupeElements [0..])
   where viterbiOrBeta :: (BetaOrViterbi, HMM, QuerySequence, Int) -> Score
         viterbiOrBeta (Beta, ns, qs, i) = betaScore query ps (residues (betas !! i)) ns qs
-        viterbiOrBeta (Viterbi, ns, qs, i) = fst $ viterbi consNoPath (False, False) Constants.amino qs ns
+        viterbiOrBeta (Viterbi, ns, qs, i) = scoreOf $ viterbi consNoPath (False, False) Constants.amino qs ns
 
         -- traceid hmm = trace (show (V.map nodeNum hmm)) $ id hmm 
         traceid = id
@@ -144,10 +144,10 @@ score hmm query betas ps = (foldr (+) 0.0 $ (parMap rseq) viterbiOrBeta $ DL.zip
 
 -- invariant: length residues == length hmmSlice == length querySlice
 betaScore :: QuerySequence -> Placement -> [BetaResidue] -> HMM -> QuerySequence -> Score
-betaScore query guesses = vfoldr3 betaScore' 0.0
+betaScore query guesses = vfoldr3 betaScore' negLogOne
   where betaScore' :: BetaResidue -> HmmNode -> Int -> Score -> Score
-        betaScore' r n q s = s + betaCoeff * betaTableScore + (1 - betaCoeff) * viterbiScore
-          where viterbiScore = transProb + eProb
+        betaScore' r n q s = s + Score (betaCoeff * unScore betaTableScore) + Score ((1 - betaCoeff) * unScore viterbiScore)
+          where viterbiScore = transProb + eProb -- replace with transScore and emissionScore
                 eProb = (matchEmissions $ n) V.! q
                 transProb = case logProbability $ m_m $ transitions n of
                                  NonZero p -> p
@@ -162,7 +162,8 @@ betaScore query guesses = vfoldr3 betaScore' 0.0
                         partnerBeta = (guesses !! (pairStrandSerial pair)) + (residueInd pair)
 
 -- invariant: length betas == length guesses
-sliceQuery query betas guesses queryPos queries = reverse $ sliceQuery' betas guesses queryPos queries
+sliceQuery :: QuerySequence -> [BetaStrand] -> Placement -> Int -> [QuerySequence] -> [QuerySequence]
+sliceQuery query betas placement queryPos queries = reverse $ sliceQuery' betas placement queryPos queries
   where sliceQuery' :: [BetaStrand] -> Placement -> Int -> [QuerySequence] -> [QuerySequence]
         sliceQuery' [] [] queryPos queries = (V.drop queryPos query) : queries
         sliceQuery' [b] [g] queryPos queries = if length betas /= 1 then

@@ -36,6 +36,7 @@ import System.IO.Unsafe (unsafePerformIO)
 import qualified Data.Vector as V
 import Constants
 import ConstantsGen
+import Score
 import qualified Test.QuickCheck as QC
 
 ws = REd "[\t ]+|$" " "
@@ -279,7 +280,7 @@ getNumNodes ((HeaderLine {tag, payload}):xs) = case tag of
 
 type HMM = V.Vector HmmNode
 
-type EmissionProbabilities = V.Vector Double
+type EmissionProbabilities = V.Vector Score
 type InsertEmissions = EmissionProbabilities
 
 -- See type definition for 'HmmNodeP' above for some documentation.
@@ -356,9 +357,9 @@ getHmmNodes hmm = divOccSum
 
         convert :: HmmNodeP -> HmmNode
         convert n = HmmNode { nodeNum = nodeNumP n
-                            , matchEmissions = V.fromList $ convertEmissions $ matchEmissionsP n
+                            , matchEmissions = V.map Score $ V.fromList $ convertEmissions $ matchEmissionsP n
                             , annotations = annotationsP n
-                            , insertionEmissions = V.fromList $ convertEmissions $ insertionEmissionsP n
+                            , insertionEmissions = V.map Score $ V.fromList $ convertEmissions $ insertionEmissionsP n
                             , transitions = newTrans
                             }
           where otran = transitionsP n

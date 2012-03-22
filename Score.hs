@@ -1,5 +1,5 @@
 module Score
-       ( Score(..), negLogZero, negLogOne
+       ( Score(..), negLogZero, negLogOne, unScore
        , Scored(..), (/+/)
        )
 where
@@ -14,6 +14,8 @@ negLogZero = Score 10e1024
 negLogOne :: Score -- ^ - log 1
 negLogOne = Score 0.0
 
+unScore :: Score -> Double
+unScore (Score x) = x
 
 instance Show Score where
   show (Score x) = show x
