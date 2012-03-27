@@ -1,16 +1,16 @@
 STRATS=`echo SearchStrategies/*.hs`
 SRC=$STRATS Beta.hs Constants.hs HmmPlus.hs Main.hs Viterbi.hs \
          StochasticSearch.hs SearchStrategy.hs \
-         Wrappers.hs ConstantsGen.hs
+         Wrappers.hs ConstantsGen.hs CommandArgs.hs SearchModel.hs \
+				 Score.hs SearchStrategies.hs
 
 TGT=mrfy
 CRUDOPTS= -hidir .crud -odir .crud
 OPTS= -fspec-constr-count=6
 
-all:V: $TGT
-$TGT:
+all:V:
 	mkdir -p .crud
-	ghc $OPTS $CRUDOPTS --make $SRC \
+	ghc $OPTS $CRUDOPTS --make Main.hs \
 			-O3 \
 			-threaded \
 			-rtsopts \

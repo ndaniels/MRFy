@@ -10,6 +10,7 @@ module SearchModel
 where
   
 import Score
+import Viterbi
 --------------------------------------------------------
 
 -- @ start scoredecl.tex
@@ -42,7 +43,7 @@ search strat scorer (s0:seeds) = runFrom seeds firstGen [] 0
           -> Age -> (Scored placement, [Scored Age])
   runFrom (s1:s2:seeds) oldPop oldHist age =
     let trialPop  = nextGen strat s1 scorer oldPop
-        trialHist = (fmap (const age) $ minimum trialPop)
+        trialHist = (fmap (const age) $! myminimum trialPop)
                   : oldHist
         (newPop, newHist) =
           if accept strat s2 trialHist age then
@@ -50,7 +51,7 @@ search strat scorer (s0:seeds) = runFrom seeds firstGen [] 0
           else
             (oldPop, oldHist)
     in  if quit strat newHist age then
-          (minimum newPop, newHist)
+          (myminimum newPop, newHist)
         else
           runFrom seeds newPop newHist (age + 1)
 -- @ end search.tex

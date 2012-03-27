@@ -9,6 +9,7 @@ module Viterbi
        , emissionScoreNode
        , consPath
        , consNoPath
+       , myminimum
        )
 where
 
@@ -185,9 +186,14 @@ transScoreNode n from to =
 transScore :: HMM -> HMMState -> HMMState -> Int -> Score
 transScore hmm from to nodenum = transScoreNode (hmm ! nodenum) from to
 
-myminimum :: Ord a => [Scored a] -> Scored a
+-- myminimum                 :: (Ord a) => [a] -> a 
+-- myminimum []              =  error "minimum" 
+-- myminimum xs              =  DL.foldl1' min xs 
+
+myminimum :: Ord a => [a] -> a
 myminimum [] = error "naughty"
-myminimum (s:ss) = minimum' s ss
+myminimum (!s:(!ss)) = minimum' s ss
   where minimum' min [] = min
         minimum' min (s:ss) = minimum' min' ss
           where min' = if s < min then s else min
+

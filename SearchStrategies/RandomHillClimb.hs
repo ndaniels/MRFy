@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 module SearchStrategies.RandomHillClimb where
 
 import qualified Data.Vector as V
@@ -14,7 +15,7 @@ import SearchStrategy
 import StochasticSearch
 import Viterbi
 
-nss :: HMM -> SearchParameters -> QuerySequence -> [BetaStrand] -> SearchStrategy Placement
+nss :: NewSS
 nss hmm searchP query betas =
       SS { gen0 = \seed -> initialize' hmm searchP seed query betas 
          , nextGen = \seed scorer placements ->
@@ -30,10 +31,10 @@ initialize' hmm searchP seed query betas = [initialGuess hmm (getSecPreds search
 accept' :: SearchParameters -> Seed -> [Scored Age] -> Age -> Bool
 accept' _ _ [] _ = error "go away"
 accept' _ _ [s1] _ = True
-accept' _ _ (s1:s2:scores) _ = scoreOf s1 < scoreOf s2
+accept' _ _ (s1:s2:_) _ = scoreOf s1 < scoreOf s2
 
 terminate' :: SearchParameters -> [Scored Age] -> Age -> Bool
-terminate' searchP scores age = showMe $ not $ age < (generations searchP)
+terminate' searchP (!scores) age = showMe $ not $ age < (generations searchP)
   where showMe = if not $ (10.0 * ((fromIntegral age)
                                    / (fromIntegral (generations searchP))))
                           `elem` [1.0..10.0] then

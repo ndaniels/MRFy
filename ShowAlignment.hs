@@ -6,6 +6,7 @@ import qualified Data.Vector as V
 import Beta
 import Constants
 import HmmPlus
+import Score
 import Viterbi
 
 import Debug.Trace (trace)
@@ -36,16 +37,22 @@ import Debug.Trace (trace)
 --             Middle gets space character.
 --             Query seq gets '-' symbol.
 
-showAlignment :: HMM -> [BetaStrand] -> QuerySequence -> StatePath -> Int -> Alphabet -> String
+showAlignment :: HMM
+              -> [BetaStrand]
+              -> QuerySequence
+              -> StatePath
+              -> Int
+              -> Alphabet
+              -> String
 showAlignment hmm betas query path len alpha = 
   niceify $ showA (map (getResidue alpha) $ V.toList query) path 1 Mat [] [] []
   where model i = alpha V.! ai
           where (_, ai, _) = V.foldl minWithInd 
-                                     (0, 0, maxProb) 
+                                     (0, 0, negLogZero) 
                                      (V.slice 0 ((V.length mEmissions) - 1) mEmissions)
                 mEmissions = matchEmissions $ hmm V.! i
 
-        minWithInd :: (Int, Int, Double) -> Double -> (Int, Int, Double)                   
+        minWithInd :: (Int, Int, Score) -> Score -> (Int, Int, Score)
         minWithInd (ind, mi, mp) prob = if prob < mp then
                                           (ind + 1, ind, prob)
                                         else

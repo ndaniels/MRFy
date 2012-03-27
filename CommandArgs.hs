@@ -53,26 +53,15 @@ getFiles [hmmPlus, fasta, output] = Files { hmmPlusF = hmmPlus
 getFiles _ = error "fool"
 
 getParams :: [Flag] -> SearchParameters
-getParams [] = 
-  SearchParameters { strategy = SimulatedAnnealing.ss
-                   , generations = 1000
-                   , multiStartPopSize = 1
-                   , verbose = False
-                   , populationSize = Just 10
-                   , initialTemperature = Just 1000.0
-                   , coolingFactor = Just 0.99
-                   , boltzmannConstant = Just 1.0
-                   , mutationRate = Just 1.0
-                   , secPreds = Nothing
-                   }
+getParams [] = defaultSa
 getParams (f:fs) =
   case f of
     Verbose -> params { verbose = True }
     Version -> error "show version number"
     Help -> error "show help"
-    StratSA -> params { strategy = SimulatedAnnealing.ss }
-    StratGA -> params { strategy = GeneticAlgorithm.ss }
-    StratRand -> params { strategy = RandomHillClimb.ss }
+    StratSA -> params { strategy = SimulatedAnnealing.nss }
+    StratGA -> params { strategy = GeneticAlgorithm.nss }
+    StratRand -> params { strategy = RandomHillClimb.nss }
     Generations x -> params { generations = read x }
     MultiStartPop x -> params { multiStartPopSize = read x }
     PopSize x -> params { populationSize = read x }
@@ -90,29 +79,27 @@ getOpts argv =
       (_, _, errs) -> ioError (userError (concat errs ++ usageInfo header options))
   where header = "Usage: mrfy [OPTION ...] files..."
     
-searchP = sa
+defaultGa = SearchParameters { strategy = GeneticAlgorithm.nss
+                             , generations = 1000
+                             , multiStartPopSize = 10
+                             , verbose = True
+                             , populationSize = Just 20
+                             , initialTemperature = Just 1000.0
+                             , coolingFactor = Just 0.99
+                             , boltzmannConstant = Just 1.0
+                             , mutationRate = Just 1.0
+                             , secPreds = Nothing
+                             }
 
-ga = SearchParameters { strategy = GeneticAlgorithm.ss
-                      , generations = 1000
-                      , multiStartPopSize = 1
-                      , verbose = True
-                      , populationSize = Just 20
-                      , initialTemperature = Just 1000.0
-                      , coolingFactor = Just 0.99
-                      , boltzmannConstant = Just 1.0
-                      , mutationRate = Just 1.0
-                      , secPreds = Nothing
-                      }
-
-sa = SearchParameters { strategy = SimulatedAnnealing.ss
-                      , generations = 1000
-                      , multiStartPopSize = 10
-                      , verbose = True
-                      , populationSize = Nothing
-                      , initialTemperature = Just 1000.0
-                      , coolingFactor = Just 0.99
-                      , boltzmannConstant = Just 1.0
-                      , mutationRate = Just 1.0
-                      , secPreds = Nothing
-                      }
+defaultSa = SearchParameters { strategy = SimulatedAnnealing.nss
+                             , generations = 1000
+                             , multiStartPopSize = 2
+                             , verbose = True
+                             , populationSize = Nothing
+                             , initialTemperature = Just 1000.0
+                             , coolingFactor = Just 0.99
+                             , boltzmannConstant = Just 1.0
+                             , mutationRate = Just 1.0
+                             , secPreds = Nothing
+                             }
 

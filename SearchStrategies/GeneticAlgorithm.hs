@@ -10,47 +10,64 @@ import Beta
 import Constants
 import HmmPlus
 import NonUniform
+import Score
+import SearchModel
 import SearchStrategy
 import Shuffle
 import StochasticSearch
 import Viterbi
 
-ss :: SearchStrategy
-ss = SearchStrategy { accept = accept'
-                    , terminate = terminate'
-                    , mutate = mutate'
-                    , initialize = initialize'
-                    }
+nss :: HMM -> SearchParameters -> QuerySequence -> [BetaStrand] -> SearchStrategy Placement
+nss hmm searchP query betas =
+  SS { gen0 = \seed -> initialize' hmm searchP seed query betas 
+     , nextGen = \seed scorer placements ->
+                  mutate' searchP query betas seed scorer placements
+     , accept = \seed hist age ->
+                 accept' searchP seed hist age
+     , quit = \hist age ->
+               terminate' searchP hist age
+     }
 
-initialize' :: HMM -> SearchParameters -> Seed -> QuerySequence -> [BetaStrand] -> [SearchGuess]
-initialize' hmm searchP seed query betas = map (\s -> projInitialGuess hmm (getSecPreds searchP) s query betas) 
-                                        $ take (getSearchParm searchP populationSize) rands
+initialize' :: HMM -> SearchParameters -> Seed -> QuerySequence -> [BetaStrand] -> [Placement]
+initialize' hmm searchP seed query betas = 
+  map (\s -> projInitialGuess hmm (getSecPreds searchP) s query betas)
+      $ take (getSearchParm searchP populationSize) rands
   where rands = (randoms (mkStdGen seed)) :: [Int]
 
-accept' :: SearchParameters -> Seed -> History -> Age -> Bool
--- accept' _ _ _ _ = True
+accept' :: SearchParameters -> Seed -> [Scored Age] -> Age -> Bool
 accept' _ _ [] _ = error "go away" 
 accept' _ _ [s1] _ = True 
-accept' _ _ (s1:s2:scores) _ = fst s1 < fst s2 
+accept' _ _ (s1:s2:scores) _ = scoreOf s1 < scoreOf s2 
 
-terminate' :: SearchParameters -> History -> Age -> Bool
-terminate' searchP scores age = showMe $ not $ age < (generations searchP)
-  where showMe = if not $ (10.0 * ((fromIntegral age) / 
-                 (fromIntegral (generations searchP)))) `elem` [1.0..10.0] then
+terminate' :: SearchParameters -> [Scored Age] -> Age -> Bool
+terminate' searchP _ age = showMe $ not $ age < (generations searchP)
+  where showMe = if not $ (10.0 * ((fromIntegral age)
+                                   / (fromIntegral (generations searchP))))
+                          `elem` [1.0..10.0] then
                    id
                  else
                    trace ((show age) ++ " generations complete")
 
 -- invariant: len [SearchSolution] == 1
-mutate' :: SearchParameters -> Seed -> QuerySequence -> Scorer -> [BetaStrand] -> [SearchSolution] -> [SearchSolution]
-mutate' searchP seed query scorer betas solutions = fittest
-  where fittest = fst $ shuffle (mkStdGen seed) $ take (getSearchParm searchP populationSize) $ 
-            sort $ solutions ++ progeny
-        progeny = map (scorer query betas) $
-            map (\gs -> mutateChild 0 0 (mkStdGen seed) gs gs) $ getPairings guesses
-        guesses = map snd solutions
+mutate' :: SearchParameters
+        -> QuerySequence
+        -> [BetaStrand]
+        -> Seed
+        -> Scorer Placement
+        -> [Scored Placement]
+        -> [Scored Placement]
+mutate' searchP query betas seed scorer placements = fittest
+  where fittest = fst
+                  $ shuffle (mkStdGen seed)
+                  $ take (getSearchParm searchP populationSize)
+                  $ sort
+                  $ placements ++ progeny
+        progeny = map scorer
+                  $ map (\gs -> mutateChild 0 0 (mkStdGen seed) gs gs)
+                  $ getPairings
+                  $ map unScored placements
 
-        mutateChild :: Int -> Int -> StdGen -> SearchGuess -> SearchGuess -> SearchGuess
+        mutateChild :: Int -> Int -> StdGen -> Placement -> Placement -> Placement
         mutateChild _ _ _ _ [] = []
         mutateChild i lastGuess gen ogs (g:gs) = g' : mutateChild (i+1) g' gen' ogs gs
           where (g', gen') = randomR (lo, hi) gen
@@ -63,7 +80,7 @@ mutate' searchP seed query scorer betas solutions = fittest
                      else
                        (ogs !! (i + 1)) - (len $ betas !! i)
 
-getPairings :: [SearchGuess] -> [SearchGuess]
+getPairings :: [Placement] -> [Placement]
 getPairings [] = []
 getPairings [p] = [p]
 getPairings (p1:p2:ps) = crossover p1 p2 : getPairings ps
@@ -71,11 +88,11 @@ getPairings (p1:p2:ps) = crossover p1 p2 : getPairings ps
 -- mutateChild :: StdGen -> SearchGuess -> SearchGuess 
 -- mutateChild = mutateChild' 0 0 
 
-crossover :: SearchGuess -> SearchGuess -> SearchGuess
+crossover :: Placement -> Placement -> Placement
 crossover ps qs = sort $ crossover' ps qs
 
 -- invariant: length ps == length qs
-crossover' :: SearchGuess -> SearchGuess -> SearchGuess
+crossover' :: Placement -> Placement -> Placement
 crossover' [] [] = []
 crossover' [p] [q] = if p < q then [p] else [q]
 crossover' (p:ps) (q:qs) = leftmost:rightmost:crossover' (init ps) (init qs)

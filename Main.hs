@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveDataTypeable, BangPatterns #-}
 
 module Main where
 
@@ -21,28 +21,12 @@ import CommandArgs
 import Constants
 import HmmPlus
 import RunPsiPred
+import Score
+import SearchModel
 import ShowAlignment
 import StochasticSearch
 import Viterbi
 
-
--- data SmurfArgs = SmurfArgs { hmmPlusFile :: FilePath 
-                           -- , fastaFile :: FilePath 
-                           -- } 
-  -- deriving (Show, Data, Typeable) 
-
--- Maybe use System.Console.getopt instead
--- smurfargs = SmurfArgs { hmmPlusFile = def &= typ "HMM Plus file" &= argPos 0  
-                      -- , fastaFile = def &= typ "FASTA file" &= argPos 1 
-                      -- } 
-
--- to be removed
--- qseq = "STVWACIKLMAACDDEADGHSTVMMPQRRDDIKLMNPQSTVWYAGEADGE"
--- querySeq = "MVDDIFERGSKGSSDFFTGNVWVKMLVTDENGVFNTQVYDVVFEPGARTHWHSHPGGQILIVTRGKGFYQERGKPARILKKGDVVEIPPNVVHWHGAAPDEELVHIGISTQVHLGPAEWLGSVTEEEYRKATEGK" 
-
--- for an 8 bladed propeller
-querySeq = "KDPANWVMTGRDYNAQNYSEMTDINKENVKQLRPAWSFSTGVLHGHEGTPLVVGDRMFIHTPFPNTTFALDLNEPGKILWQNKPKQNPTARTVACCDVVNRGLAYWPGDDQVKPLIFRTQLDGHIVAMDAETGETRWIMENSDIKVGSTLTIAPYVIKDLVLVGSSGAELGVRGYVTAYDVKSGEMRWRAFATGPDEELLLAEDFNAPNPHYGQKNLGLETWEGDAWKIGGGTNWGWYAYDPEVDLFYYGSGNPAPWNETMRPGDNKWTMAIWGREATTGEAKFAYQKTPHDEWDYAGVNVMMLSEQEDKQGQMRKLLTHPDRNGIVYTLDRTNGDLISADKMDDTVNWVKEVQLDTGLPVRDPEFGTRMDHKARDICPSAMGYHNQGHDSYDPERKVFMLGINHICMDWEPFMLPYRAGQFFVGATLTMYPGPKGDRGNASGLGQIKAYDAISGEMKWEKMERFSVWGGTMATAGGLTFYATLDGFIKARDSDTGDLLWKFKLPSGVIGHPMTYKHDGRQYVAIMYGVGGWPGVGLVFDLADPTAGLGSVGAFKRLQEFTQMGGGVMVFSLDGESPYSDPNVGEYAPGEPT"
--- querySeq = "KDPANWVMTGRDYNAQNYSEM" 
 
 translateQuery :: String -> V.Vector Int
 translateQuery = V.fromList . DL.map lookup
@@ -50,17 +34,14 @@ translateQuery = V.fromList . DL.map lookup
                         Just i -> i
                         Nothing -> error "Residue not found in alphabet"
 
--- qseq = "ADGE" 
--- querySeq = listArray (0, (length qseq) - 1) qseq
+outputAlignment :: HMM -> [BetaStrand] -> Scored Placement -> QuerySequence -> String
+outputAlignment hmm betas ps querySeq = showAlignment hmm betas querySeq sp 60 Constants.amino
+  where sp = statePath hmm querySeq betas ps
 
--- showAlignment :: HMM -> QuerySequence -> StatePath -> String 
-
-outputAlignment :: HMM -> [BetaStrand] -> SearchSolution -> QuerySequence -> String
-outputAlignment hmm betas ss querySeq = showAlignment hmm betas querySeq sp 60 Constants.amino
-  where sp = statePath hmm querySeq betas ss
-
-popSearch :: [QuerySequence -> (SearchSolution, History)] -> QuerySequence -> (SearchSolution, History)
-popSearch searches q = minimum $ (parMap rseq) (\s -> s q) searches
+popSearch :: [QuerySequence -> (Scored Placement, [Scored Age])]
+          -> QuerySequence
+          -> (Scored Placement, [Scored Age])
+popSearch searches q = myminimum $! (parMap rseq) (\s -> let !x = s q in x) searches
 
 newRandoms s = randoms $ mkStdGen s
 
@@ -68,23 +49,26 @@ main = do argv <- getArgs
           (searchParams, files) <- getOpts argv
           let hmmPlusFile = hmmPlusF files
           let fastaFile = fastaF files
-          (header, hmm, md) <- parse $ hmmPlusFile
           rgn <- getStdGen
           querySeqs <- readFasta $ fastaFile
           secPred <- getSecondary $ fastaFile
-          -- let searchParams = searchP { secPreds = Just secPred } 
-          -- let searchParams = searchP { secPreds = Just secPred } 
-          -- putStrLn $ show $ getBetaStrands header 
-          -- putStrLn $ show $ viterbi (False, False) Constants.amino query hmm 
-          -- putStrLn $ temp hmm 
+
+          (header, hmm, md) <- parse $ hmmPlusFile
           let betas = getBetaStrands header
           let queries = map (translateQuery . toStr . seqdata) querySeqs
-          let searches = map (\r -> (\q -> search q hmm betas searchParams (newRandoms r))) $ take (multiStartPopSize searchParams) ((randoms rgn) :: [Int])
-          -- let results = map (\q -> search q hmm betas searchParams ((randoms rgn) :: [Int])) queries 
+
+          putStrLn $ show queries
+
+          let strat = \q -> strategy searchParams hmm searchParams q betas
+          let scorer = \q -> score hmm q betas
+          let searches = map (\r q -> search (strat q) (scorer q) (newRandoms r))
+                         $ take (multiStartPopSize searchParams) ((randoms rgn) :: [Seed])
           let results = map (popSearch searches) queries
-          -- putStrLn $ show $ (ss, hist) 
-          putStrLn $ foldr (\s ss -> s ++ "\n\n" ++ ss) "" $ map (\((ss, hist), query) -> outputAlignment hmm betas ss query) $ zip results queries
-          putStrLn $ "Score: " ++ (show $ fst $ fst $ head results)
-          putStrLn $ "History: " ++ (show $ snd $ head results)
-          
+
+          -- putStrLn $ foldr (\s ss -> s ++ "\n\n" ++ ss) "" 
+                   -- $ map (\((ss, hist), query) -> outputAlignment hmm betas ss query) 
+                   -- $ zip results queries 
+          -- putStrLn $ "Score: " ++ (show $ scoreOf $ fst $ head results) 
+          -- putStrLn $ "History: " ++ (show $ snd $ head results) 
+          putStrLn $ show results
 

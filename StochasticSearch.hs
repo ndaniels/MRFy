@@ -38,7 +38,9 @@ import Wrappers
 
 -- need a representation of a solution
 
-data SearchParameters = SearchParameters { strategy :: SearchStrategy Placement
+type NewSS = HMM -> SearchParameters -> QuerySequence -> [BetaStrand] -> SearchStrategy Placement
+
+data SearchParameters = SearchParameters { strategy :: NewSS
                                          , generations :: Int
                                          , multiStartPopSize :: Int
                                          , verbose :: Bool
