@@ -8,46 +8,46 @@ TGT=mrfy
 CRUDOPTS= -hidir .crud -odir .crud
 OPTS= -fspec-constr-count=6
 
-all:V:
+all:
 	mkdir -p .crud
-	ghc $OPTS $CRUDOPTS --make Main.hs \
+	ghc $(OPTS) $(CRUDOPTS) --make Main.hs \
 			-O3 \
 			-threaded \
 			-rtsopts \
-			-o $TGT
+			-o $(TGT)
 
-optimize:V:
+optimize:
 	mkdir -p .crud
-	ghc $OPTS $CRUDOPTS --make $SRC \
+	ghc $(OPTS) $(CRUDOPTS) --make $(SRC) \
 			-O3 \
 			-fllvm \
-			-o $TGT
+			-o $(TGT)
 
-unopt:V: unoptimize
-unoptimize:V: 
+unopt: unoptimize
+unoptimize:
 	mkdir -p .crud
-	ghc $OPTS $CRUDOPTS --make $SRC -o $TGT
+	ghc $(OPTS) $(CRUDOPTS) --make $(SRC) -o $(TGT)
             
-profile:V:
-    mkdir -p .crud
-    ghc $OPTS $CRUDOPTS \
-        --make Main.hs -O3 -fforce-recomp \
-         -rtsopts \
-         -o $TGT
-    ghc $OPTS $CRUDOPTS \
-        --make Main.hs -O3 -prof -fforce-recomp \
-         -auto-all -caf-all -rtsopts -osuf p_o \
-         -o ${TGT}prof
+profile:
+	mkdir -p .crud
+	ghc $(OPTS) $(CRUDOPTS) \
+			--make Main.hs -O3 -fforce-recomp \
+			 -rtsopts \
+			 -o $(TGT)
+	ghc $(OPTS) $(CRUDOPTS) \
+			--make Main.hs -O3 -prof -fforce-recomp \
+			 -auto-all -caf-all -rtsopts -osuf p_o \
+			 -o ${TGT}prof
 
-tags:V:
+tags:
 	hasktags *.hs
 
-clean:V: 
+clean:
 	rm -rf .crud
-	rm -f $TGT
+	rm -f $(TGT)
 
-test:V: $TGT
-	./$TGT testing/8.hmm+ testing/8.fasta
+test: $(TGT)
+	./$(TGT) testing/8.hmm+ testing/8.fasta
 
 
 # note: to build profile: ghc --make Main.hs -O3 -rtsopts -o $TGT
