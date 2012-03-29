@@ -193,7 +193,7 @@ transScore hmm from to nodenum = transScoreNode (hmm ! nodenum) from to
 myminimum :: Ord a => [a] -> a
 myminimum [] = error "naughty"
 myminimum (!s:(!ss)) = minimum' s ss
-  where minimum' min [] = min
-        minimum' min (s:ss) = minimum' min' ss
-          where min' = if s < min then s else min
+  where minimum' !min [] = min
+        minimum' !min ((!s):(!ss)) = minimum' min' ss
+          where !min' = let !x = min in if s < x then s else x
 

@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 module StochasticSearch where
 
 import Control.Parallel (par)

@@ -63,12 +63,16 @@ main = do argv <- getArgs
           let scorer = \q -> score hmm q betas
           let searches = map (\r q -> search (strat q) (scorer q) (newRandoms r))
                          $ take (multiStartPopSize searchParams) ((randoms rgn) :: [Seed])
-          let results = map (popSearch searches) queries
+          let !results1 = map (popSearch ([searches !! 0])) queries
+          let !results2 = map (popSearch ([searches !! 1])) queries
+          -- let results = myminimum $ [results1, results2] 
 
           -- putStrLn $ foldr (\s ss -> s ++ "\n\n" ++ ss) "" 
                    -- $ map (\((ss, hist), query) -> outputAlignment hmm betas ss query) 
                    -- $ zip results queries 
           -- putStrLn $ "Score: " ++ (show $ scoreOf $ fst $ head results) 
           -- putStrLn $ "History: " ++ (show $ snd $ head results) 
-          putStrLn $ show results
+          putStrLn $ show results1
+          putStrLn $ show results2
+          putStrLn $ show $ myminimum [results1, results2]
 

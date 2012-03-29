@@ -30,7 +30,7 @@ instance Num Score where
   fromInteger = Score . fromInteger
 
 -- @ start vscore.tex
-data Scored a = Scored { unScored :: a, scoreOf :: Score}
+data Scored a = Scored { unScored :: !a, scoreOf :: !Score}
 (/+/) :: Score -> Scored a -> Scored a
 -- @ end vscore.tex
 infix /+/
