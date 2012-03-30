@@ -184,3 +184,4 @@ transScoreNode n from to =
 
 transScore :: HMM -> HMMState -> HMMState -> Int -> Score
 transScore hmm from to nodenum = transScoreNode (hmm ! nodenum) from to
+

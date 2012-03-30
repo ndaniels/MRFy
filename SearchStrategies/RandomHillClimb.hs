@@ -26,15 +26,15 @@ nss hmm searchP query betas =
                    terminate' searchP hist age
          }
 initialize' :: HMM -> SearchParameters -> Seed -> QuerySequence -> [BetaStrand] -> [Placement]
-initialize' hmm searchP seed query betas = [initialGuess hmm (getSecPreds searchP) seed query betas]
+initialize' hmm searchP seed query betas = trace "init" $ [initialGuess hmm (getSecPreds searchP) seed query betas]
 
 accept' :: SearchParameters -> Seed -> [Scored Age] -> Age -> Bool
 accept' _ _ [] _ = error "go away"
-accept' _ _ [s1] _ = True
-accept' _ _ (s1:s2:_) _ = scoreOf s1 < scoreOf s2
+accept' _ _ [s1] _ = trace "accept true" $ True
+accept' _ _ ((!s1):(!s2):_) _ = trace "accept score" $ scoreOf s1 < scoreOf s2
 
 terminate' :: SearchParameters -> [Scored Age] -> Age -> Bool
-terminate' searchP (!scores) age = showMe $ not $ age < (generations searchP)
+terminate' searchP (!scores) age = trace "term" $ showMe $ not $ age < (generations searchP)
   where showMe = if not $ (10.0 * ((fromIntegral age)
                                    / (fromIntegral (generations searchP))))
                           `elem` [1.0..10.0] then
@@ -50,7 +50,7 @@ mutate' :: SearchParameters
         -> Scorer Placement
         -> [Scored Placement]
         -> [Scored Placement]
-mutate' searchP query betas seed scorer placements =
+mutate' searchP query betas seed scorer placements = trace "mutate" $
   [scorer $ mutate'' oldp 0 (mkStdGen seed) 0]
   where oldp = unScored $ head placements
 
