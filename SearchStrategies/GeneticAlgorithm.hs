@@ -1,6 +1,9 @@
 {-# LANGUAGE BangPatterns #-}
 module SearchStrategies.GeneticAlgorithm where
 
+import Control.Parallel (par)
+import Control.Parallel.Strategies
+
 import Data.List
 import qualified Data.Vector as V
 import System.Random (mkStdGen, randomR, randoms, StdGen)
@@ -63,7 +66,7 @@ mutate' searchP query betas seed scorer placements = fittest
                   $ take (getSearchParm searchP populationSize)
                   $ sort
                   $ placements ++ progeny
-        progeny = map scorer
+        progeny = (parMap rseq) scorer
                   $ map (\gs -> mutateChild 0 0 (mkStdGen seed) gs gs)
                   $ getPairings
                   $ map unScored placements
