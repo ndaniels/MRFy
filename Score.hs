@@ -40,6 +40,7 @@ instance Eq (Scored a) where
   x == x' = scoreOf x == scoreOf x'
 instance Ord (Scored a) where
   x < x' = scoreOf x < scoreOf x'
+  compare x x' = compare (scoreOf x) (scoreOf x')
 instance Show a => Show (Scored a) where
   show s = "(Score: " ++ (show $ scoreOf s) ++ ", " ++ (show $ unScored s) ++ ")"
 

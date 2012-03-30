@@ -9,7 +9,6 @@ module Viterbi
        , emissionScoreNode
        , consPath
        , consNoPath
-       , myminimum
        )
 where
 
@@ -51,7 +50,7 @@ viterbi pathCons (hasStart, hasEnd) alpha query hmm =
   if numNodes == 0 then
     Scored [] negLogOne
   else
-    myminimum $ [vee'' s (numNodes - 1) (seqlen - 1) | 
+    minimum $ [vee'' s (numNodes - 1) (seqlen - 1) | 
                  s <- [Mat, Ins, Del]] ++ 
                  if hasEnd then [bestEnd] else []
 
@@ -132,20 +131,20 @@ viterbi pathCons (hasStart, hasEnd) alpha query hmm =
         --------------------------------------------------------
         -- @ start viterbi.tex -8
         vee' Mat j i = extend Mat
-                      (eScore Mat j i /+/ myminimum (map from [Mat, Ins, Del]))
+                      (eScore Mat j i /+/ minimum (map from [Mat, Ins, Del]))
          where from prev = aScore prev Mat (j-1) /+/ vee'' prev (j-1) (i-1)
         -- @ end viterbi.tex
 
         -- consume an observation but not a node
         vee' Ins j i = extend Ins
-                       (eScore Ins j i /+/ myminimum (map from [Mat, Ins]))
+                       (eScore Ins j i /+/ minimum (map from [Mat, Ins]))
          where from prev = aScore prev Ins j /+/ vee'' prev j (i-1)
 
         -- consume a node but not an observation
-        vee' Del j i = extend Del $ myminimum (map from [Mat, Del])
+        vee' Del j i = extend Del $ minimum (map from [Mat, Del])
           where from prev = aScore prev Del (j-1) /+/ vee'' prev (j-1) i
 
-        vee' End j i = extend End $ myminimum (map from preds)
+        vee' End j i = extend End $ minimum (map from preds)
          where preds = if j >= 2 then [Mat, End] else [Mat]
                from Mat  = aScore Mat Mat (j-1) /+/ vee'' Mat  (j-1) i
                from prev =                          vee'' prev (j-1) i
@@ -185,15 +184,3 @@ transScoreNode n from to =
 
 transScore :: HMM -> HMMState -> HMMState -> Int -> Score
 transScore hmm from to nodenum = transScoreNode (hmm ! nodenum) from to
-
--- myminimum                 :: (Ord a) => [a] -> a 
--- myminimum []              =  error "minimum" 
--- myminimum xs              =  DL.foldl1' min xs 
-
-myminimum :: Ord a => [a] -> a
-myminimum [] = error "naughty"
-myminimum (!s:(!ss)) = minimum' s ss
-  where minimum' min [] = min
-        minimum' min (s:ss) = minimum' min' ss
-          where min' = if s < min then s else min
-

@@ -5,9 +5,9 @@
 *.prof
 tags
 TAGS
-smurf2
-smurf2_prof
-smurf2prof
-smurf2prof.*
+mrfy
+mrfy_prof
+mrfyprof
+mrfyprof.*
 output
 *~

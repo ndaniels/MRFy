@@ -41,7 +41,7 @@ outputAlignment hmm betas ps querySeq = showAlignment hmm betas querySeq sp 60 C
 popSearch :: [QuerySequence -> (Scored Placement, [Scored Age])]
           -> QuerySequence
           -> (Scored Placement, [Scored Age])
-popSearch searches q = myminimum $! (parMap rseq) (\s -> let !x = s q in x) searches
+popSearch searches q = minimum $! (parMap rseq) (\s -> let !x = s q in x) searches
 
 newRandoms s = randoms $ mkStdGen s
 
