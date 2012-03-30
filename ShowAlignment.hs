@@ -62,7 +62,7 @@ showAlignment hmm betas query path len alpha =
                  -> String -> String -> String -- correspond to the three lines
                  -> (String, String, String)
         showA (q:qs) [] _ _ _ _ _ = error ("No more states but we still have " ++ (show (q:qs)) ++ " query sequence left")
-        showA _ [] i _ oh om oq = trace (show i) $ ( reverse $ map toLower oh
+        showA _ [] i _ oh om oq = ( reverse $ map toLower oh
                                   , reverse om
                                   , reverse $ map toUpper oq
                                   )
