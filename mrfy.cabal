@@ -82,9 +82,10 @@ Executable mrfy
                  cmdargs >=0.8,
                  data-memocombinators >=0.4.2,
                  vector >=0.9,
-                 Unixutils >= 1.48.1,
+                 Unixutils == 1.48.1,
                  template-haskell ==2.5.0.0,
-                 haskell-src-meta
+                 haskell-src-meta,
+                 QuickCheck
 
                     -- cabal install --constraint="template-haskell == 2.5.0.0" haskell-src-meta
   
