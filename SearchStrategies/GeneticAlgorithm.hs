@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 module SearchStrategies.GeneticAlgorithm where
 
 import Data.List
@@ -40,7 +41,7 @@ accept' _ _ [s1] _ = True
 accept' _ _ (s1:s2:scores) _ = scoreOf s1 < scoreOf s2 
 
 terminate' :: SearchParameters -> [Scored Age] -> Age -> Bool
-terminate' searchP _ age = showMe $ not $ age < (generations searchP)
+terminate' searchP (!_scores) age = showMe $ not $ age < (generations searchP)
   where showMe = if not $ (10.0 * ((fromIntegral age)
                                    / (fromIntegral (generations searchP))))
                           `elem` [1.0..10.0] then

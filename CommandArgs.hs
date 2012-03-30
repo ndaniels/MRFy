@@ -53,7 +53,7 @@ getFiles [hmmPlus, fasta, output] = Files { hmmPlusF = hmmPlus
 getFiles _ = error "fool"
 
 getParams :: [Flag] -> SearchParameters
-getParams [] = defaultSa
+getParams [] = defaultSP
 getParams (f:fs) =
   case f of
     Verbose -> params { verbose = True }
@@ -64,11 +64,11 @@ getParams (f:fs) =
     StratRand -> params { strategy = RandomHillClimb.nss }
     Generations x -> params { generations = read x }
     MultiStartPop x -> params { multiStartPopSize = read x }
-    PopSize x -> params { populationSize = read x }
-    InitTemp x -> params { initialTemperature = read x }
-    CoolingFact x -> params { coolingFactor = read x }
-    BoltzmannConst x -> params { boltzmannConstant = read x }
-    MutationRate x -> params { mutationRate = read x }
+    PopSize x -> params { populationSize = Just $ read x }
+    InitTemp x -> params { initialTemperature = Just $ read x }
+    CoolingFact x -> params { coolingFactor = Just $ read x }
+    BoltzmannConst x -> params { boltzmannConstant = Just $ read x }
+    MutationRate x -> params { mutationRate = Just $ read x }
   where params = getParams fs
 
 
@@ -78,8 +78,8 @@ getOpts argv =
       (o, moreArgs, []) -> return (getParams o, getFiles moreArgs)
       (_, _, errs) -> ioError (userError (concat errs ++ usageInfo header options))
   where header = "Usage: mrfy [OPTION ...] files..."
-    
-defaultGa = SearchParameters { strategy = GeneticAlgorithm.nss
+
+defaultSP = SearchParameters { strategy = SimulatedAnnealing.nss
                              , generations = 1000
                              , multiStartPopSize = 10
                              , verbose = True
@@ -90,16 +90,4 @@ defaultGa = SearchParameters { strategy = GeneticAlgorithm.nss
                              , mutationRate = Just 1.0
                              , secPreds = Nothing
                              }
-
-defaultSa = SearchParameters { strategy = SimulatedAnnealing.nss
-                             , generations = 1000
-                             , multiStartPopSize = 2
-                             , verbose = True
-                             , populationSize = Nothing
-                             , initialTemperature = Just 1000.0
-                             , coolingFactor = Just 0.99
-                             , boltzmannConstant = Just 1.0
-                             , mutationRate = Just 1.0
-                             , secPreds = Nothing
-                             }
-
+    

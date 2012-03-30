@@ -41,7 +41,7 @@ outputAlignment hmm betas ps querySeq = showAlignment hmm betas querySeq sp 60 C
 popSearch :: [QuerySequence -> (Scored Placement, [Scored Age])]
           -> QuerySequence
           -> (Scored Placement, [Scored Age])
-popSearch searches q = minimum $! (parMap rseq) (\s -> let !x = s q in x) searches
+popSearch searches q = minimum $ (parMap rseq) (\s -> s q) searches
 
 newRandoms s = randoms $ mkStdGen s
 
@@ -66,10 +66,11 @@ main = do argv <- getArgs
 
           let results = map (popSearch searches) queries
 
+          putStrLn $ "History: " ++ (show $ snd $ head results) 
+          putStrLn ""
+          putStrLn $ "Score: " ++ (show $ scoreOf $ fst $ head results) 
+          putStrLn ""
           putStrLn $ foldr (\s ss -> s ++ "\n\n" ++ ss) "" 
                    $ map (\((ss, hist), query) -> outputAlignment hmm betas ss query) 
                    $ zip results queries 
-          putStrLn $ "Score: " ++ (show $ scoreOf $ fst $ head results) 
-          putStrLn $ "History: " ++ (show $ snd $ head results) 
-          -- putStrLn $ show $ myminimum [results1, results2]
 
