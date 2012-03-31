@@ -57,7 +57,7 @@ main = do argv <- getArgs
           let betas = getBetaStrands header
           let queries = map (translateQuery . toStr . seqdata) querySeqs
 
-          putStrLn $ show queries
+          -- putStrLn $ show queries
 
           let strat = \q -> strategy searchParams hmm searchParams q betas
           let scorer = \q -> score hmm q betas

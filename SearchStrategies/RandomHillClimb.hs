@@ -26,7 +26,7 @@ nss hmm searchP query betas =
                    terminate' searchP hist age
          }
 initialize' :: HMM -> SearchParameters -> Seed -> QuerySequence -> [BetaStrand] -> [Placement]
-initialize' hmm searchP seed query betas = [initialGuess hmm (getSecPreds searchP) seed query betas]
+initialize' hmm searchP seed query betas = [projInitialGuess hmm (getSecPreds searchP) seed query betas]
 
 accept' :: SearchParameters -> Seed -> [Scored Age] -> Age -> Bool
 accept' _ _ [] _ = error "go away"

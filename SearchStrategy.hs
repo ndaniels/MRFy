@@ -51,12 +51,13 @@ genGuess :: (Random r, Fractional r, Ord r) => Seed -> [(Int, r)] -> Int -> Plac
 genGuess seed dist n = DL.sort $ take n $ randomsDist (mkStdGen seed) dist
 
 projInitialGuess :: InitialGuesser
-projInitialGuess hmm _ seed qs betas = initialGuess' betas 0
-  where initialGuess' [] _ = []
-        initialGuess' (b:bs) lastPos = g : initialGuess' bs pos
-          where g = lastPos + (ceiling $ (fromIntegral pos) / (fromIntegral f))
-                f = ceiling $ (fromIntegral $ V.length qs) / (fromIntegral $ V.length hmm)
-                pos = resPosition $ head $ residues b
+projInitialGuess hmm _ seed qs betas = initialGuess' betas 0 0
+  where initialGuess' [] _ _ = []
+  -- trace ("g: " ++ show g ++ " f: " ++ show f ++ " pos: " ++ show pos ++ " lastB: " ++ show lastB ++ " lastP: " ++ show lastP) $
+        initialGuess' (b:bs) lastP lastB = g : initialGuess' bs g pos
+          where g = lastP + (floor $ (fromIntegral $ pos - lastB) * f)
+                f = (fromIntegral $ V.length qs) / (fromIntegral $ V.length hmm)
+                pos = (resPosition $ head $ residues b)
 
 checkGuess :: [BetaStrand] -> Placement -> Bool
 checkGuess [] [] = True
