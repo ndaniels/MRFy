@@ -18,5 +18,5 @@ getResidue alpha i = alpha ! i
 numAlphabetAdditions = 1 :: Int -- just X for now
 
 data Debugging = Debugging { slicing :: Bool }
-debug = Debugging { slicing = False }
+debug = Debugging { slicing = True }
 
