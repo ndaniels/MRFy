@@ -71,6 +71,12 @@ data BetaOrViterbi = Beta
 oppAligner Beta = Viterbi
 oppAligner Viterbi = Beta
 
+alignable :: QuerySequence -> [BetaStrand] -> Bool
+alignable q bs = bLen < qLen
+  where bLen = foldr (+) 0 $ map len bs
+        qLen = V.length q
+
+
 vfoldr3 :: (BetaResidue -> HmmNode -> Int -> Score -> Score) -> Score -> [BetaResidue] -> HMM -> QuerySequence -> Score
 -- vfoldr3 :: (a -> b -> c -> d -> d) -> d -> [a] -> Vector b -> Vector c -> d 
 vfoldr3 f init [] _ _ = init

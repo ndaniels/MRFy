@@ -35,8 +35,13 @@ translateQuery = V.fromList . DL.map lookup
                         Nothing -> error "Residue not found in alphabet"
 
 outputAlignment :: HMM -> [BetaStrand] -> Scored Placement -> QuerySequence -> String
-outputAlignment hmm betas ps querySeq = showAlignment hmm betas querySeq sp 60 Constants.amino
+outputAlignment hmm betas ps querySeq = 
+    if alignable querySeq betas
+    then showAlignment hmm betas querySeq sp 60 Constants.amino
+    else "Query sequence shorter than combined beta strands; no alignment possible"
   where sp = statePath hmm querySeq betas ps
+
+
 
 popSearch :: [QuerySequence -> (Scored Placement, [Scored Age])]
           -> QuerySequence
@@ -44,6 +49,7 @@ popSearch :: [QuerySequence -> (Scored Placement, [Scored Age])]
 popSearch searches q = minimum $ (parMap rseq) (\s -> s q) searches
 
 newRandoms s = randoms $ mkStdGen s
+noSearch = (Scored [] negLogZero, [])
 
 main = do argv <- getArgs
           (searchParams, files) <- getOpts argv
@@ -58,10 +64,13 @@ main = do argv <- getArgs
           let queries = map (translateQuery . toStr . seqdata) querySeqs
 
           -- putStrLn $ show queries
-
           let strat = \q -> strategy searchParams hmm searchParams q betas
           let scorer = \q -> score hmm q betas
-          let searches = map (\r q -> search (strat q) (scorer q) (newRandoms r))
+
+
+          let searchQ r q = search (strat q) (scorer q) (newRandoms r)
+          let trySearch r q = if alignable q betas then searchQ r q else noSearch
+          let searches = map (\r q -> trySearch r q)
                          $ take (multiStartPopSize searchParams) ((randoms rgn) :: [Seed])
 
           let results = map (popSearch searches) queries
@@ -71,6 +80,6 @@ main = do argv <- getArgs
           putStrLn $ "Score: " ++ (show $ scoreOf $ fst $ head results) 
           putStrLn ""
           putStrLn $ foldr (\s ss -> s ++ "\n\n" ++ ss) "" 
-                   $ map (\((ss, hist), query) -> outputAlignment hmm betas ss query) 
+                   $ map (\((ss, hist), query) -> outputAlignment hmm betas ss query)
                    $ zip results queries 
 
