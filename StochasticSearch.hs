@@ -196,3 +196,8 @@ sliceHmms hmm betas hmmPos hmms atypes = (reverse hmms', reverse atypes')
         
                 betas' = if hmmPos == 1 then (b:b2:bs) else (b2:bs)
 
+-- TODO: We currently allow beta strands to abut. This is fine for unpaired strands
+-- (which we may have split due to non-consensus residues). But it's not possible
+-- for paired strands. We should consider a further restriction on placements
+-- that requires at least 3 or 4 residues between strands *iff* those strands
+-- contain paired residues.
