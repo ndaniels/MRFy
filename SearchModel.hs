@@ -56,3 +56,7 @@ search strat scorer (s0:seeds) = runFrom seeds firstGen [] 0
           runFrom seeds newPop newHist (age + 1)
 -- @ end search.tex
 
+-- TODO keep a Scored (Age, Placement) to support Simulated Annealing
+-- otherwise, need an out of band "best ever" updated at every step
+-- this is also necessary to prevent SimAn from thinking it's improving
+-- when in fact it isn't.
