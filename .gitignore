@@ -12,3 +12,4 @@ mrfyprof.*
 output
 psipred-trash
 *~
+/dist
