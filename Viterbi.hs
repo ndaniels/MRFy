@@ -46,6 +46,7 @@ type TProbs = TransitionProbabilities
 -- will also need to consider better of seqLocal vs. modLocal
 viterbi :: ScorePathCons HMMState -> (Bool, Bool) -> Alphabet ->
            QuerySequence -> HMM -> Scored StatePath
+-- XXX TODO: parameter 'alpha' is not used!!! (WHY AREN'T WARNINGS ON???)
 viterbi pathCons (hasStart, hasEnd) alpha query hmm =
   if numNodes == 0 then
     Scored [] negLogOne
