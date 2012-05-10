@@ -51,6 +51,13 @@ popSearch searches q = minimum $ (parMap rseq) (\s -> s q) searches
 newRandoms s = randoms $ mkStdGen s
 noSearch = (Scored [] negLogZero, [])
 
+loadTestData :: Files -> IO (HMM, [QuerySequence])
+loadTestData files =
+  do querySeqs <- readFasta $ fastaF files
+     (_, hmm, _) <- parse $ hmmPlusF files
+     return (hmm, map (translateQuery . toStr . seqdata) querySeqs)
+
+
 main = do argv <- getArgs
           (searchParams, files) <- getOpts argv
           let hmmPlusFile = hmmPlusF files

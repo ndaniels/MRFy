@@ -9,7 +9,7 @@ TGT=mrfy
 CRUDOPTS= -hidir .crud -odir .crud
 OPTS= -fspec-constr-count=6
 
-all:
+all:V:
 	mkdir -p .crud
 	ghc $OPTS $CRUDOPTS --make Main.hs \
 			-O3 \
@@ -17,19 +17,19 @@ all:
 			-rtsopts \
 			-o $TGT
 
-optimize:
+optimize:V:
 	mkdir -p .crud
 	ghc $OPTS $CRUDOPTS --make $SRC \
 			-O3 \
 			-fllvm \
 			-o $TGT
 
-unopt: unoptimize
-unoptimize:
+unopt:V: unoptimize
+unoptimize:V:
 	mkdir -p .crud
 	ghc $OPTS $CRUDOPTS --make $SRC -o $TGT
             
-profile:
+profile:V:
 	mkdir -p .crud
 	ghc $OPTS $CRUDOPTS \
 			--make Main.hs -O3 -fforce-recomp \
@@ -40,14 +40,14 @@ profile:
 			 -auto-all -caf-all -rtsopts -osuf p_o \
 			 -o ${TGT}prof
 
-tags:
+tags:V:
 	hasktags *.hs
 
-clean:
+clean:V:
 	rm -rf .crud
 	rm -f $TGT
 
-test: $TGT
+test:V: $TGT
 	./$TGT testing/8.hmm+ testing/8.fasta
 
 

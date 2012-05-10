@@ -50,7 +50,7 @@ getFiles [hmmPlus, fasta, output] = Files { hmmPlusF = hmmPlus
                                           , fastaF = fasta
                                           , outputF = output
                                           }
-getFiles _ = error "fool"
+getFiles _ = error "AG fool"
 
 getParams :: [Flag] -> SearchParameters
 getParams [] = defaultSP

@@ -11,12 +11,13 @@ import Beta
 import Constants
 import HmmPlus
 import qualified SearchStrategies.GeneticAlgorithm as GA
+import Score
 import StochasticSearch
 import Viterbi
 
 import Debug.Trace (trace)
 
-verifySearchGuess :: HMM -> [BetaStrand] -> SearchGuess -> Bool
+verifySearchGuess :: HMM -> [BetaStrand] -> Placement -> Bool
 verifySearchGuess _ [] [] = True
 verifySearchGuess _ [] [g] = False
 verifySearchGuess _ [b] [] = False
@@ -39,12 +40,12 @@ instance Arbitrary HmmNode where
     rInsEmi <- vectorOf 20 $ choose (0.0, 1.0) :: Gen [Double]
     rTrans <- arbitrary :: Gen TransitionProbabilities
     return HmmNode { nodeNum = 0
-                   , matchEmissions = toLogVec rMatEmi
+                   , matchEmissions = toScoreVec rMatEmi
                    , annotations = Nothing
-                   , insertionEmissions = toLogVec rInsEmi
+                   , insertionEmissions = toScoreVec rInsEmi
                    , transitions = rTrans
                    }
-    where toLogVec = V.fromList . map toLogProb
+    where toScoreVec = V.fromList . map toScore
 
 instance Arbitrary TransitionProbabilities where
   arbitrary = do
@@ -64,16 +65,16 @@ instance Arbitrary TransitionProbability where
 instance Arbitrary LogProbability where
   arbitrary = do
     f <- choose (0.0, 1.0) :: Gen Double
-    if f == 0.0 then
-      do return LogZero
-    else do return $ HmmPlus.NonZero $ toLogProb f
+    return $ if f == 0.0 then LogZero
+             else HmmPlus.NonZero $ - log f
 
 instance Arbitrary HMMState where
   -- Test this with sample (arbitrary :: Gen HMMState)
   arbitrary = elements [Mat, Ins, Del, Beg, End, BMat] 
 
-toLogProb :: Double -> Double
-toLogProb f = if f == 0.0 then maxProb else (-(log f))
+-- | Map a probability to a score
+toScore :: Double -> Score
+toScore f = if f == 0.0 then negLogZero else Score (- log f)
  
 
 
