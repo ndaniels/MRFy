@@ -51,6 +51,17 @@ oneTestAdmissible :: (a, HMM, [QuerySequence]) -> Bool
 oneTestAdmissible (_, model, queries) = 
    all (viterbiAdmissible model) queries
            
+oneTestResults ::  (a, HMM, [QuerySequence]) -> [String]
+oneTestResults (_, model, queries) = concatMap (string model) queries
+    where string model query =
+            [ "Expected " ++ show (V.length query) ++ " residues; got " ++
+              show (residueCount states)
+            , "Expected " ++ show (V.length model) ++ " nodes; got " ++
+              show (nodeCount states)
+            , "Solution " ++ (if isPlan7 states then "respects" else "violates") ++
+              " Plan7 invariant"]
+              where states = unScored $ viterbi (:) (True, True) alpha query model
+                    alpha = error "I thought the damn alphabet was not used"
 
 
 

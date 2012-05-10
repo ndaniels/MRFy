@@ -49,6 +49,10 @@ runCommand (TestHmm "mini") =
      putStrLn $ "Function viterbiAdmissible " ++
                 (if ok then "passes" else "DOES NOT PASS") ++ " one test"
 
+runCommand (TestHmm "mini-strings") =
+  do test <- loadTestData $ Files "testing/mini8.hmm+" "testing/mini8.fasta" "/dev/null"
+     mapM_ putStrLn $ oneTestResults test
+
 runCommand (TestHmm t) =
   error $ "I never heard of test " ++ t
 

@@ -16,7 +16,7 @@ optimize:V:
 
 unopt:V: unoptimize
 unoptimize:V:
-	ghc `./ghc-opts $target` --make Main.hs -o $TGT
+	ghc `./ghc-opts $target` --make Main.hs -o $TGT-unopt
             
 profile:V:
 	ghc `./ghc-opts $target`  --make Main.hs -o $TGT

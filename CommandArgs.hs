@@ -78,6 +78,7 @@ getParams (f:fs) =
 
 
 getOpts :: [String] -> Commanded 
+getOpts ["-test", what] = TestHmm what
 getOpts argv =
     case getOpt RequireOrder options argv of
       (o, moreArgs, []) -> AlignmentSearch (getParams o)  (getFiles moreArgs)
