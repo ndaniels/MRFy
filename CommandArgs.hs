@@ -41,6 +41,11 @@ data Files = Files { hmmPlusF :: String
                    , outputF :: String
                    }
 
+-- | Things this program can be commanded to do
+data Commanded = AlignmentSearch SearchParameters Files
+               | TestHmm String
+     
+
 getFiles :: [String] -> Files
 getFiles [hmmPlus, fasta] = Files { hmmPlusF = hmmPlus
                                   , fastaF = fasta
@@ -72,11 +77,11 @@ getParams (f:fs) =
   where params = getParams fs
 
 
-getOpts :: [String] -> IO (SearchParameters, Files)
+getOpts :: [String] -> Commanded 
 getOpts argv =
     case getOpt RequireOrder options argv of
-      (o, moreArgs, []) -> return (getParams o, getFiles moreArgs)
-      (_, _, errs) -> ioError (userError (concat errs ++ usageInfo header options))
+      (o, moreArgs, []) -> AlignmentSearch (getParams o)  (getFiles moreArgs)
+      (_, _, errs) -> error (concat errs ++ usageInfo header options)
   where header = "Usage: mrfy [OPTION ...] files..."
 
 defaultSP = SearchParameters { strategy = SimulatedAnnealing.nss

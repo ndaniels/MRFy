@@ -2,6 +2,8 @@ module HmmProps
 where
   
 import qualified Data.Vector as V
+import Test.QuickCheck
+import Test.QuickCheck.Monadic
 
 import CommandArgs (Files(..))
 import FileOps (loadTestData)
@@ -48,8 +50,14 @@ viterbiAdmissible model query = admissibleSolution model query soln
 
 -- testing on well-known files
 oneTest :: IO (HMM, [QuerySequence])
-oneTest = loadTestData $ Files "testing/8.hmm+" "testing/8.fasta" "/dev/null"
+oneTest = fmap fix $ loadTestData $
+          Files "testing/mini8.hmm+" "testing/mini8.fasta" "/dev/null"
+  where fix (_header, model, queries) = (model, queries)
 
+oneTestAdmissible :: IO Bool
+oneTestAdmissible = 
+  do (model, queries) <- oneTest
+     return $ all (viterbiAdmissible model) queries
            
 
 
