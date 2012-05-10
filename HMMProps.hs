@@ -1,4 +1,4 @@
-module HmmProps
+module HMMProps
 where
   
 import qualified Data.Vector as V
@@ -6,7 +6,6 @@ import Test.QuickCheck
 import Test.QuickCheck.Monadic
 
 import CommandArgs (Files(..))
-import FileOps (loadTestData)
 import HmmPlus
 import Score
 import Viterbi
@@ -48,16 +47,9 @@ viterbiAdmissible model query = admissibleSolution model query soln
   where soln = unScored $ viterbi (:) (True, True) alpha query model
         alpha = V.empty -- something rotten...
 
--- testing on well-known files
-oneTest :: IO (HMM, [QuerySequence])
-oneTest = fmap fix $ loadTestData $
-          Files "testing/mini8.hmm+" "testing/mini8.fasta" "/dev/null"
-  where fix (_header, model, queries) = (model, queries)
-
-oneTestAdmissible :: IO Bool
-oneTestAdmissible = 
-  do (model, queries) <- oneTest
-     return $ all (viterbiAdmissible model) queries
+oneTestAdmissible :: (a, HMM, [QuerySequence]) -> Bool
+oneTestAdmissible (_, model, queries) = 
+   all (viterbiAdmissible model) queries
            
 
 

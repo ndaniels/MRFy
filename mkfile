@@ -7,45 +7,27 @@ SRC=$STRATS Beta.hs Constants.hs FileOps.hs HmmPlus.hs Main.hs Viterbi.hs \
 
 TGT=mrfy
 CRUDOPTS= -hidir .crud -odir .crud
-OPTS= -fspec-constr-count=6
 
 all:V:
-	mkdir -p .crud
-	ghc $OPTS $CRUDOPTS --make Main.hs \
-			-O3 \
-			-threaded \
-			-rtsopts \
-			-o $TGT
+	ghc `./ghc-opts $target` --make Main.hs -o $TGT
 
 optimize:V:
-	mkdir -p .crud
-	ghc $OPTS $CRUDOPTS --make $SRC \
-			-O3 \
-			-fllvm \
-			-o $TGT
+	ghc `./ghc-opts $target` --make Main.hs -o $TGT
 
 unopt:V: unoptimize
 unoptimize:V:
-	mkdir -p .crud
-	ghc $OPTS $CRUDOPTS --make $SRC -o $TGT
+	ghc `./ghc-opts $target` --make Main.hs -o $TGT
             
 profile:V:
-	mkdir -p .crud
-	ghc $OPTS $CRUDOPTS \
-			--make Main.hs -O3 -fforce-recomp \
-			 -rtsopts \
-			 -o $TGT
-	ghc $OPTS $CRUDOPTS \
-			--make Main.hs -O3 -prof -fforce-recomp \
-			 -auto-all -caf-all -rtsopts -osuf p_o \
-			 -o ${TGT}prof
+	ghc `./ghc-opts $target`  --make Main.hs -o $TGT
+	ghc `./ghc-opts profile2` --make Main.hs -o ${TGT}prof
 
 tags:V:
 	hasktags *.hs
 
 clean:V:
-	rm -rf .crud
-	rm -f $TGT
+	rm -rf .crud-*
+	rm -f $TGT ${TGT}prof
 
 test:V: $TGT
 	./$TGT testing/8.hmm+ testing/8.fasta

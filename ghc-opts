@@ -1,0 +1,13 @@
+#!/bin/sh
+
+OPTS="-fspec-constr-count=6 -hidir .crud-$1 -odir .crud-$1"
+mkdir -p ".crud-$1"
+
+case $1 in
+  all)       echo "$OPTS -O3 -threaded -rtsopts" ;;
+  optimize)  echo "$OPTS -O3 -fllvm" ;;
+  unopt*)    echo "$OPTS" ;;
+  profile)   echo "$OPTS -O3 -rtsopts" ;;
+  profile2)  echo "$OPTS -O3 -prof -auto-all -caf-all -rtsopts -osuf p_o" ;;
+esac
+
