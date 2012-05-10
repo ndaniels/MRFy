@@ -19,6 +19,7 @@ import Beta
 -- import HmmAlign
 import CommandArgs
 import Constants
+import FileOps
 import HmmPlus
 import RunPsiPred
 import Score
@@ -27,12 +28,6 @@ import ShowAlignment
 import StochasticSearch
 import Viterbi
 
-
-translateQuery :: String -> V.Vector Int
-translateQuery = V.fromList . DL.map lookup
-  where lookup k = case V.elemIndex k Constants.amino of
-                        Just i -> i
-                        Nothing -> error "Residue not found in alphabet"
 
 outputAlignment :: HMM -> [BetaStrand] -> Scored Placement -> QuerySequence -> String
 outputAlignment hmm betas ps querySeq = 
@@ -50,13 +45,6 @@ popSearch searches q = minimum $ (parMap rseq) (\s -> s q) searches
 
 newRandoms s = randoms $ mkStdGen s
 noSearch = (Scored [] negLogZero, [])
-
-loadTestData :: Files -> IO (HMM, [QuerySequence])
-loadTestData files =
-  do querySeqs <- readFasta $ fastaF files
-     (_, hmm, _) <- parse $ hmmPlusF files
-     return (hmm, map (translateQuery . toStr . seqdata) querySeqs)
-
 
 main = do argv <- getArgs
           (searchParams, files) <- getOpts argv

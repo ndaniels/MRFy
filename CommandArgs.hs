@@ -90,4 +90,3 @@ defaultSP = SearchParameters { strategy = SimulatedAnnealing.nss
                              , mutationRate = Just 1.0
                              , secPreds = Nothing
                              }
-    

@@ -3,6 +3,8 @@ where
   
 import qualified Data.Vector as V
 
+import CommandArgs (Files(..))
+import FileOps (loadTestData)
 import HmmPlus
 import Score
 import Viterbi
@@ -43,5 +45,15 @@ viterbiAdmissible :: HMM -> QuerySequence -> Bool
 viterbiAdmissible model query = admissibleSolution model query soln
   where soln = unScored $ viterbi (:) (True, True) alpha query model
         alpha = V.empty -- something rotten...
+
+-- testing on well-known files
+oneTest :: IO (HMM, [QuerySequence])
+oneTest = loadTestData $ Files "testing/8.hmm+" "testing/8.fasta" "/dev/null"
+
+           
+
+
+
+
 
 -- next up: perturbing a solution leads to a worse scoring solution
