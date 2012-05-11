@@ -91,7 +91,7 @@ statePath :: HMM -> QuerySequence -> [BetaStrand] -> Scored Placement -> StatePa
 statePath hmm query betas ps = foldr (++) [] $ map viterbiOrBeta $ DL.zip4 hmmAlignTypes (map traceid miniHmms) miniQueries $ dupeElements [0..]
   where viterbiOrBeta :: (BetaOrViterbi, HMM, QuerySequence, Int) -> StatePath
         viterbiOrBeta (Beta, ns, qs, i) = take (len (betas !! i)) $ repeat BMat
-        viterbiOrBeta (Viterbi, ns, qs, i) = unScored $ viterbi consPath (False, False) Constants.amino qs ns
+        viterbiOrBeta (Viterbi, ns, qs, i) = unScored $ viterbi consPath (False, False) qs ns
 
         -- traceid hmm = trace (show (V.map nodeNum hmm)) $ id hmm 
         -- traceid = (trace (show guesses)) id 
@@ -108,7 +108,7 @@ score hmm query betas ps = Scored ps (foldr (+) negLogOne $ (parMap rseq) viterb
         -- so we can use the last node of a Viterbi segment to inform the transition
         -- to Match for the Beta score.
         viterbiOrBeta (Beta, ns, qs, i) = betaScore query ps (residues (betas !! i)) ns qs
-        viterbiOrBeta (Viterbi, ns, qs, i) = scoreOf $ viterbi consNoPath (False, False) Constants.amino qs ns
+        viterbiOrBeta (Viterbi, ns, qs, i) = scoreOf $ viterbi consNoPath (False, False) qs ns
 
         -- traceid hmm = trace (show (V.map nodeNum hmm)) $ id hmm 
         traceid = id
@@ -168,6 +168,7 @@ sliceQuery query betas placement queryPos queries = reverse $ sliceQuery' betas 
 
 sliceHmms hmm betas hmmPos hmms atypes = (reverse hmms', reverse atypes')
   where (hmms', atypes') = sliceHmms' betas hmmPos hmms atypes
+  -- TODO: alternating beta and viterbi can be simplified with 'intersperse' from prelude
 
         sliceHmms' [] hmmPos hmms atypes = ((V.drop (hmmPos - 1) hmm) : hmms, Viterbi : atypes)
         sliceHmms' [b] hmmPos hmms atypes = if length betas /= 1 then

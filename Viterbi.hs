@@ -44,10 +44,9 @@ type TProbs = TransitionProbabilities
 -- hasStart and hasEnd are (for now) for model-relative local alignment.
 -- when we want to consider sequence-relative local alignment, we
 -- will also need to consider better of seqLocal vs. modLocal
-viterbi :: ScorePathCons HMMState -> (Bool, Bool) -> Alphabet ->
+viterbi :: ScorePathCons HMMState -> (Bool, Bool) ->
            QuerySequence -> HMM -> Scored StatePath
--- XXX TODO: parameter 'alpha' is not used!!! (WHY AREN'T WARNINGS ON???)
-viterbi pathCons (hasStart, hasEnd) alpha query hmm =
+viterbi pathCons (hasStart, hasEnd) query hmm =
   if numNodes == 0 then
     Scored [] negLogOne
   else
