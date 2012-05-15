@@ -29,10 +29,14 @@ residueCount = sum . map count
         count Ins = 1
         count _   = 0
 
-nodeCount = sum . map count
+nodeCount = sum . map count . compress
   where count Mat = 1
         count Del = 1
+        count Ins = 1
         count _   = 0
+        compress (Ins:Ins:xs) = compress (Ins:xs)
+        compress (x:xs)       = x : compress xs
+        compress []           = []
         
 -- | Admissible solution to a problem
 -- admissibleSolution :: HMMModel -> QuerySquence -> [HMMState] -> Bool
@@ -44,8 +48,8 @@ admissibleSolution model query states =
 
 viterbiAdmissible :: HMM -> QuerySequence -> Bool
 viterbiAdmissible model query = admissibleSolution model query soln
-  where soln = unScored $ viterbi (:) (True, True) alpha query model
-        alpha = V.empty -- something rotten...
+  where soln = unScored $ viterbi (:) (False, False) alpha query model
+        alpha = error "alpha is not used by viterbi"
 
 oneTestAdmissible :: (a, HMM, [QuerySequence]) -> Bool
 oneTestAdmissible (_, model, queries) = 
@@ -60,7 +64,7 @@ oneTestResults (_, model, queries) = concatMap (string model) queries
               show (nodeCount states)
             , "Solution " ++ (if isPlan7 states then "respects" else "violates") ++
               " Plan7 invariant"]
-              where states = unScored $ viterbi (:) (True, True) alpha query model
+              where states = unScored $ viterbi (:) (False, False) alpha query model
                     alpha = error "I thought the damn alphabet was not used"
 
 
