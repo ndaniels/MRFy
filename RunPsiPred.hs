@@ -44,11 +44,12 @@ runPsiPred fasta tempDir =
                                                      "ss2", "ss"]){ cwd = Just tempDir, std_out = UseHandle trash }
 
      waitForProcess pred2h
+     
+     preds <- parsePsiPred $ joinPath [tempDir, "ss2"]
 
-     (preds, md) <- parse $ joinPath [tempDir, "ss2"]
-
-     return preds
-          
+     -- preds <- ss_predictions $ psipred
+     
+     return (checkPreds preds)
 
 getSecondary :: FilePath -> IO [SSPrediction]
 getSecondary fasta = withTemporaryDirectory template (runPsiPred fasta)

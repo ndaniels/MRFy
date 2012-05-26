@@ -8,7 +8,8 @@ import Debug.Trace (trace)
 
 import Beta
 import Constants
-import HmmPlus
+import HMMPlus
+import MRFTypes
 import Score
 import SearchModel
 import SearchStrategy

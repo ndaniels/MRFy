@@ -9,7 +9,7 @@ import Test.QuickCheck.Gen
 
 import Beta
 import Constants
-import HmmPlus
+import HMMPlus
 import qualified SearchStrategies.GeneticAlgorithm as GA
 import Score
 import StochasticSearch

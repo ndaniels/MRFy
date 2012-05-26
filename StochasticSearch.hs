@@ -13,7 +13,8 @@ import Debug.Trace (trace)
 import Beta
 import Constants
 import ConstantsGen
-import HmmPlus
+import HMMPlus
+import MRFTypes
 import PsiPred
 import Score
 import SearchModel
@@ -77,7 +78,7 @@ alignable q bs = bLen < qLen
         qLen = V.length q
 
 
-vfoldr3 :: (BetaResidue -> HmmNode -> Int -> Score -> Score) -> Score -> [BetaResidue] -> HMM -> QuerySequence -> Score
+vfoldr3 :: (BetaResidue -> HMMNode -> Int -> Score -> Score) -> Score -> [BetaResidue] -> HMM -> QuerySequence -> Score
 -- vfoldr3 :: (a -> b -> c -> d -> d) -> d -> [a] -> Vector b -> Vector c -> d 
 vfoldr3 f init [] _ _ = init
 vfoldr3 f init (r:rs) hmm query = f r (n V.! 0) (q V.! 0) $ vfoldr3 f init rs ns qs
@@ -120,7 +121,7 @@ score hmm query betas ps = Scored ps (foldr (+) negLogOne $ (parMap rseq) viterb
 -- invariant: length residues == length hmmSlice == length querySlice
 betaScore :: QuerySequence -> Placement -> [BetaResidue] -> HMM -> QuerySequence -> Score
 betaScore query guesses = vfoldr3 betaScore' negLogOne
-  where betaScore' :: BetaResidue -> HmmNode -> Int -> Score -> Score
+  where betaScore' :: BetaResidue -> HMMNode -> Int -> Score -> Score
         betaScore' r n q s = s + Score (betaCoeff * unScore betaTableScore) + Score ((1 - betaCoeff) * unScore viterbiScore)
           where viterbiScore = transScoreNode n Mat Mat + emissionScoreNode n q Mat
                 -- also, not blindly m_m

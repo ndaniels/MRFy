@@ -6,7 +6,8 @@ import System.Random (mkStdGen, random, StdGen)
 import Debug.Trace (trace)
 
 import Beta
-import HmmPlus
+import HMMPlus
+import MRFTypes
 import Score
 import SearchModel
 import SearchStrategy

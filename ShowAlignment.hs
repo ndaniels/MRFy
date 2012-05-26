@@ -5,7 +5,8 @@ import qualified Data.Vector as V
 
 import Beta
 import Constants
-import HmmPlus
+import HMMPlus
+import MRFTypes
 import Score
 import Viterbi
 

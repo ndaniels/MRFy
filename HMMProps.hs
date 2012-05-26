@@ -6,7 +6,8 @@ import Test.QuickCheck
 import Test.QuickCheck.Monadic
 
 import CommandArgs (Files(..))
-import HmmPlus
+import HMMPlus
+import MRFTypes
 import Score
 import Viterbi
 

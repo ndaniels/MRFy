@@ -18,9 +18,10 @@ import qualified Data.MemoCombinators as Memo
 import qualified Data.List as DL
 
 import Beta
-import HmmPlus
+import HMMPlus
 import Data.Vector hiding (minimum, (++), map)
 import Constants
+import MRFTypes
 import Score
 
 type QuerySequence = Vector Int
@@ -152,7 +153,7 @@ viterbi pathCons (hasStart, hasEnd) query hmm =
 
 -- TODO seqLocal: consider the case where we consume obs, not state, for beg & end.
 
-emissionScoreNode :: HmmNode -> Int -> HMMState -> Score
+emissionScoreNode :: HMMNode -> Int -> HMMState -> Score
 emissionScoreNode n q state = 
     case state of
       Mat -> (matchEmissions     n) ! q 
@@ -163,9 +164,7 @@ emissionScore :: HMM -> QuerySequence -> HMMState -> Int -> Int -> Score
 emissionScore hmm qs state j i = emissionScoreNode (hmm ! j) (qs ! i) state
 
 transScoreNode n from to =
-  case logProbability $ edge from to (transitions n) of
-    NonZero p -> Score p
-    LogZero -> negLogZero
+  logProbability $ edge from to (transitions n)
  where
         -- @ start edge.tex -8
         edge :: HMMState -> HMMState -> (TProbs -> TProb)

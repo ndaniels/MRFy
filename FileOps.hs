@@ -21,8 +21,9 @@ import Beta
 -- import HmmAlign
 import CommandArgs
 import Constants
-import HmmPlus
+import HMMPlus
 import HMMProps
+import MRFTypes
 import RunPsiPred
 import Score
 import SearchModel
@@ -30,11 +31,11 @@ import ShowAlignment
 import StochasticSearch
 import Viterbi
 
-loadTestData :: Files -> IO (SmurfHeader, HMM, [QuerySequence])
+loadTestData :: Files -> IO (HMMHeader, HMM, [QuerySequence])
 loadTestData files =
   do querySeqs <- readFasta $ fastaF files
-     (header, model, _metadata) <- parse $ hmmPlusF files
-     return (header, model, map (translateQuery . toStr . seqdata) querySeqs)
+     mrf <- parseMRF $ hmmPlusF files
+     return (hmmHeader $ checkMRF mrf, hmm $ checkMRF mrf, map (translateQuery . toStr . seqdata) querySeqs)
      
 translateQuery :: String -> V.Vector Int
 translateQuery = V.fromList . map lookup
@@ -61,14 +62,14 @@ runCommand (AlignmentSearch searchParams files) = run
         fastaFile = fastaF files
         run = do secPred <- getSecondary $ fastaFile
                  (header, hmm, queries) <- loadTestData files
-                 let betas = getBetaStrands header
+                 let bs = betas header
 
                  -- putStrLn $ show queries
-                 let strat q = strategy searchParams hmm searchParams q betas
-                 let scorer q = score hmm q betas
+                 let strat q = strategy searchParams hmm searchParams q bs
+                 let scorer q = score hmm q bs
 
                  let searchQ r q = search (strat q) (scorer q) (newRandoms r)
-                 let trySearch r q = if alignable q betas then searchQ r q else noSearch
+                 let trySearch r q = if alignable q bs then searchQ r q else noSearch
                  rgn <- getStdGen
                  let searches = map (\r q -> trySearch r q) $
                        take (multiStartPopSize searchParams) ((randoms rgn) :: [Seed])
@@ -81,7 +82,7 @@ runCommand (AlignmentSearch searchParams files) = run
                                 , ""
                                 , concat $ intersperse "\n\n" $
                                   zipWith (\(ss, hist) query ->
-                                          outputAlignment hmm betas ss query)
+                                          outputAlignment hmm bs ss query)
                                           results queries
                                 ]
 

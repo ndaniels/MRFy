@@ -5,7 +5,8 @@ import qualified Data.Vector as V
 import System.Random (mkStdGen, Random, random, randomR, randoms, StdGen)
 
 import Beta
-import HmmPlus
+import HMMPlus
+import MRFTypes
 import NonUniform
 import PsiPred
 import SearchModel (Seed)

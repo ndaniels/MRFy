@@ -5,7 +5,8 @@ import Data.Vector
 type Alphabet = Vector Char
   
 maxProb = 10e1024 :: Double
-amino = fromList "ACDEFGHIKLMNPQRSTVWYX"
+aminoList = "ACDEFGHIKLMNPQRSTVWYX"
+amino = fromList aminoList
 nucleotide = fromList "ACTG"
 betaCoeff = 0.5
 

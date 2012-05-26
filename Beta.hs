@@ -30,68 +30,17 @@ import Data.List (sort, find, elemIndex, intercalate)
 import qualified Data.Maybe as M
 import qualified Data.Set as Set
 
-import HmmPlus
 
-type BetaPosition = Int
-
-data BetaStrand = BetaStrand { serial :: Int
-                             , len :: Int
-                             , residues :: [BetaResidue]
-                             }
-
-data BetaResidue = BetaResidue { resPosition :: BetaPosition
-                               , resStrandSerial :: Int
-                               , pairs :: [BetaPair]
-                               }
-
-data BetaPair = BetaPair { pairPosition :: BetaPosition
-                         , expose :: Exposure
-
-                         -- info for quick indexing
-                         , pairStrandSerial :: Int
-                         , residueInd :: Int
-                         }
-
-showBetas betas = intercalate "\n" $ map show $ betas
-
-instance Show BetaStrand where
-  show s = "\nBetaStrand " ++ (show $ serial s) ++ 
-           " [Length: " ++ (show $ len s) ++ "]" ++
-           "\n" ++ (intercalate "\n" $ map show $ residues s)
-instance Eq BetaStrand where
-  s1 == s2 = (serial s1) == (serial s2)
-instance Ord BetaStrand where
-  compare s1 s2 = compare (firstRes s1) (firstRes s2)
-    where firstRes = resPosition . head . residues
+import MRFTypes
 
 
-instance Show BetaResidue where
-  show r = "\tBetaResidue " ++ (show $ resPosition r) 
-           ++ " [Strand serial: " ++ (show $ resStrandSerial r)
-           ++ "\n" ++ (intercalate "\n" $ map show $ pairs r)
-instance Eq BetaResidue where
-  r1 == r2 = (resPosition r1) == (resPosition r2)
-instance Ord BetaResidue where
-  compare r1 r2 = compare (resPosition r1) (resPosition r2)
 
-
-instance Show BetaPair where
-  show p = "\t\tBetaPair " ++ (show $ pairPosition p) ++ 
-           " [Exposure: " ++ (show $ expose p) ++ 
-           ", Strand: " ++ (show $ pairStrandSerial p) ++
-           ", Residue Index: " ++ (show $ residueInd p) ++ "]"
-
-instance Eq BetaPair where
-  p1 == p2 = (pairPosition p1) == (pairPosition p2)
-instance Ord BetaPair where
-  compare p1 p2 = compare (pairPosition p1) (pairPosition p2)
-
-getBetaStrands :: SmurfHeader -> [BetaStrand]
-getBetaStrands h = addIndexInfo 
+getBetaStrands :: [StrandPair] -> [BetaStrand]
+getBetaStrands ss = addIndexInfo 
                    $ mkBetaStrands 
                    $ mergeStrands
                    $ addPairings 
-                   $ (mkBetaResidues . getBetaPairs) h
+                   $ mkBetaResidues ss
 
 -- Decorates the *pairs* with index information so that
 -- Beta scoring is efficient later on.
