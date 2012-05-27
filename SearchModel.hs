@@ -51,7 +51,8 @@ search strat scorer (s0:seeds) = runFrom seeds firstGen [] 0
           else
             (oldPop, oldHist)
     in  if quit strat newHist age then -- TODO quit must change: consider best-ever, convergence
-          (minimum newPop, newHist)
+          (minimum newPop, newHist) -- TODO this changes too: we want the minimum over newHist, 
+                                    -- and map snd newHist
         else
           runFrom seeds newPop newHist (age + 1)
 -- @ end search.tex
