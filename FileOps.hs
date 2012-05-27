@@ -54,13 +54,24 @@ runCommand (TestHmm "mini-strings") =
   do test <- loadTestData $ Files "testing/mini8.hmm+" "testing/mini8.fasta" "/dev/null"
      mapM_ putStrLn $ oneTestResults test
 
+runCommand (TestHmm "8") =
+  do test <- loadTestData $ Files "testing/8.hmm+" "testing/8.fasta" "/dev/null"
+     let ok = oneTestAdmissible test
+     putStrLn $ "Function viterbiAdmissible " ++
+                (if ok then "passes" else "DOES NOT PASS") ++ " one test"
+
+runCommand (TestHmm "8-strings") =
+  do test <- loadTestData $ Files "testing/8.hmm+" "testing/8.fasta" "/dev/null"
+     mapM_ putStrLn $ oneTestResults test
+
+
 runCommand (TestHmm t) =
   error $ "I never heard of test " ++ t
 
 runCommand (AlignmentSearch searchParams files) = run
   where hmmPlusFile = hmmPlusF files
         fastaFile = fastaF files
-        run = do secPred <- getSecondary $ fastaFile
+        run = do -- secPred <- getSecondary $ fastaFile
                  (header, hmm, queries) <- loadTestData files
                  let bs = betas header
 

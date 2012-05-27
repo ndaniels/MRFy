@@ -86,11 +86,6 @@ checkAlpha a = case a of
                  Nothing -> error "No alphabet"
                  Just v -> if v == supportedAlphabet then v
                            else error "Unsupported alphabet " ++ v
--- 
--- checkAlpha a | a == Just supportedAlphabet = supportedAlphabet
---              | a == Nothing = error "No alphabet"
---              | otherwise = error "Unsupported alphabet " ++ ""
---              -- FIXME how to get access to the Just value for error?
 
 checkLeng l = case l of
                 Nothing -> error "No model length"
