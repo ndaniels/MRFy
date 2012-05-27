@@ -51,7 +51,7 @@ Executable mrfy
                  Constants,
                  ConstantsGen,
                  Fasta,
-                 HmmPlus,
+                 HMMPlus,
                  HMMArby,
                  HMMProps,
                  NonUniform,
