@@ -79,13 +79,11 @@ Executable mrfy
                  process >= 1.0,
                  random >= 1.0,
                  filepath >= 1.2,
-                 pads-haskell >=0.2.1,
                  cmdargs >=0.8,
                  data-memocombinators >=0.4.2,
+                 parsec,
                  vector >=0.9,
-                 Unixutils == 1.48.1,
-                 template-haskell ==2.5.0.0,
-                 haskell-src-meta,
+                 Unixutils >= 1.48.1,
                  QuickCheck
 
                     -- cabal install --constraint="template-haskell == 2.5.0.0" haskell-src-meta
