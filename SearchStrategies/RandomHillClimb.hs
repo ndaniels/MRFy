@@ -29,12 +29,12 @@ nss hmm searchP query betas =
 initialize' :: HMM -> SearchParameters -> Seed -> QuerySequence -> [BetaStrand] -> [Placement]
 initialize' hmm searchP seed query betas = [projInitialGuess hmm (getSecPreds searchP) seed query betas]
 
-accept' :: SearchParameters -> Seed -> [Scored Age] -> Age -> Bool
+accept' :: SearchParameters -> Seed -> History placement -> Age -> Bool
 accept' _ _ [] _ = error "go away"
 accept' _ _ [s1] _ = True
-accept' _ _ ((!s1):(!s2):_) _ = scoreOf s1 < scoreOf s2
+accept' _ _ ((!s1,_):(!s2,_):_) _ = scoreOf s1 < scoreOf s2
 
-terminate' :: SearchParameters -> [Scored Age] -> Age -> Bool
+terminate' :: SearchParameters -> History placement -> Age -> Bool
 terminate' searchP (!scores) age = showMe $ not $ age < (generations searchP)
   where showMe = if not $ (10.0 * ((fromIntegral age)
                                    / (fromIntegral (generations searchP))))
