@@ -51,6 +51,7 @@ data SearchParameters = SearchParameters { strategy :: NewSS
                                          , coolingFactor :: Maybe Double
                                          , boltzmannConstant :: Maybe Double
                                          , mutationRate :: Maybe Double
+                                         , convergenceAge :: Maybe Int
                                          , secPreds :: Maybe [SSPrediction]
                                          }
 

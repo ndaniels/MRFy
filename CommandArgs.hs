@@ -14,7 +14,7 @@ data Flag = Verbose | Version | Help
             | StratSA | StratGA | StratRand
             | Generations String | MultiStartPop String
             | PopSize String | InitTemp String | CoolingFact String
-            | BoltzmannConst String | MutationRate String
+            | BoltzmannConst String | MutationRate String | Convergence String
 
 options :: [OptDescr Flag]
 options =
@@ -28,6 +28,7 @@ options =
   , Option [] ["coolfact"] (ReqArg CoolingFact "DOUBLE") "set cooling factor for SA"
   , Option [] ["boltz"] (ReqArg BoltzmannConst "DOUBLE") "set the boltzmann constant"
   , Option [] ["mutrate"] (ReqArg MutationRate "DOUBLE") "set the mutation rate"
+  , Option [] ["convergence"] (ReqArg Convergence "INT") "set num generations before convergence"
   , Option ['s'] ["simanneal"] (NoArg StratSA) "use simulated annealing"
   , Option ['g'] ["genetic"] (NoArg StratGA) "use genetic algorithms"
   , Option ['r'] ["random"] (NoArg StratRand) "use random hill climbing"
@@ -74,6 +75,7 @@ getParams (f:fs) =
     CoolingFact x -> params { coolingFactor = Just $ read x }
     BoltzmannConst x -> params { boltzmannConstant = Just $ read x }
     MutationRate x -> params { mutationRate = Just $ read x }
+    Convergence x -> params { convergenceAge = Just $ read x }
   where params = getParams fs
 
 
@@ -94,5 +96,6 @@ defaultSP = SearchParameters { strategy = SimulatedAnnealing.nss
                              , coolingFactor = Just 0.99
                              , boltzmannConstant = Just 1.0
                              , mutationRate = Just 1.0
+                             , convergenceAge = Nothing
                              , secPreds = Nothing
                              }

@@ -71,6 +71,7 @@ runCommand (TestHmm t) =
 runCommand (AlignmentSearch searchParams files) = run
   where hmmPlusFile = hmmPlusF files
         fastaFile = fastaF files
+        outFile = outputF files
         run = do -- secPred <- getSecondary $ fastaFile
                  (header, hmm, queries) <- loadTestData files
                  let bs = betas header
@@ -87,15 +88,17 @@ runCommand (AlignmentSearch searchParams files) = run
 
                  let results = map (popSearch searches) queries
 
-                 mapM_ putStrLn [ "History: " ++ (show $ snd $ head results) 
-                                , ""
-                                , "Score: " ++ (show $ scoreOf $ fst $ head results) 
+                 let output  =  [ "Score: " ++ (show $ scoreOf $ fst $ head results) 
                                 , ""
                                 , concat $ intersperse "\n\n" $
                                   zipWith (\(ss, hist) query ->
                                           outputAlignment hmm bs ss query)
                                           results queries
                                 ]
+                 if outFile == "stdout" then
+                      (mapM_ putStrLn output)
+                      else
+                      (writeFile outFile $ concat $ intersperse "\n" output)
 
 
 
@@ -108,12 +111,12 @@ outputAlignment hmm betas ps querySeq =
 
 
 
-popSearch :: [QuerySequence -> (Scored Placement, [Scored Age])]
+popSearch :: [QuerySequence -> (Scored Placement, History Placement)]
           -> QuerySequence
-          -> (Scored Placement, [Scored Age])
+          -> (Scored Placement, History Placement)
 popSearch searches q = minimum $ (parMap rseq) (\s -> s q) searches
 
 newRandoms s = randoms $ mkStdGen s
-noSearch = (Scored [] negLogZero, [])
+noSearch = (Scored [] negLogZero, History [])
 
 
