@@ -76,11 +76,6 @@ mkHeader (vMajor, vMinor) hs ss = HMMHeader { betas       = getBetaStrands ss
                                             , modelStdDev = hmmSD hs
                                             }
 
--- so getBetas needs to take the StrandPair list and give us the beta strands
--- should just be `getBetaStrands betas` but we'll have to import Beta and reconcile stuff
-
--- TODO the hmm itself needs to be fixed: call the stuff under getHmmNodes in the pads file
--- this will need some editing
 
 checkAlpha a = case a of
                  Nothing -> error "No alphabet"

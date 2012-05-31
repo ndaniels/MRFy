@@ -32,9 +32,6 @@ options =
   , Option ['s'] ["simanneal"] (NoArg StratSA) "use simulated annealing"
   , Option ['g'] ["genetic"] (NoArg StratGA) "use genetic algorithms"
   , Option ['r'] ["random"] (NoArg StratRand) "use random hill climbing"
-  -- , Option ['p'] [] (ReqArg HmmPlusFile) "input hmm plus file" 
-  -- , Option ['f'] [] (ReqArg FastaFile) "input fasta file" 
-  -- , Option ['o'] ["output"] (OptArg (\s -> OutputFile (fromMaybe "stdout"))) "output file" 
   ]
 
 data Files = Files { hmmPlusF :: String
@@ -44,7 +41,7 @@ data Files = Files { hmmPlusF :: String
 
 -- | Things this program can be commanded to do
 data Commanded = AlignmentSearch SearchParameters Files
-               | TestHmm String
+               | TestHMM String
      
 
 getFiles :: [String] -> Files
@@ -80,7 +77,7 @@ getParams (f:fs) =
 
 
 getOpts :: [String] -> Commanded 
-getOpts ["-test", what] = TestHmm what
+getOpts ["-test", what] = TestHMM what
 getOpts argv =
     case getOpt RequireOrder options argv of
       (o, moreArgs, []) -> AlignmentSearch (getParams o)  (getFiles moreArgs)

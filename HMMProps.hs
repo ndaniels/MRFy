@@ -30,14 +30,14 @@ residueCount = sum . map count
         count Ins = 1
         count _   = 0
 
-nodeCount = sum . map count . compress
+-- The final node of the HMM is never considered
+-- in the state path, because it's a transition
+-- to the non-emitting end state
+nodeCount = ((+) 1) . sum . map count
   where count Mat = 1
         count Del = 1
-        count Ins = 1
+        count Ins = 0
         count _   = 0
-        compress (Ins:Ins:xs) = compress (Ins:xs)
-        compress (x:xs)       = x : compress xs
-        compress []           = []
         
 -- | Admissible solution to a problem
 -- admissibleSolution :: HMMModel -> QuerySquence -> [HMMState] -> Bool
@@ -67,6 +67,27 @@ oneTestResults (_, model, queries) = concatMap (string model) queries
               where states = unScored $ viterbi (:) (False, False) query model
 
 
+
+scoreHMM :: HMM -> QuerySequence -> [HMMState] -> Score
+scoreHMM nss qss hss = scoreHMM' (V.toList nss) (V.toList qss) hss
+  where
+    scoreHMM' []     []     []       = Score 0.0
+    scoreHMM' (n:ns) (q:qs) (Mat:hs) = eScore n q Mat +
+                                       aScore (head hs) Mat (head ns) +
+                                       scoreHMM'  ns    (q:qs) hs
+    scoreHMM' (n:ns) (q:qs) (Ins:hs) = eScore n q Ins +
+                                       aScore (head hs) Ins n  +
+                                       scoreHMM' (n:ns) (q:qs) hs
+    scoreHMM' (n:ns) (q:qs) (Del:hs) = aScore (head hs) Del (head ns) + 
+                                       scoreHMM' (n:ns) qs  hs
+    scoreHMM' (n:ns) (q:qs) (_  :hs) = error "Invalid state"
+    scoreHMM' _      _      _        = error "WTF"
+    eScore n q state = 
+        case state of
+          Mat -> (matchEmissions     n) V.! q 
+          Ins -> (insertionEmissions n) V.! q 
+          _   -> error ("State " ++ (show state) ++ "cannot emit")
+    aScore = undefined
 
 
 -- next up: perturbing a solution leads to a worse scoring solution
