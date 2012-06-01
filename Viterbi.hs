@@ -51,9 +51,8 @@ viterbi pathCons (hasStart, hasEnd) query hmm =
   if numNodes == 0 then
     Scored [] negLogOne
   else
-    minimum $ [vee'' s (numNodes - 1) (seqlen - 1) | 
-                 s <- [Mat, Ins, Del]] ++ 
-                 if hasEnd then [bestEnd] else []
+    minimum $ [vee'' s (numNodes - 1) (seqlen - 1) | s <- [Mat, Ins, Del]] ++ 
+              if hasEnd then [bestEnd] else []
 
   -- trace (show state DL.++ " " DL.++ show node DL.++ " " DL.++ show obs) $
   where 
