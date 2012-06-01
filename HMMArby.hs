@@ -10,6 +10,7 @@ import Test.QuickCheck.Gen
 import Beta
 import Constants
 import HMMPlus
+import MRFTypes
 import qualified SearchStrategies.GeneticAlgorithm as GA
 import Score
 import StochasticSearch
@@ -34,14 +35,13 @@ instance Arbitrary (V.Vector Int) where
     seq <- listOf aas :: Gen [Int]
     return $ V.fromList seq
 
-instance Arbitrary HmmNode where
+instance Arbitrary HMMNode where
   arbitrary = do
     rMatEmi <- vectorOf 20 $ choose (0.0, 1.0) :: Gen [Double]
     rInsEmi <- vectorOf 20 $ choose (0.0, 1.0) :: Gen [Double]
     rTrans <- arbitrary :: Gen TransitionProbabilities
-    return HmmNode { nodeNum = 0
+    return HMMNode { nodeNum = 0
                    , matchEmissions = toScoreVec rMatEmi
-                   , annotations = Nothing
                    , insertionEmissions = toScoreVec rInsEmi
                    , transitions = rTrans
                    }
@@ -54,7 +54,7 @@ instance Arbitrary TransitionProbabilities where
 
 instance Arbitrary TransitionProbability where
   arbitrary = do
-    rLogProb <- arbitrary :: Gen LogProbability
+    rLogProb <- arbitrary :: Gen Score
     from <- elements [Mat, Ins, Del] :: Gen HMMState
     to <- elements [Mat, Ins, Del] :: Gen HMMState
     return $ TransitionProbability { logProbability = rLogProb
@@ -62,11 +62,11 @@ instance Arbitrary TransitionProbability where
                                    , toState = to
                                    }
 
-instance Arbitrary LogProbability where
+instance Arbitrary Score where
   arbitrary = do
     f <- choose (0.0, 1.0) :: Gen Double
-    return $ if f == 0.0 then LogZero
-             else HmmPlus.NonZero $ - log f
+    return $ if f == 0.0 then negLogZero
+             else Score $ - log f
 
 instance Arbitrary HMMState where
   -- Test this with sample (arbitrary :: Gen HMMState)

@@ -22,12 +22,12 @@ import Shuffle
 import StochasticSearch
 import Viterbi
 
-nss :: HMM -> SearchParameters -> QuerySequence -> [BetaStrand] -> SearchStrategy Placement
+nss :: NewSS
 nss hmm searchP query betas =
   SS { gen0 = \seed -> initialize' hmm searchP seed query betas 
      , nextGen = \seed scorer placements ->
                   mutate' searchP query betas seed scorer placements
-     , accept = \seed hist age ->
+     , accept = \seed hist age -> 
                  accept' searchP seed hist age
      , quit = \hist age ->
                terminate' searchP hist age
@@ -39,12 +39,13 @@ initialize' hmm searchP seed query betas =
       $ take (getSearchParm searchP populationSize) rands
   where rands = (randoms (mkStdGen seed)) :: [Int]
 
-accept' :: SearchParameters -> Seed -> [Scored Age] -> Age -> Bool
-accept' _ _ [] _ = error "go away" 
-accept' _ _ [s1] _ = True 
-accept' _ _ (s1:s2:scores) _ = scoreOf s1 < scoreOf s2 
+accept' :: SearchParameters -> Seed -> History Placement -> Age -> Bool
+accept' _ _ (History ps) _ = ok ps
+  where ok []        = error "empty history passed to accept predicate" 
+        ok [s1]      = True 
+        ok ((s1,_):(s2,_):_) = scoreOf s1 < scoreOf s2 
 
-terminate' :: SearchParameters -> [Scored Age] -> Age -> Bool
+terminate' :: SearchParameters -> History Placement -> Age -> Bool
 terminate' searchP (!_scores) age = showMe $ not $ age < (generations searchP)
   where showMe = if not $ (10.0 * ((fromIntegral age)
                                    / (fromIntegral (generations searchP))))

@@ -51,6 +51,7 @@ data SearchParameters = SearchParameters { strategy :: NewSS
                                          , coolingFactor :: Maybe Double
                                          , boltzmannConstant :: Maybe Double
                                          , mutationRate :: Maybe Double
+                                         , convergenceAge :: Maybe Int
                                          , secPreds :: Maybe [SSPrediction]
                                          }
 
@@ -89,7 +90,7 @@ dupeElements [] = []
 dupeElements (x:xs) = x : x : (dupeElements xs)
 
 statePath :: HMM -> QuerySequence -> [BetaStrand] -> Scored Placement -> StatePath
-statePath hmm query betas ps = foldr (++) [] $ map viterbiOrBeta $ DL.zip4 hmmAlignTypes (map traceid miniHmms) miniQueries $ dupeElements [0..]
+statePath hmm query betas ps = foldr (++) [] $ map viterbiOrBeta $ DL.zip4 hmmAlignTypes (map traceid miniHMMs) miniQueries $ dupeElements [0..]
   where viterbiOrBeta :: (BetaOrViterbi, HMM, QuerySequence, Int) -> StatePath
         viterbiOrBeta (Beta, ns, qs, i) = take (len (betas !! i)) $ repeat BMat
         viterbiOrBeta (Viterbi, ns, qs, i) = unScored $ viterbi consPath (False, False) qs ns
@@ -98,11 +99,11 @@ statePath hmm query betas ps = foldr (++) [] $ map viterbiOrBeta $ DL.zip4 hmmAl
         -- traceid = (trace (show guesses)) id 
         traceid = id
 
-        (miniHmms, hmmAlignTypes) = sliceHmms hmm betas 1 [] []
+        (miniHMMs, hmmAlignTypes) = sliceHMMs hmm betas 1 [] []
         miniQueries = sliceQuery query betas (unScored ps) 1 []
 
 score :: HMM -> QuerySequence -> [BetaStrand] -> Scorer Placement
-score hmm query betas ps = Scored ps (foldr (+) negLogOne $ (parMap rseq) viterbiOrBeta $ DL.zip4 hmmAlignTypes (map traceid miniHmms) miniQueries $ dupeElements [0..])
+score hmm query betas ps = Scored ps (foldr (+) negLogOne $ (parMap rseq) viterbiOrBeta $ DL.zip4 hmmAlignTypes (map traceid miniHMMs) miniQueries $ dupeElements [0..])
   where viterbiOrBeta :: (BetaOrViterbi, HMM, QuerySequence, Int) -> Score
         -- NMD note: I think we'll have to do something with seq here
         -- to force evaluation of the Viterbis before the Betas (Vs can still be in parallel)
@@ -115,7 +116,7 @@ score hmm query betas ps = Scored ps (foldr (+) negLogOne $ (parMap rseq) viterb
         traceid = id
         -- traceid = (trace (show hmmAlignTypes)) id 
 
-        (miniHmms, hmmAlignTypes) = sliceHmms hmm betas 1 [] []
+        (miniHMMs, hmmAlignTypes) = sliceHMMs hmm betas 1 [] []
         miniQueries = sliceQuery query betas ps 1 []
 
 -- invariant: length residues == length hmmSlice == length querySlice
@@ -167,33 +168,33 @@ sliceQuery query betas placement queryPos queries = reverse $ sliceQuery' betas 
                 betas' = if queryPos == 1 then (b:b2:bs) else (b2:bs)
                 guesses' = if queryPos == 1 then (g:g2:gs) else (g2:gs)
 
-sliceHmms hmm betas hmmPos hmms atypes = (reverse hmms', reverse atypes')
-  where (hmms', atypes') = sliceHmms' betas hmmPos hmms atypes
+sliceHMMs hmm betas hmmPos hmms atypes = (reverse hmms', reverse atypes')
+  where (hmms', atypes') = sliceHMMs' betas hmmPos hmms atypes
   -- TODO: alternating beta and viterbi can be simplified with 'intersperse' from prelude
 
-        sliceHmms' [] hmmPos hmms atypes = ((V.drop (hmmPos - 1) hmm) : hmms, Viterbi : atypes)
-        sliceHmms' [b] hmmPos hmms atypes = if length betas /= 1 then
-                                             sliceHmms' [] hmmPos hmms atypes
+        sliceHMMs' [] hmmPos hmms atypes = ((V.drop (hmmPos - 1) hmm) : hmms, Viterbi : atypes)
+        sliceHMMs' [b] hmmPos hmms atypes = if length betas /= 1 then
+                                             sliceHMMs' [] hmmPos hmms atypes
                                            else
-                                             sliceHmms' [] endRes (bHmm : vHmm : []) (Beta : Viterbi : [])
+                                             sliceHMMs' [] endRes (bHMM : vHMM : []) (Beta : Viterbi : [])
           where firstRes = resPosition . head . residues
                 endRes = firstRes b + len b
-                vHmm = vslice "7" 0 (firstRes b) hmm
-                bHmm = vslice "8" (firstRes b) (len b) hmm
-        sliceHmms' (b:b2:bs) hmmPos hmms atypes
-          | hmmPos == 1 = sliceHmms' betas' initLastPos (initBHmm : initVHmm : hmms) (Beta : Viterbi : atypes)
-          | otherwise = sliceHmms' betas' lastPos (bHmm : vHmm : hmms) (Beta : Viterbi : atypes)
+                vHMM = vslice "7" 0 (firstRes b) hmm
+                bHMM = vslice "8" (firstRes b) (len b) hmm
+        sliceHMMs' (b:b2:bs) hmmPos hmms atypes
+          | hmmPos == 1 = sliceHMMs' betas' initLastPos (initBHMM : initVHMM : hmms) (Beta : Viterbi : atypes)
+          | otherwise = sliceHMMs' betas' lastPos (bHMM : vHMM : hmms) (Beta : Viterbi : atypes)
           where firstRes = resPosition . head . residues
                 endRes = firstRes b + len b
         
-                initVHmm = vslice "9" 0 (firstRes b) hmm
-                initBHmm = vslice "10" (firstRes b) (len b) hmm
+                initVHMM = vslice "9" 0 (firstRes b) hmm
+                initBHMM = vslice "10" (firstRes b) (len b) hmm
                 initLastPos = firstRes b + len b
         
                 -- the zeroth node should be the LAST BETA node from the previous slice
-                -- vHmm = trace ("firstRes: " ++ (show (firstRes b2)) ++ " endRes: " ++ (show endRes)) $ vslice "11" (endRes - 1) (firstRes b2 - endRes + 1) hmm 
-                vHmm = vslice "11" (endRes - 1) (firstRes b2 - endRes + 1) hmm
-                bHmm = vslice "12" (firstRes b2) (len b2) hmm
+                -- vHMM = trace ("firstRes: " ++ (show (firstRes b2)) ++ " endRes: " ++ (show endRes)) $ vslice "11" (endRes - 1) (firstRes b2 - endRes + 1) hmm 
+                vHMM = vslice "11" (endRes - 1) (firstRes b2 - endRes + 1) hmm
+                bHMM = vslice "12" (firstRes b2) (len b2) hmm
                 lastPos = firstRes b2 + len b2
         
                 betas' = if hmmPos == 1 then (b:b2:bs) else (b2:bs)

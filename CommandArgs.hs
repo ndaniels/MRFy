@@ -14,7 +14,7 @@ data Flag = Verbose | Version | Help
             | StratSA | StratGA | StratRand
             | Generations String | MultiStartPop String
             | PopSize String | InitTemp String | CoolingFact String
-            | BoltzmannConst String | MutationRate String
+            | BoltzmannConst String | MutationRate String | Convergence String
 
 options :: [OptDescr Flag]
 options =
@@ -28,12 +28,10 @@ options =
   , Option [] ["coolfact"] (ReqArg CoolingFact "DOUBLE") "set cooling factor for SA"
   , Option [] ["boltz"] (ReqArg BoltzmannConst "DOUBLE") "set the boltzmann constant"
   , Option [] ["mutrate"] (ReqArg MutationRate "DOUBLE") "set the mutation rate"
+  , Option [] ["convergence"] (ReqArg Convergence "INT") "set num generations before convergence"
   , Option ['s'] ["simanneal"] (NoArg StratSA) "use simulated annealing"
   , Option ['g'] ["genetic"] (NoArg StratGA) "use genetic algorithms"
   , Option ['r'] ["random"] (NoArg StratRand) "use random hill climbing"
-  -- , Option ['p'] [] (ReqArg HmmPlusFile) "input hmm plus file" 
-  -- , Option ['f'] [] (ReqArg FastaFile) "input fasta file" 
-  -- , Option ['o'] ["output"] (OptArg (\s -> OutputFile (fromMaybe "stdout"))) "output file" 
   ]
 
 data Files = Files { hmmPlusF :: String
@@ -43,7 +41,7 @@ data Files = Files { hmmPlusF :: String
 
 -- | Things this program can be commanded to do
 data Commanded = AlignmentSearch SearchParameters Files
-               | TestHmm String
+               | TestHMM String
      
 
 getFiles :: [String] -> Files
@@ -74,11 +72,12 @@ getParams (f:fs) =
     CoolingFact x -> params { coolingFactor = Just $ read x }
     BoltzmannConst x -> params { boltzmannConstant = Just $ read x }
     MutationRate x -> params { mutationRate = Just $ read x }
+    Convergence x -> params { convergenceAge = Just $ read x }
   where params = getParams fs
 
 
 getOpts :: [String] -> Commanded 
-getOpts ["-test", what] = TestHmm what
+getOpts ["-test", what] = TestHMM what
 getOpts argv =
     case getOpt RequireOrder options argv of
       (o, moreArgs, []) -> AlignmentSearch (getParams o)  (getFiles moreArgs)
@@ -94,5 +93,6 @@ defaultSP = SearchParameters { strategy = SimulatedAnnealing.nss
                              , coolingFactor = Just 0.99
                              , boltzmannConstant = Just 1.0
                              , mutationRate = Just 1.0
+                             , convergenceAge = Nothing
                              , secPreds = Nothing
                              }

@@ -18,7 +18,7 @@ import Bio.Sequence
 import Bio.Sequence.Fasta
 
 import Beta
--- import HmmAlign
+
 import CommandArgs
 import Constants
 import HMMPlus
@@ -44,33 +44,34 @@ translateQuery = V.fromList . map lookup
                         Nothing -> error "Residue not found in alphabet"
 
 runCommand :: Commanded -> IO ()
-runCommand (TestHmm "mini") =
+runCommand (TestHMM "mini") =
   do test <- loadTestData $ Files "testing/mini8.hmm+" "testing/mini8.fasta" "/dev/null"
      let ok = oneTestAdmissible test
      putStrLn $ "Function viterbiAdmissible " ++
                 (if ok then "passes" else "DOES NOT PASS") ++ " one test"
 
-runCommand (TestHmm "mini-strings") =
+runCommand (TestHMM "mini-strings") =
   do test <- loadTestData $ Files "testing/mini8.hmm+" "testing/mini8.fasta" "/dev/null"
      mapM_ putStrLn $ oneTestResults test
 
-runCommand (TestHmm "8") =
+runCommand (TestHMM "8") =
   do test <- loadTestData $ Files "testing/8.hmm+" "testing/8.fasta" "/dev/null"
      let ok = oneTestAdmissible test
      putStrLn $ "Function viterbiAdmissible " ++
                 (if ok then "passes" else "DOES NOT PASS") ++ " one test"
 
-runCommand (TestHmm "8-strings") =
+runCommand (TestHMM "8-strings") =
   do test <- loadTestData $ Files "testing/8.hmm+" "testing/8.fasta" "/dev/null"
      mapM_ putStrLn $ oneTestResults test
 
 
-runCommand (TestHmm t) =
+runCommand (TestHMM t) =
   error $ "I never heard of test " ++ t
 
 runCommand (AlignmentSearch searchParams files) = run
   where hmmPlusFile = hmmPlusF files
         fastaFile = fastaF files
+        outFile = outputF files
         run = do -- secPred <- getSecondary $ fastaFile
                  (header, hmm, queries) <- loadTestData files
                  let bs = betas header
@@ -87,15 +88,17 @@ runCommand (AlignmentSearch searchParams files) = run
 
                  let results = map (popSearch searches) queries
 
-                 mapM_ putStrLn [ "History: " ++ (show $ snd $ head results) 
-                                , ""
-                                , "Score: " ++ (show $ scoreOf $ fst $ head results) 
+                 let output  =  [ "Score: " ++ (show $ scoreOf $ fst $ head results) 
                                 , ""
                                 , concat $ intersperse "\n\n" $
                                   zipWith (\(ss, hist) query ->
                                           outputAlignment hmm bs ss query)
                                           results queries
                                 ]
+                 if outFile == "stdout" then
+                      (mapM_ putStrLn output)
+                      else
+                      (writeFile outFile $ concat $ intersperse "\n" output)
 
 
 
@@ -108,12 +111,12 @@ outputAlignment hmm betas ps querySeq =
 
 
 
-popSearch :: [QuerySequence -> (Scored Placement, [Scored Age])]
+popSearch :: [QuerySequence -> (Scored Placement, History Placement)]
           -> QuerySequence
-          -> (Scored Placement, [Scored Age])
+          -> (Scored Placement, History Placement)
 popSearch searches q = minimum $ (parMap rseq) (\s -> s q) searches
 
 newRandoms s = randoms $ mkStdGen s
-noSearch = (Scored [] negLogZero, [])
+noSearch = (Scored [] negLogZero, History [])
 
 

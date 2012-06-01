@@ -3,7 +3,7 @@ module SearchModel
        ( Scorer(..)
        , Age
        , Seed
-       , SearchStrategy(..)
+       , SearchStrategy(..), History(..)
        , search
        )
 
@@ -19,13 +19,22 @@ type Scorer placement = placement -> Scored placement
 -- @ start strategy.tex
 type Age  = Int -- number of generations explored
 type Seed = Int -- source of stochastic variation
+data History placement = History [(Scored placement, Age)]
+  deriving (Show, Eq, Ord)
+hmin :: History placement -> (Scored placement, Age)
+hmin (History as) = minimum as
+hcons :: (Scored placement, Age) -> History placement -> History placement
+hcons a (History as) = History (a:as)
+hmap :: ((Scored placement, Age) -> b) -> (History placement) -> [b]
+hmap f (History as) = map f as
+
 -- is there a better name for seed?
 data SearchStrategy placement = 
  SS { gen0    :: Seed -> [placement]
     , nextGen :: Seed -> Scorer placement
               -> [Scored placement] -> [Scored placement]
-    , accept  :: Seed -> [Scored Age] -> Age -> Bool
-    , quit    ::         [Scored Age] -> Age -> Bool
+    , accept  :: Seed -> History placement -> Age -> Bool
+    , quit    ::         History placement -> Age -> Bool
     }
 -- @ end strategy.tex
 
@@ -35,24 +44,23 @@ search :: forall placement
         . SearchStrategy placement 
        -> Scorer placement 
        -> [Seed]
-       -> (Scored placement, [Scored Age]) -- [Scored (placement, Age)]
-search strat scorer (s0:seeds) = runFrom seeds firstGen [] 0
+       -> (Scored placement, History placement)
+search strat scorer (s0:seeds) = runFrom seeds firstGen (History []) 0
  where
   firstGen = map scorer $ gen0 strat s0
-  runFrom :: [Seed] -> [Scored placement] -> [Scored Age] -- [Scored (placement, Age)] ; accept must change
-          -> Age -> (Scored placement, [Scored Age]) -- [Scored (placement, Age)]
-  runFrom (s1:s2:seeds) oldPop oldHist age =
+  runFrom :: [Seed] -> [Scored placement] -> History placement
+          -> Age -> (Scored placement, History placement)
+  runFrom (s1:s2:seeeds) oldPop oldHist age =
     let trialPop  = nextGen strat s1 scorer oldPop
-        trialHist = (fmap (const age) $! minimum trialPop) -- must cons (placement, age)
-                  : oldHist
+        trialHist = (winner, age) `hcons` oldHist
+        winner = minimum trialPop
         (newPop, newHist) =
-          if accept strat s2 trialHist age then -- TODO accept just needs to deal with new history tuples
+          if accept strat s2 trialHist age then
             (trialPop, trialHist)
           else
             (oldPop, oldHist)
     in  if quit strat newHist age then -- TODO quit must change: consider best-ever, convergence
-          (minimum newPop, newHist) -- TODO this changes too: we want the minimum over newHist, 
-                                    -- and map snd newHist
+          (fst $ hmin newHist, newHist) 
         else
           runFrom seeds newPop newHist (age + 1)
 -- @ end search.tex
