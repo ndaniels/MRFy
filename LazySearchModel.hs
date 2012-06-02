@@ -3,12 +3,13 @@ module LazySearchModel
        ( Scorer(..)
        , Age
        , Seed
-       , SearchStrategy(..), History(..)
---       , search
+       , SearchStrategy(..)
+       , search'
        )
 
 where
   
+import qualified SearchModel as S
 import Score
 import Viterbi
 --------------------------------------------------------
@@ -57,7 +58,7 @@ data SearchStrategy placement =
        -- of @solns@ that contains an approved solution
     }
 
-type SearchStop a = [Aged (ScoredPopulation a)] -> (Scored a, History a)
+type SearchStop a = [Aged (ScoredPopulation a)] -> (Scored a, S.History a)
 
 children :: RandomStream r
          => SearchStrategy a
@@ -83,13 +84,13 @@ instance Functor Aged where
   
 --------------------------------------------------------
 -- @ start search.tex
-search :: forall placement r
+search' :: forall placement r
         . RandomStream r
        => SearchStrategy placement
        -> SearchStop placement
        -> r
-       -> (Scored placement, History placement)
-search strat finish rand = (finish . approvedPops strat r 0 . gen0 strat) s0
+       -> (Scored placement, S.History placement)
+search' strat finish rand = (finish . approvedPops strat r 0 . gen0 strat) s0
  where (s0, r) = takeSeed rand
 -- @ end search.tex
 
@@ -98,14 +99,33 @@ search strat finish rand = (finish . approvedPops strat r 0 . gen0 strat) s0
 -- this is also necessary to prevent SimAn from thinking it's improving
 -- when in fact it isn't.
 
+-------------------------------------------------------------------------------
+--
+-- code to adapt the original search function
+--
 
-data History placement = History [(Scored placement, Age)]
-  deriving (Show, Eq, Ord)
-  -- XXX TODO 
-hmin :: History placement -> (Scored placement, Age)
-hmin (History as) = minimum as
-hcons :: (Scored placement, Age) -> History placement -> History placement
-hcons a (History as) = History (a:as)
-hmap :: ((Scored placement, Age) -> b) -> (History placement) -> [b]
-hmap f (History as) = map f as
+
+originalSearch :: forall placement  r
+               .  RandomStream r
+               => S.SearchStrategy placement 
+               -> Scorer placement 
+               -> r
+               -> (Scored placement, S.History placement)
+originalSearch ostrat r = undefined
+
+adapt :: S.SearchStrategy a -> Scorer a -> (SearchStrategy a, SearchStop a)
+adapt ss score = (SS g0 nx app, stop S.emptyHistory)
+  where g0 seed = map score (S.gen0 ss seed)
+        nx = flip (S.nextGen ss) score
+        app seeds age pops = scanForGood S.emptyHistory (zip3 seeds [age..] pops)
+          where scanForGood older ((seed, age, pop) : pops) =
+                  if S.accept ss seed older age then
+                    [pop]
+                  else
+                    pop : scanForGood ((minimum pop,age) `S.hcons` older) pops
+        stop older (Aged pop age : pops) =
+          if S.quit ss older age then
+            (minimum pop, older)
+          else
+            stop ((minimum pop, age) `S.hcons` older) pops
 
