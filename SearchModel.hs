@@ -3,7 +3,8 @@ module SearchModel
        ( Scorer(..)
        , Age
        , Seed
-       , SearchStrategy(..), History(..)
+       , SearchStrategy(..)
+       , History(..), hcons, emptyHistory
        , search
        )
 
@@ -23,6 +24,8 @@ data History placement = History { unHistory :: [(Scored placement, Age)] }
   deriving (Show, Eq, Ord)
 hcons :: (Scored placement, Age) -> History placement -> History placement
 hcons a (History as) = History (a:as)
+emptyHistory :: History a
+emptyHistory = History []
 
 -- is there a better name for seed?
 data SearchStrategy placement = 

@@ -4,7 +4,7 @@ module LazySearchModel
        , Age
        , Seed
        , SearchStrategy(..)
-       , search'
+       , search', originalSearch
        )
 
 where
@@ -38,15 +38,6 @@ data NextState = SiblingNext | ChildNext
 data Approval = Accepted | Rejected
 type ScoredPopulation a = [Scored a]
 -- is there a better name for seed?
-{-
-class SearchStrategy s a where
-  gen0    :: s -> Seed -> ScoredPopulation a
-  nextGen :: s -> Seed -> ScoredPopulation a -> ScoredPopulation a
-  children :: RandomStream r => s -> r -> ScoredPopulation a -> [ScoredPopulation a]
-  children s r a = map (flip (nextGen s) a) (listRands r)
-  approval :: s -> Seed -> History a -> Age -> Approval
--- @ end strategy.tex
--}
 data SearchStrategy placement = 
  SS { gen0    :: Seed -> ScoredPopulation placement
     , nextGen :: Seed -> ScoredPopulation placement
@@ -111,7 +102,8 @@ originalSearch :: forall placement  r
                -> Scorer placement 
                -> r
                -> (Scored placement, S.History placement)
-originalSearch ostrat r = undefined
+originalSearch ostrat score r = search' newstrat stop r
+  where (newstrat, stop) = adapt ostrat score
 
 adapt :: S.SearchStrategy a -> Scorer a -> (SearchStrategy a, SearchStop a)
 adapt ss score = (SS g0 nx app, stop S.emptyHistory)
