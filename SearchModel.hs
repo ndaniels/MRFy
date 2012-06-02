@@ -19,14 +19,10 @@ type Scorer placement = placement -> Scored placement
 -- @ start strategy.tex
 type Age  = Int -- number of generations explored
 type Seed = Int -- source of stochastic variation
-data History placement = History [(Scored placement, Age)]
+data History placement = History { unHistory :: [(Scored placement, Age)] }
   deriving (Show, Eq, Ord)
-hmin :: History placement -> (Scored placement, Age)
-hmin (History as) = minimum as
 hcons :: (Scored placement, Age) -> History placement -> History placement
 hcons a (History as) = History (a:as)
-hmap :: ((Scored placement, Age) -> b) -> (History placement) -> [b]
-hmap f (History as) = map f as
 
 -- is there a better name for seed?
 data SearchStrategy placement = 
@@ -60,7 +56,7 @@ search strat scorer (s0:seeds) = runFrom seeds firstGen (History []) 0
           else
             (oldPop, oldHist)
     in  if quit strat newHist age then -- TODO quit must change: consider best-ever, convergence
-          (fst $ hmin newHist, newHist) 
+          (fst $ minimum (unHistory newHist), newHist) 
         else
           runFrom seeds newPop newHist (age + 1)
 -- @ end search.tex
