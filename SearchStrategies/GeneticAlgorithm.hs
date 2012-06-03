@@ -39,13 +39,13 @@ initialize' hmm searchP seed query betas =
       $ take (getSearchParm searchP populationSize) rands
   where rands = (randoms (mkStdGen seed)) :: [Int]
 
-accept' :: SearchParameters -> Seed -> History Placement -> Age -> Bool
+accept' :: SearchParameters -> Seed -> History a -> Age -> Bool
 accept' _ _ (History ps) _ = ok ps
   where ok []        = error "empty history passed to accept predicate" 
         ok [s1]      = True 
         ok ((s1,_):(s2,_):_) = scoreOf s1 < scoreOf s2 
 
-terminate' :: SearchParameters -> History Placement -> Age -> Bool
+terminate' :: SearchParameters -> History a -> Age -> Bool
 terminate' searchP (!_scores) age = showMe $ not $ age < (generations searchP)
   where showMe = if not $ (10.0 * ((fromIntegral age)
                                    / (fromIntegral (generations searchP))))

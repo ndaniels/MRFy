@@ -1,4 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables, BangPatterns #-}
+{-# LANGUAGE ScopedTypeVariables, BangPatterns, RankNTypes #-}
 module SearchModel
        ( Scorer(..)
        , Age
@@ -32,8 +32,8 @@ data SearchStrategy placement =
  SS { gen0    :: Seed -> [placement]
     , nextGen :: Seed -> Scorer placement
               -> [Scored placement] -> [Scored placement]
-    , accept  :: Seed -> History placement -> Age -> Bool
-    , quit    ::         History placement -> Age -> Bool
+    , accept  :: forall a . Seed -> History a -> Age -> Bool
+    , quit    :: forall a .         History a -> Age -> Bool
     }
 -- @ end strategy.tex
 

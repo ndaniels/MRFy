@@ -27,7 +27,7 @@ nss hmm searchP query betas =
                    RHC.terminate' searchP hist age
          }
 
-accept' :: SearchParameters -> Seed -> History Placement -> Age -> Bool
+accept' :: SearchParameters -> Seed -> History a -> Age -> Bool
 accept' searchP seed (History ps) age = ok ps
   where ok []        = error "empty history passed to accept predicate"
         ok [s1]      = True
