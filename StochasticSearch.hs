@@ -4,6 +4,7 @@ module StochasticSearch where
 import Control.Parallel (par)
 import Control.Parallel.Strategies
 
+import Data.Maybe
 import qualified Data.Vector as V
 import qualified Data.List as DL
 
@@ -55,7 +56,7 @@ data SearchParameters = SearchParameters { strategy :: NewSS
                                          , secPreds :: Maybe [SSPrediction]
                                          }
 
-getSearchParm searchP parm = maybe (error "Not a valid parameter.") id (parm searchP)
+getSearchParm searchP parm = fromMaybe (error "Not a valid parameter.") (parm searchP)
 
 getSecPreds :: SearchParameters -> [SSPrediction]
 getSecPreds searchP = case secPreds searchP of
