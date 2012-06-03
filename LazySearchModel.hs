@@ -9,6 +9,8 @@ module LazySearchModel
 
 where
   
+import Debug.Trace (trace)
+  
 import qualified SearchModel as S
 import Score
 import Viterbi

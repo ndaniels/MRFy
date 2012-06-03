@@ -5,10 +5,14 @@ module SearchModel
        , Seed
        , SearchStrategy(..)
        , History(..), hcons, emptyHistory
+       , ShortHistory(..)
+       , histProgresses, scoreProgresses
        , search
        )
 
 where
+
+import Debug.Trace
   
 import Score
 import Viterbi
@@ -37,6 +41,24 @@ data SearchStrategy placement =
     }
 -- @ end strategy.tex
 
+
+data ShortHistory a = ShortHistory { younger :: (Scored a, Age)
+                                   , older   :: (Scored a, Age)
+                                   }
+histProgresses :: (Seed -> ShortHistory a -> Bool)
+               -> Seed -> History a -> Age -> Bool
+histProgresses progress seed (History scores) age = ok scores
+  where ok [] = error "asked about scores in an empty history"
+        ok [_] = True
+        ok (s1:s2:_) =
+          if snd s1 == age then
+            progress seed $ ShortHistory { younger = s1, older = s2 }
+          else
+            error "age passed to accept function is inconsistent with history"
+
+scoreProgresses :: Seed -> ShortHistory a -> Bool
+scoreProgresses _ h = (scoreOf . fst . younger) h < (scoreOf . fst . older) h
+
 --------------------------------------------------------
 -- @ start search.tex
 search :: forall placement 
@@ -49,7 +71,7 @@ search strat scorer (s0:seeds) = runFrom seeds firstGen (History []) 0
   firstGen = map scorer $ gen0 strat s0
   runFrom :: [Seed] -> [Scored placement] -> History placement
           -> Age -> (Scored placement, History placement)
-  runFrom (s1:s2:seeeds) oldPop oldHist age =
+  runFrom (s1:s2:seeds') oldPop oldHist age =
     let trialPop  = nextGen strat s1 scorer oldPop
         trialHist = (winner, age) `hcons` oldHist
         winner = minimum trialPop
@@ -61,7 +83,7 @@ search strat scorer (s0:seeds) = runFrom seeds firstGen (History []) 0
     in  if quit strat newHist age then -- TODO quit must change: consider best-ever, convergence
           (fst $ minimum (unHistory newHist), newHist) 
         else
-          runFrom seeds newPop newHist (age + 1)
+          runFrom seeds' newPop newHist (age + 1)
 -- @ end search.tex
 
 -- TODO keep a Scored (Age, Placement) to support Simulated Annealing
