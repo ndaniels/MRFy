@@ -5,10 +5,12 @@
 *.prof
 tags
 TAGS
-mrfy
-mrfy_prof
-mrfyprof
-mrfyprof.*
+/mrfy
+/mrfy_prof
+/mrfyprof
+/mrfyprof.*
+/mrfy-unopt
+/mrfy-llvm
 output
 psipred-trash
 *~
