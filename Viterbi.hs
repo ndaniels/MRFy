@@ -60,7 +60,7 @@ viterbi pathCons (hasStart, hasEnd) query hmm =
         vee'' state j i =
           Memo.memo3 (Memo.arrayRange (Mat, End)) 
                      (Memo.arrayRange (0, numNodes))
-                     (Memo.arrayRange (0, seqlen)) 
+                     (Memo.arrayRange (-1, seqlen)) 
                      vee' state j i
         -- @ end memo.tex
 
