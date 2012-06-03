@@ -18,27 +18,20 @@ import qualified SearchStrategies.RandomHillClimb as RHC
 
 nss :: NewSS
 nss hmm searchP query betas =
-      SS { gen0 = \seed -> RHC.initialize' hmm searchP seed query betas 
-         , nextGen = \seed scorer placements ->
-                      RHC.mutate' searchP query betas seed scorer placements
-         , accept = \seed hist age ->
-                     accept' searchP seed hist age
-         , quit = \hist age ->
-                   RHC.terminate' searchP hist age
+      SS { gen0    = \seed -> RHC.initialize' hmm searchP seed query betas 
+         , nextGen = RHC.mutate' searchP query betas 
+         , accept  = histProgresses (bolzmannProgress searchP)
+         , quit    = RHC.terminate' searchP 
          }
 
-accept' :: SearchParameters -> Seed -> History a -> Age -> Bool
-accept' searchP seed (History ps) age = ok ps
-  where ok []        = error "empty history passed to accept predicate"
-        ok [s1]      = True
-        ok ((p1,a1):(p2,a2):_) = boltzmann s1 s2 >= (p :: Double)
---accept' searchP seed (a1:a2:_) age = boltzmann s1 s2 >= (p :: Double)
-          where 
-                (s1, s2) = (unScore $ scoreOf p1, unScore $ scoreOf p2)
-                (p, gen) = random (mkStdGen seed)
+bolzmannProgress :: SearchParameters -> Seed -> ShortHistory a -> Bool
+bolzmannProgress searchP seed sh = ok (younger sh) (older sh)
+  where ok (p1, age) (p2, _) = boltzmann (scoreOf p1) (scoreOf p2) >= uniform
+          where uniform :: Double
+                uniform = (fst . random . mkStdGen) seed --- XXX horror show
                 
-                boltzmann :: Double -> Double -> Double
-                boltzmann s1 s2 = exp ((-(s1 - s2)) 
+                boltzmann :: Score -> Score -> Double
+                boltzmann (Score s1) (Score s2) = exp ((-(s1 - s2)) 
                                        / (constBoltzmann * temperature))
                 
                 temperature = (constCooling ^^ age) * constInitTemp
@@ -46,4 +39,3 @@ accept' searchP seed (History ps) age = ok ps
                 constBoltzmann = getSearchParm searchP boltzmannConstant
                 constInitTemp = getSearchParm searchP initialTemperature
                 constCooling = getSearchParm searchP coolingFactor
-

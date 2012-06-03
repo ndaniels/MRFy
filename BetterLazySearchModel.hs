@@ -9,43 +9,22 @@ module BetterLazySearchModel
 
 where
   
+import LazySearchModel (RandomStream(..), Scorer, Age, Seed, ScoredPopulation)
 import qualified SearchModel as S
 import Score
 import Viterbi
 --------------------------------------------------------
 
--- @ start rand.tex
-class RandomStream r where
-  -- ^ must be used in linear fashion
-  splitRand :: r -> (r, r)
-  listRands :: r -> [Seed]
-  takeSeed  :: r -> (Seed, r)
-  takeSeed r = (s, r1)
-    where (r0, r1) = splitRand r
-          s : _    = listRands r0
-  splitRand3 :: r -> (r, r, r)
-  splitRand3 r = let { (r0, r') = splitRand r; (r1, r2) = splitRand r' }
-                 in  (r0, r1, r2)
-
--- @ start scoredecl.tex
-type Scorer placement = placement -> Scored placement
--- @ end scoredecl.tex
--- @ start strategy.tex
-type Age  = Int -- number of generations explored
-type Seed = Int -- source of stochastic variation
-
-data NextState = SiblingNext | ChildNext
-data Approval = Accepted | Rejected
-type ScoredPopulation a = [Scored a]
--- is there a better name for seed?
+-- @ start movequality.tex
+data MoveQuality = Movement | Progress
+-- @ end movequality.tex
 data SearchStrategy placement = 
  SS { gen0    :: Seed -> ScoredPopulation placement
     , nextGen :: Seed -> ScoredPopulation placement
                       -> ScoredPopulation placement
-    , toApproved :: [Seed] -> Age
-                 -> [ScoredPopulation placement]
-                 -> [ScoredPopulation placement]
-       -- ^ @toApproved s age solns@ returns the smallest prefix
+    , quality :: forall a . Seed -> History a -> MoveQuality
+       -- ^ Precondition: history must be nonempty.
+      -- @quality s 
        -- of @solns@ that contains an approved solution
     }
 

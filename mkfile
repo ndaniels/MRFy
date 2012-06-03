@@ -8,18 +8,19 @@ SRC=$STRATS Beta.hs Constants.hs FileOps.hs HMMPlus.hs Main.hs Viterbi.hs \
 TGT=mrfy
 CRUDOPTS= -hidir .crud -odir .crud
 
-all:V:
-	ghc `./ghc-opts $target` --make Main.hs -o $TGT
-
-optimize:V:
+all:V: $TGT
+optimize:V: $TGT
+$TGT: $SRC
 	ghc `./ghc-opts $target` --make Main.hs -o $TGT
 
 unopt:V: unoptimize
-unoptimize:V:
+unoptimize:V: $TGT-unopt
+$TGT-unopt: $SRC
 	ghc `./ghc-opts $target` --make Main.hs -o $TGT-unopt
             
-profile:V:
-	ghc `./ghc-opts $target`  --make Main.hs -o $TGT
+profile:V: ${TGT}prof
+
+${TGT}prof: $TGT
 	ghc `./ghc-opts profile2` --make Main.hs -o ${TGT}prof
 
 tags:V:
@@ -32,6 +33,8 @@ clean:V:
 test:V: $TGT
 	./$TGT testing/8.hmm+ testing/8.fasta
 
+fast-test:V: $TGT
+	./$prereq -test mini-strings
 
 # note: to build profile: ghc --make Main.hs -O3 -rtsopts -o $TGT
 # then, ghc --make Main.hs -O3 -prof -auto-all -caf-all -rtsopts -osuf p_o -o $TGT
