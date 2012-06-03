@@ -9,8 +9,11 @@ TGT=mrfy
 CRUDOPTS= -hidir .crud -odir .crud
 
 all:V: $TGT
-optimize:V: $TGT
+optimize:V: $TGT-llvm
 $TGT: $SRC
+	ghc `./ghc-opts $target` --make Main.hs -o $TGT
+
+$TGT-llvm: $SRC
 	ghc `./ghc-opts $target` --make Main.hs -o $TGT
 
 unopt:V: unoptimize

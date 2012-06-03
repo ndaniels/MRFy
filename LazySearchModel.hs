@@ -104,7 +104,7 @@ originalSearch :: forall placement  r
                -> Scorer placement 
                -> r
                -> (Scored placement, S.History placement)
-originalSearch ostrat score r = trace "originalSearch" search' newstrat stop r
+originalSearch ostrat score r = search' newstrat stop r
   where (newstrat, stop) = adapt ostrat score
 
 adapt :: S.SearchStrategy a -> Scorer a -> (SearchStrategy a, SearchStop a)

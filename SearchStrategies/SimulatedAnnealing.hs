@@ -26,16 +26,15 @@ nss hmm searchP query betas =
 
 bolzmannProgress :: SearchParameters -> Seed -> ShortHistory a -> Bool
 bolzmannProgress searchP seed sh = ok (younger sh) (older sh)
-  where ok (p1, age) (p2, _) = boltzmann (scoreOf p1) (scoreOf p2) >= uniform
-          where uniform :: Double
-                uniform = (fst . random . mkStdGen) seed --- XXX horror show
-                
-                boltzmann :: Score -> Score -> Double
-                boltzmann (Score s1) (Score s2) = exp ((-(s1 - s2)) 
+  where ok (p1, age) (p2, _) = boltzmann age (scoreOf p1) (scoreOf p2) >= uniform
+        boltzmann :: Age -> Score -> Score -> Double
+        boltzmann age (Score s1) (Score s2) = exp ((-(s1 - s2)) 
                                        / (constBoltzmann * temperature))
+          where temperature = (constCooling ^^ age) * constInitTemp
                 
-                temperature = (constCooling ^^ age) * constInitTemp
+        uniform :: Double
+        uniform = (fst . random . mkStdGen) seed --- XXX horror show
                 
-                constBoltzmann = getSearchParm searchP boltzmannConstant
-                constInitTemp = getSearchParm searchP initialTemperature
-                constCooling = getSearchParm searchP coolingFactor
+        constBoltzmann = getSearchParm searchP boltzmannConstant
+        constInitTemp = getSearchParm searchP initialTemperature
+        constCooling = getSearchParm searchP coolingFactor

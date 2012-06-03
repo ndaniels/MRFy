@@ -47,8 +47,7 @@ data ShortHistory a = ShortHistory { younger :: (Scored a, Age)
                                    }
 histProgresses :: (Seed -> ShortHistory a -> Bool)
                -> Seed -> History a -> Age -> Bool
-histProgresses = error "should not ask for progress here"
-histProgresses' progress seed (History scores) age = trace "check OK" ok scores
+histProgresses progress seed (History scores) age = ok scores
   where ok [] = error "asked about scores in an empty history"
         ok [_] = True
         ok (s1:s2:_) =
@@ -67,7 +66,7 @@ search :: forall placement
        -> Scorer placement 
        -> [Seed]
        -> (Scored placement, History placement)
-search strat scorer (s0:seeds) = trace "search" runFrom seeds firstGen (History []) 0
+search strat scorer (s0:seeds) = runFrom seeds firstGen (History []) 0
  where
   firstGen = map scorer $ gen0 strat s0
   runFrom :: [Seed] -> [Scored placement] -> History placement
@@ -77,15 +76,13 @@ search strat scorer (s0:seeds) = trace "search" runFrom seeds firstGen (History 
         trialHist = (winner, age) `hcons` oldHist
         winner = minimum trialPop
         (newPop, newHist) =
-          if trace ("trying to accept generation " ++ show age)
-             accept strat s2 trialHist age then
+          if accept strat s2 trialHist age then
             (trialPop, trialHist)
           else
             (oldPop, oldHist)
-    in  if trace "calling quit" quit strat newHist age then -- TODO quit must change: consider best-ever, convergence
+    in  if quit strat newHist age then -- TODO quit must change: consider best-ever, convergence
           (fst $ minimum (unHistory newHist), newHist) 
         else
-          trace "next iteration"
           runFrom seeds' newPop newHist (age + 1)
 -- @ end search.tex
 

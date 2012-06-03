@@ -64,9 +64,6 @@ viterbi pathCons (hasStart, hasEnd) query hmm =
                      vee' state j i
         -- @ end memo.tex
 
-        veexxx state j i = trace (DL.intercalate " "
-                                  ["vee'", show state, show j, show i])
-                           vee' state j i
         bestEnd = vee' End (numNodes - 1) (seqlen - 1)
 
         numNodes = Data.Vector.length $ hmm
