@@ -9,6 +9,8 @@ module Viterbi
        , emissionScoreNode
        , consPath
        , consNoPath
+       , TProb
+       , TProbs
        )
 where
 
@@ -19,7 +21,8 @@ import qualified Data.List as DL
 
 import Beta
 import HMMPlus
-import Data.Vector hiding (minimum, (++), map)
+import Data.Vector.Unboxed hiding (minimum, (++), map)
+import qualified Data.Vector as V hiding (minimum, (++), map)
 import Constants
 import MRFTypes
 import Score
@@ -57,17 +60,17 @@ viterbi pathCons (hasStart, hasEnd) query hmm =
   -- trace (show state DL.++ " " DL.++ show node DL.++ " " DL.++ show obs) $
   where 
         -- @ start memo.tex -8
-        vee'' state j i =
+        vee'' =
           Memo.memo3 (Memo.arrayRange (Mat, End)) 
                      (Memo.arrayRange (0, numNodes))
                      (Memo.arrayRange (-1, seqlen)) 
-                     vee' state j i
+                     vee'
         -- @ end memo.tex
 
         bestEnd = vee' End (numNodes - 1) (seqlen - 1)
 
-        numNodes = Data.Vector.length $ hmm
-        seqlen = Data.Vector.length query
+        numNodes = V.length $ hmm
+        seqlen = Data.Vector.Unboxed.length query
 
         res i = query ! i
         
@@ -160,7 +163,7 @@ emissionScoreNode n q state =
       _   -> error ("State " ++ (show state) ++ "cannot emit")
 
 emissionScore :: HMM -> QuerySequence -> HMMState -> Int -> Int -> Score
-emissionScore hmm qs state j i = emissionScoreNode (hmm ! j) (qs ! i) state
+emissionScore hmm qs state j i = emissionScoreNode (hmm V.! j) (qs ! i) state
 
 transScoreNode n from to =
   logProbability $ edge from to (transitions n)
@@ -181,5 +184,5 @@ transScoreNode n from to =
                                " is not allowed in the Plan7 architecture"
 
 transScore :: HMM -> HMMState -> HMMState -> Int -> Score
-transScore hmm from to nodenum = transScoreNode (hmm ! nodenum) from to
+transScore hmm from to nodenum = transScoreNode (hmm V.! nodenum) from to
 

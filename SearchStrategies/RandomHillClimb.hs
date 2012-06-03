@@ -1,7 +1,7 @@
 {-# LANGUAGE BangPatterns #-}
 module SearchStrategies.RandomHillClimb where
 
-import qualified Data.Vector as V
+import qualified Data.Vector.Unboxed as V
 import System.Random (mkStdGen, randomR, StdGen)
 
 import Debug.Trace (trace)

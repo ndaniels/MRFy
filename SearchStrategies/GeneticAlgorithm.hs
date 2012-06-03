@@ -5,7 +5,7 @@ import Control.Parallel (par)
 import Control.Parallel.Strategies
 
 import Data.List
-import qualified Data.Vector as V
+import qualified Data.Vector.Unboxed as V
 import System.Random (mkStdGen, randomR, randoms, StdGen)
 
 import Debug.Trace (trace)

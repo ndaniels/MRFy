@@ -1,11 +1,17 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
 module Score
        ( Score(..), negLogZero, negLogOne, unScore
        , Scored(..), (/+/)
        )
 where
-  
+
+import Data.Vector.Generic.Base
+import Data.Vector.Generic.Mutable
+import qualified Data.Vector.Unboxed as U
+
 newtype Score = Score Double
-  deriving (Eq, Ord)
+  deriving (Eq, Ord, Vector U.Vector, MVector U.MVector, U.Unbox)
  -- ^ A "score" is the negated logarithm of a probability
                 
 negLogZero :: Score -- ^ Stands in for - log 0

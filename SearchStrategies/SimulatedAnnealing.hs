@@ -1,6 +1,6 @@
 module SearchStrategies.SimulatedAnnealing where
 
-import qualified Data.Vector as V
+import qualified Data.Vector.Unboxed as V
 import System.Random (mkStdGen, random, StdGen)
 
 import Debug.Trace (trace)

@@ -11,7 +11,7 @@ import Data.Array
 import Data.List as DL
 import System.Console.CmdArgs
 import System.Random (getStdGen, mkStdGen, randoms)
-import qualified Data.Vector as V hiding (map)
+import qualified Data.Vector.Unboxed as V hiding (map)
 import System.Environment
 
 import Bio.Sequence
@@ -64,6 +64,16 @@ runCommand (TestHMM "8") =
 
 runCommand (TestHMM "8-strings") =
   do test <- loadTestData $ Files "testing/8.hmm+" "testing/8.fasta" "/dev/null"
+     mapM_ putStrLn $ oneTestResults test
+
+runCommand (TestHMM "micro8") =
+  do test <- loadTestData $ Files "testing/micro8.hmm+" "testing/micro8.fasta" "/dev/null"
+     let ok = oneTestAdmissible test
+     putStrLn $ "Function viterbiAdmissible " ++
+                (if ok then "passes" else "DOES NOT PASS") ++ " one test"
+
+runCommand (TestHMM "micro8-strings") =
+  do test <- loadTestData $ Files "testing/micro8.hmm+" "testing/micro8.fasta" "/dev/null"
      mapM_ putStrLn $ oneTestResults test
 
 

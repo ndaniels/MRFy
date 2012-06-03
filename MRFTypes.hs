@@ -3,6 +3,7 @@ where
 
 import Data.Ix
 import qualified Data.Vector as V
+import qualified Data.Vector.Unboxed as U
 import Data.List (sort, find, elemIndex, intercalate)
 import qualified Data.Maybe as M
 import qualified Data.Set as Set
@@ -10,7 +11,7 @@ import qualified Data.Set as Set
 
 import Score
 
-type EmissionProbabilities = V.Vector Score
+type EmissionProbabilities = U.Vector Score
 type InsertEmissions = EmissionProbabilities
 
 type HMM = V.Vector HMMNode

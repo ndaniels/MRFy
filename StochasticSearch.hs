@@ -6,6 +6,7 @@ import Control.Parallel.Strategies
 
 import Data.Maybe
 import qualified Data.Vector as V
+import qualified Data.Vector.Unboxed as U
 import qualified Data.List as DL
 
 import Debug.Trace (trace)
@@ -77,15 +78,15 @@ oppAligner Viterbi = Beta
 alignable :: QuerySequence -> [BetaStrand] -> Bool
 alignable q bs = bLen < qLen
   where bLen = foldr (+) 0 $ map len bs
-        qLen = V.length q
+        qLen = U.length q
 
 
 vfoldr3 :: (BetaResidue -> HMMNode -> Int -> Score -> Score) -> Score -> [BetaResidue] -> HMM -> QuerySequence -> Score
 -- vfoldr3 :: (a -> b -> c -> d -> d) -> d -> [a] -> Vector b -> Vector c -> d 
 vfoldr3 f init [] _ _ = init
-vfoldr3 f init (r:rs) hmm query = f r (n V.! 0) (q V.! 0) $ vfoldr3 f init rs ns qs
+vfoldr3 f init (r:rs) hmm query = f r (n V.! 0) (q U.! 0) $ vfoldr3 f init rs ns qs
   where (n, ns)  = V.splitAt 1 hmm
-        (q, qs) = V.splitAt 1 query
+        (q, qs) = U.splitAt 1 query
 
 dupeElements [] = []
 dupeElements (x:xs) = x : x : (dupeElements xs)
@@ -135,35 +136,35 @@ betaScore query guesses = vfoldr3 betaScore' negLogOne
                 betaTableScore = foldr tableLookup negLogOne $ pairs r
                 tableLookup pair score = score + lookupScore
                   where lookupScore = case expose pair of
-                                           Buried -> betaBuried V.! partnerInd V.! q
-                                           Exposed -> betaExposed V.! partnerInd V.! q
-                        partnerInd = query V.! partnerBeta
+                                           Buried -> betaBuried V.! partnerInd U.! q
+                                           Exposed -> betaExposed V.! partnerInd U.! q
+                        partnerInd = query U.! partnerBeta
                         partnerBeta = (guesses !! (pairStrandSerial pair)) + (residueInd pair)
 
 -- invariant: length betas == length guesses
 sliceQuery :: QuerySequence -> [BetaStrand] -> Placement -> Int -> [QuerySequence] -> [QuerySequence]
 sliceQuery query betas placement queryPos queries = reverse $ sliceQuery' betas placement queryPos queries
   where sliceQuery' :: [BetaStrand] -> Placement -> Int -> [QuerySequence] -> [QuerySequence]
-        sliceQuery' [] [] queryPos queries = (V.drop queryPos query) : queries
+        sliceQuery' [] [] queryPos queries = (U.drop queryPos query) : queries
         sliceQuery' [b] [g] queryPos queries = if length betas /= 1 then
                                              sliceQuery' [] [] queryPos queries
                                            else
                                              sliceQuery' [] [] endRes (bQuery : vQuery : [])
           where firstRes = resPosition . head . residues
                 endRes = firstRes b + len b
-                vQuery = vslice "1" 0 (firstRes b) query
-                bQuery = vslice "2" (firstRes b) (len b) query
+                vQuery = uslice "1" 0 (firstRes b) query
+                bQuery = uslice "2" (firstRes b) (len b) query
         sliceQuery' (b:b2:bs) (g:g2:gs) queryPos queries
           | queryPos == 1 = sliceQuery' betas' guesses' initLastPos (initBQuery : initVQuery : queries)
           | otherwise = sliceQuery' betas' guesses' lastPos (bQuery : vQuery : queries)
           where endRes = g + len b
         
-                initVQuery = vslice "3" 0 g query
-                initBQuery = vslice "4" g (len b) query
+                initVQuery = uslice "3" 0 g query
+                initBQuery = uslice "4" g (len b) query
                 initLastPos = g + len b
         
-                vQuery = vslice "5" endRes (g2 - endRes) query
-                bQuery = vslice "6" g2 (len b2) query
+                vQuery = uslice "5" endRes (g2 - endRes) query
+                bQuery = uslice "6" g2 (len b2) query
                 lastPos = g2 + len b2
         
                 betas' = if queryPos == 1 then (b:b2:bs) else (b2:bs)
