@@ -23,6 +23,7 @@ import CommandArgs
 import Constants
 import HMMPlus
 import HMMProps
+import qualified LazySearchModel
 import MRFTypes
 import RunPsiPred
 import Score
