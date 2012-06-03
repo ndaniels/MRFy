@@ -1,4 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables, BangPatterns, MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables, BangPatterns, MultiParamTypeClasses, RankNTypes #-}
 module BetterLazySearchModel
        ( Scorer(..)
        , Age
@@ -9,11 +9,13 @@ module BetterLazySearchModel
 
 where
   
-import LazySearchModel (RandomStream(..), Scorer, Age, Seed, ScoredPopulation)
+import LazySearchModel (RandomStream(..), Scorer, Age, Seed)
 import qualified SearchModel as S
 import Score
 import Viterbi
 --------------------------------------------------------
+
+type ScoredPopulation a = [Scored a]
 
 -- @ start movequality.tex
 data MoveQuality = Movement | Progress
@@ -22,13 +24,11 @@ data SearchStrategy placement =
  SS { gen0    :: Seed -> ScoredPopulation placement
     , nextGen :: Seed -> ScoredPopulation placement
                       -> ScoredPopulation placement
-    , quality :: forall a . Seed -> History a -> MoveQuality
-       -- ^ Precondition: history must be nonempty.
-      -- @quality s 
-       -- of @solns@ that contains an approved solution
+    , quality :: forall a . Seed -> S.ShortHistory a -> MoveQuality
     }
 
-type SearchStop a = [Aged (ScoredPopulation a)] -> (Scored a, S.History a)
+type SearchStop a =
+  [(Aged (ScoredPopulation a), MoveQuality)] -> (Scored a, S.History a)
 
 children :: RandomStream r
          => SearchStrategy a
@@ -37,16 +37,29 @@ children :: RandomStream r
          -> [ScoredPopulation a]
 children ss r pop = map (flip (nextGen ss) pop) (listRands r)
 
-approvedPops :: RandomStream r
-             => SearchStrategy a
-             -> r
-             -> Age
-             -> ScoredPopulation a
-             -> [Aged (ScoredPopulation a)]
-approvedPops ss r age startPop =
-    Aged startPop age : approvedPops ss r0 (age + length kids) (last kids)
-  where kids = toApproved ss (listRands r1) age $ children ss r2 startPop
+everyGen :: forall r a
+         .  RandomStream r
+         => SearchStrategy a
+         -> r
+         -> Age
+         -> ScoredPopulation a
+         -> [(Aged (ScoredPopulation a), MoveQuality)]
+everyGen ss r age startPop =
+    (Aged startPop age, Progress) : aimlessMoves ++ progress
+    : everyGen ss r0 (age + length aimlessMoves + 1) progressPop
+  where kids = zipWith3 decorate (children ss r1 startPop) (listRands r2) [succ age..]
+        decorate :: ScoredPopulation a -> Seed -> Age
+                 -> (Aged (ScoredPopulation a), MoveQuality)
+        decorate pop seed newAge = (Aged pop newAge, quality ss seed delta)
+         where delta = S.ShortHistory { S.older   = (minimum startPop, age)
+                                      , S.younger = (minimum pop, newAge) }
+          -- Perhaps this code makes it a bit clearer what the delta is --NR
+        (aimlessMoves, progress : _) = span (noProgress . snd) kids
+        (Aged progressPop _, Progress) = progress
         (r0, r1, r2) = splitRand3 r
+
+        noProgress Movement = True
+        noProgress Progress = False
 
 data Aged a = Aged a Age
 instance Functor Aged where
@@ -60,9 +73,10 @@ search' :: forall placement r
        -> SearchStop placement
        -> r
        -> (Scored placement, S.History placement)
-search' strat finish rand = (finish . approvedPops strat r 0 . gen0 strat) s0
+search' strat finish rand = (finish . everyGen strat r 0 . gen0 strat) s0
  where (s0, r) = takeSeed rand
 -- @ end search.tex
+
 
 -- TODO keep a Scored (Age, Placement) to support Simulated Annealing
 -- otherwise, need an out of band "best ever" updated at every step
@@ -85,18 +99,19 @@ originalSearch ostrat score r = search' newstrat stop r
   where (newstrat, stop) = adapt ostrat score
 
 adapt :: S.SearchStrategy a -> Scorer a -> (SearchStrategy a, SearchStop a)
-adapt ss score = (SS g0 nx app, stop S.emptyHistory)
+adapt ss score = (SS g0 nx qual, split . stop S.emptyHistory)
   where g0 seed = map score (S.gen0 ss seed)
         nx = flip (S.nextGen ss) score
-        app seeds age pops = scanForGood S.emptyHistory (zip3 seeds [age..] pops)
-          where scanForGood older ((seed, age, pop) : pops) =
-                  if S.accept ss seed older age then
-                    [pop]
-                  else
-                    pop : scanForGood ((minimum pop,age) `S.hcons` older) pops
-        stop older (Aged pop age : pops) =
-          if S.quit ss older age then
-            (minimum pop, older)
-          else
-            stop ((minimum pop, age) `S.hcons` older) pops
+
+        qual seed delta =
+          if S.accept ss seed history age then Progress else Movement
+            where history = S.History [S.younger delta, S.older delta]
+                  age = snd (S.younger delta)
+
+        stop older ((Aged pop age, quality) : pops) =
+          if S.quit ss older age then newhist else stop newhist pops
+              where newhist =
+                      case quality of Movement -> older
+                                      Progress -> (minimum pop, age) `S.hcons` older
+        split hist @ (S.History ((pop, _age) : _)) = (pop, hist)
 

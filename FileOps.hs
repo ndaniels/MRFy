@@ -24,6 +24,7 @@ import Constants
 import HMMPlus
 import HMMProps
 import qualified LazySearchModel
+import qualified BetterLazySearchModel
 import MRFTypes
 import RunPsiPred
 import Score

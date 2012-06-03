@@ -5,6 +5,7 @@ module LazySearchModel
        , Seed
        , SearchStrategy(..)
        , search', originalSearch
+       , RandomStream(..)
        )
 
 where
