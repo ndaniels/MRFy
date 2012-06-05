@@ -17,23 +17,20 @@ import Viterbi
 
 type ScoredPopulation a = [Scored a]
 
--- @ start movequality.tex
-data MoveQuality = Movement | Progress
--- @ end movequality.tex
-
-noProgress :: MoveQuality -> Bool
-noProgress Movement = True
-noProgress Progress = False
+-- @ start popstream.tex
+data SearchStream a = Progress a (SearchStream a)
+                    | Movement   (SearchStream a)
+-- @ end popstream.tex
 
 data SearchStrategy placement = 
  SS { gen0    :: Seed -> ScoredPopulation placement
     , nextGen :: Seed -> ScoredPopulation placement
                       -> ScoredPopulation placement
-    , quality :: forall a . Seed -> S.ShortHistory a -> MoveQuality
+    , quality :: forall a . Seed -> S.ShortHistory a
+              -> SearchStream a -> SearchStream a
     }
 
-type SearchStop a =
-  [(Aged (ScoredPopulation a), MoveQuality)] -> (Scored a, S.History a)
+type SearchStop a = SearchStream (ScoredPopulation a) -> S.History a
 
 children :: RandomStream r
          => SearchStrategy a
@@ -46,18 +43,18 @@ everyGen :: forall r a
          .  RandomStream r
          => SearchStrategy a
          -> r
-         -> Age
          -> ScoredPopulation a
-         -> [(Aged (ScoredPopulation a), MoveQuality)]
+         -> SearchStream (ScoredPopulation a)
 everyGen ss r age startPop =
-    (Aged startPop age, Progress) : aimlessMoves ++ everyGen ss r0 newAge newPop
+    Progress startPop $ movementPrefix $ everyGen ss r0 newAge newPop
   where
     (r0, r1, r2) = splitRand3 r
     kids = zipWith3 decorate (children ss r1 startPop) (listRands r2) [succ age..]
-    (aimlessMoves, ((Aged newPop newAge, Progress) : _)) = span (noProgress . snd) kids
+    (movePrefix, ((Aged newPop newAge, Progress) : _)) = span (noProgress . snd) kids
     decorate :: ScoredPopulation a -> Seed -> Age
-             -> (Aged (ScoredPopulation a), MoveQuality)
-    decorate pop seed newAge = (Aged pop newAge, quality ss seed delta)
+             -> SearchStream (ScoredPopulation a)
+             -> SearchStream (ScoredPopulation a)
+    decorate pop seed newAge = quality ss seed delta
          where delta = S.ShortHistory { S.older   = (minimum startPop, age)
                                       , S.younger = (minimum pop, newAge) }
           -- Perhaps this code makes it a bit clearer what the delta is --NR
