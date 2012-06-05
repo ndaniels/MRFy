@@ -4,8 +4,8 @@ module SearchModel
        , Age
        , Seed
        , SearchStrategy(..)
-       , History(..), hcons, emptyHistory
-       , ShortHistory(..)
+       , History(..), hcons, emptyHistory, historySolution
+       , SearchDelta(..)
        , histProgresses, scoreProgresses
        , search
        )
@@ -30,6 +30,10 @@ hcons :: (Scored placement, Age) -> History placement -> History placement
 hcons a (History as) = History (a:as)
 emptyHistory :: History a
 emptyHistory = History []
+historySolution :: History a -> Scored a
+historySolution (History ((sp, _) : _)) = sp
+historySolution _ = error "solution from empty history"
+                                         
 
 -- is there a better name for seed?
 data SearchStrategy placement = 
@@ -42,22 +46,24 @@ data SearchStrategy placement =
 -- @ end strategy.tex
 
 
-data ShortHistory a = ShortHistory { younger :: (Scored a, Age)
-                                   , older   :: (Scored a, Age)
-                                   }
-histProgresses :: (Seed -> ShortHistory a -> Bool)
+data SearchDelta a = SearchDelta { younger :: Scored a
+                                 , older   :: Scored a
+                                 , youngerAge :: Age
+                                 }
+histProgresses :: (Seed -> SearchDelta a -> Bool)
                -> Seed -> History a -> Age -> Bool
 histProgresses progress seed (History scores) age = ok scores
   where ok [] = error "asked about scores in an empty history"
         ok [_] = True
         ok (s1:s2:_) =
           if snd s1 == age then
-            progress seed $ ShortHistory { younger = s1, older = s2 }
+            progress seed $
+            SearchDelta { younger = fst s1, older = fst s2, youngerAge = snd s1 }
           else
             error "age passed to accept function is inconsistent with history"
 
-scoreProgresses :: Seed -> ShortHistory a -> Bool
-scoreProgresses _ h = (scoreOf . fst . younger) h < (scoreOf . fst . older) h
+scoreProgresses :: Seed -> SearchDelta a -> Bool
+scoreProgresses _ h = (scoreOf . younger) h < (scoreOf . older) h
 
 --------------------------------------------------------
 -- @ start search.tex

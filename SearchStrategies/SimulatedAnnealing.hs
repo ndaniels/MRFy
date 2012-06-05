@@ -24,9 +24,9 @@ nss hmm searchP query betas =
          , quit    = RHC.terminate' searchP 
          }
 
-bolzmannProgress :: SearchParameters -> Seed -> ShortHistory a -> Bool
-bolzmannProgress searchP seed sh = ok (younger sh) (older sh)
-  where ok (p1, age) (p2, _) = boltzmann age (scoreOf p1) (scoreOf p2) >= uniform
+bolzmannProgress :: SearchParameters -> Seed -> SearchDelta a -> Bool
+bolzmannProgress searchP seed delta = ok (younger delta) (older delta)
+  where ok p1 p2 = boltzmann (youngerAge delta) (scoreOf p1) (scoreOf p2) >= uniform
         boltzmann :: Age -> Score -> Score -> Double
         boltzmann age (Score s1) (Score s2) = exp ((-(s1 - s2)) 
                                        / (constBoltzmann * temperature))
