@@ -23,8 +23,10 @@ nss hmm searchP query betas =
          , accept = histProgresses scoreProgresses
          , quit = terminate searchP 
          }
-initialize :: HMM -> SearchParameters -> Seed -> QuerySequence -> [BetaStrand] -> [Placement]
-initialize hmm searchP seed query betas = [projInitialGuess hmm (getSecPreds searchP) seed query betas]
+initialize :: HMM -> SearchParameters -> Seed -> QuerySequence
+           -> [BetaStrand] -> [Placement]
+initialize hmm searchP seed query betas =
+  [projInitialGuess hmm (getSecPreds searchP) seed query betas]
 
 
 terminate :: SearchParameters -> History a -> Age -> Bool
@@ -63,9 +65,9 @@ mutate searchP query betas seed scorer placements =
                 lo = if i == 0 then
                        0
                      else
-                       (len $ (betas !! (i - 1))) + lastGuess
-                hi = if i == (length oldp) - 1 then
-                       V.length query - (len $ betas !! i)
+                       len (betas !! pred i) + lastGuess
+                hi = if succ i < length oldp then
+                       (oldp !! succ i) - len (betas !! i)
                      else
-                       (oldp !! (i + 1)) - (len $ betas !! i)
+                       V.length query   - len (betas !! i)
 
