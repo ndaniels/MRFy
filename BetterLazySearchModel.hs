@@ -15,24 +15,29 @@ import Score
 import Viterbi
 --------------------------------------------------------
 
-type ScoredPopulation a = [Scored a]
 
 -- @ start movequality.tex
-data MoveQuality = Movement | Progress
+data MoveUtility a = Useful a | Useless
 -- @ end movequality.tex
+instance Functor MoveUtility where
+  fmap f (Useful a) = Useful (f a)
+  fmap f Useless    = Useless
 
-noProgress :: MoveQuality -> Bool
-noProgress Movement = True
-noProgress Progress = False
+isUseless :: MoveUtility a -> Bool
+isUseless Useless    = True
+isUseless (Useful _) = False
 
+-- @ start strategydecl.tex
+type ScoredPopulation a = [Scored a]
 data SearchStrategy placement = 
  SS { gen0    :: Seed -> ScoredPopulation placement
     , nextGen :: Seed -> ScoredPopulation placement
                       -> ScoredPopulation placement
-    , quality :: forall a . Seed -> S.SearchDelta a -> MoveQuality
+    , utility :: forall a . Seed -> S.SearchDelta a -> MoveUtility a
     }
 
-type SearchStop a = [(Aged (ScoredPopulation a), MoveQuality)] -> S.History a
+type SearchStop a = [Aged (MoveUtility (Scored a))] -> S.History a
+-- @ end strategydecl.tex
 
 
 children :: RandomStream r
@@ -48,28 +53,21 @@ everyGen :: forall r a
          -> r
          -> Age
          -> ScoredPopulation a
-         -> [(Aged (ScoredPopulation a), MoveQuality)]
+         -> [(Aged (MoveUtility (ScoredPopulation a)))]
 everyGen ss r age startPop =
-    (Aged startPop age, Progress) : aimlessMoves ++ everyGen ss r0 newAge newPop
+    (Aged (Useful startPop) age) : uselessMoves ++ everyGen ss r0 newAge newPop
   where
     (r0, r1, r2) = splitRand3 r
     kids = zipWith3 decorate (children ss r1 startPop) (listRands r2) [succ age..]
-    (aimlessMoves, ((Aged newPop newAge, Progress) : _)) = span (noProgress . snd) kids
+    (uselessMoves, Aged (Useful newPop) newAge : _) = span (isUseless . unAged) kids
     decorate :: ScoredPopulation a -> Seed -> Age
-             -> (Aged (ScoredPopulation a), MoveQuality)
-    decorate pop seed newAge = (Aged pop newAge, quality ss seed delta)
+             -> Aged (MoveUtility (ScoredPopulation a))
+    decorate pop seed newAge = Aged (fmap (const pop) (utility ss seed delta)) newAge
          where delta = S.SearchDelta { S.older   = minimum startPop
                                      , S.younger = minimum pop
                                      , S.youngerAge = newAge }
 
-{-
-… For the return type of decorate, I'm considering an alternative (PossibleMove (Aged (ScoredPopulation a)))
-[16:20:47 CEST] Norman Ramsey: The adapters are just proof of concept.
-[16:21:01 CEST] Norman Ramsey: data PossibleMove a = Taken a | NotTaken
--}
-    
-
-data Aged a = Aged a Age
+data Aged a = Aged { unAged :: a, age :: Age }
 instance Functor Aged where
   fmap f (Aged a age) = Aged (f a) age
   
@@ -81,7 +79,7 @@ search' :: forall placement r
        -> SearchStop placement
        -> r
        -> S.History placement
-search' strat finish rand = (finish . everyGen strat r 0 . gen0 strat) s0
+search' strat finish rand = (finish . undefined . everyGen strat r 0 . gen0 strat) s0
  where (s0, r) = takeSeed rand
 -- @ end search.tex
 
@@ -112,15 +110,15 @@ adapt ss score = (SS g0 nx qual, stop S.emptyHistory)
         nx = flip (S.nextGen ss) score
 
         qual seed delta =
-          if S.accept ss seed history age then Progress else Movement
+          if S.accept ss seed history age then Useful (unScored (S.younger delta)) else Useless
             where history = S.History [ (S.younger delta, age)
                                       , (S.older delta,
                                          error "accept uses age of older state") ]
                   age = S.youngerAge delta
 
-        stop older ((Aged pop age, quality) : pops) =
+        stop older (Aged Useless age : pops) =
+          if S.quit ss older age then older else stop older pops
+        stop older (Aged (Useful best) age : pops) =
           if S.quit ss older age then newhist else stop newhist pops
-              where newhist =
-                      case quality of Movement -> older
-                                      Progress -> (minimum pop, age) `S.hcons` older
+              where newhist = (best, age) `S.hcons` older
 
