@@ -13,6 +13,7 @@ import System.Console.CmdArgs
 import System.Random (getStdGen, mkStdGen, randoms)
 import qualified Data.Vector.Unboxed as V hiding (map)
 import System.Environment
+import Test.QuickCheck
 
 import Bio.Sequence
 import Bio.Sequence.Fasta
@@ -27,6 +28,7 @@ import LazySearchModel
 import MRFTypes
 import RunPsiPred
 import Score
+import SearchStrategy (tickProp)
 import ShowAlignment
 import StochasticSearch
 import Viterbi
@@ -74,6 +76,9 @@ runCommand (TestHMM "micro8-strings") =
   do test <- loadTestData $ Files "testing/micro8.hmm+" "testing/micro8.fasta" "/dev/null"
      mapM_ putStrLn $ oneTestResults test
 
+
+runCommand (TestHMM "tickProp") =
+  do quickCheck tickProp
 
 runCommand (TestHMM t) =
   error $ "I never heard of test " ++ t

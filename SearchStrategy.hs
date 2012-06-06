@@ -5,6 +5,7 @@ import qualified Data.List as DL
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
 import System.Random (mkStdGen, Random, random, randomR, randoms, StdGen)
+import Test.QuickCheck
 
 import Beta
 import HMMPlus
@@ -25,7 +26,9 @@ import Debug.Trace (trace)
 isTick denom numIntervals num =
   num * numIntervals `div` denom > (num - 1) * numIntervals `div` denom
 
-tickProp n t = (length $ filter id $ map (isTick n t) [1..n]) == t
+tickProp (Positive n') (Positive t) =
+  (length $ filter id $ map (isTick n t) [1..n]) == t
+  where n = n' + t
 
 -- | @takeNGenerations n generations@ returns the history of the
 -- useful states found in @take n generations@.  It would be nice
