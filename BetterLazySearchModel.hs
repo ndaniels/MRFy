@@ -9,7 +9,9 @@ module BetterLazySearchModel
 
 where
   
-import LazySearchModel (RandomStream(..), Scorer, Age, Seed)
+import qualified System.Random as R
+
+import LazySearchModel (listRands, split3, Scorer, Age, Seed)
 import qualified SearchModel as S
 import Score
 import Viterbi
@@ -39,8 +41,9 @@ data SearchStrategy placement =
 type SearchStop a = [Aged (MoveUtility (Scored a))] -> S.History a
 -- @ end strategydecl.tex
 
+class R.RandomGen r => RandomGen r
 
-children :: RandomStream r
+children :: RandomGen r
          => SearchStrategy a
          -> r
          -> ScoredPopulation a
@@ -48,7 +51,7 @@ children :: RandomStream r
 children ss r pop = map (flip (nextGen ss) pop) (listRands r)
 
 everyGen :: forall r a
-         .  RandomStream r
+         .  RandomGen r
          => SearchStrategy a
          -> r
          -> Age
@@ -57,7 +60,7 @@ everyGen :: forall r a
 everyGen ss r age startPop =
     (Aged (Useful startPop) age) : uselessMoves ++ everyGen ss r0 newAge newPop
   where
-    (r0, r1, r2) = splitRand3 r
+    (r0, r1, r2) = split3 r
     kids = zipWith3 decorate (children ss r1 startPop) (listRands r2) [succ age..]
     (uselessMoves, Aged (Useful newPop) newAge : _) = span (isUseless . unAged) kids
     decorate :: ScoredPopulation a -> Seed -> Age
@@ -74,13 +77,13 @@ instance Functor Aged where
 --------------------------------------------------------
 -- @ start search.tex
 search' :: forall placement r
-        . RandomStream r
+        . RandomGen r
        => SearchStrategy placement
        -> SearchStop placement
        -> r
        -> S.History placement
 search' strat finish rand = (finish . undefined . everyGen strat r 0 . gen0 strat) s0
- where (s0, r) = takeSeed rand
+ where (s0, r) = R.next rand
 -- @ end search.tex
 
 
@@ -96,7 +99,7 @@ search' strat finish rand = (finish . undefined . everyGen strat r 0 . gen0 stra
 
 
 originalSearch :: forall placement  r
-               .  RandomStream r
+               .  RandomGen r
                => S.SearchStrategy placement 
                -> Scorer placement 
                -> r
