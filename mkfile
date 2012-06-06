@@ -32,6 +32,7 @@ tags:V:
 clean:V:
 	rm -rf .crud-*
 	rm -f $TGT ${TGT}prof
+    rm -f *.hi */*.hi *.o */*.o
 
 test:V: $TGT
 	./$TGT testing/8.hmm+ testing/8.fasta
