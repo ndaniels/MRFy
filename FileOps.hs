@@ -78,37 +78,31 @@ runCommand (TestHMM "micro8-strings") =
 runCommand (TestHMM t) =
   error $ "I never heard of test " ++ t
 
-runCommand (AlignmentSearch searchParams files) = run
-  where hmmPlusFile = hmmPlusF files
-        fastaFile = fastaF files
-        outFile = outputF files
-        run = do -- secPred <- getSecondary $ fastaFile
-                 (header, hmm, queries) <- loadTestData files
-                 let bs = betas header
+runCommand (AlignmentSearch searchParams
+                (files @ Files { hmmPlusF = hmmPlusFile, outputF = outFile })) = do
+  (header, hmm, queries) <- loadTestData files
+  rgn <- getStdGen
+  -- secPred <- getSecondary $ fastaF files
+  finish (betas header) hmm queries (randoms rgn)
+      where finish bs hmm queries seeds =
+              if outFile == "stdout" then
+                  mapM_ putStrLn output
+              else
+                  mapM_ (writeFile outFile) $ intersperse "\n" output
+              where strat q = strategy searchParams hmm searchParams q bs
+                                          -- XXX why searchParams *twice* ???
+                    scorer q = score hmm q bs
+                    searchQ r q = search (strat q (scorer q)) (mkStdGen r)
+                    trySearch r q = if alignable q bs then searchQ r q else noSearch
+                    searches =
+                      map trySearch $ take (multiStartPopSize searchParams) seeds
 
-                 -- putStrLn $ show queries
-                 let strat q = strategy searchParams hmm searchParams q bs
-                 let scorer q = score hmm q bs
-
-                 let searchQ r q = search (strat q (scorer q)) (mkStdGen r)
-                 let trySearch r q = if alignable q bs then searchQ r q else noSearch
-                 rgn <- getStdGen
-                 let searches = map trySearch $
-                       take (multiStartPopSize searchParams) (randoms rgn)
-
-                 let results = map (popSearch searches) queries
-
-                 let output  =  [ "Score: " ++ (show $ scoreOf $ historySolution $ head results) 
-                                , ""
-                                , concat $ intersperse "\n\n" $
-                                  zipWith (\hist query ->
-                                          outputAlignment hmm bs (historySolution hist) query)
-                                          results queries
-                                ]
-                 if outFile == "stdout" then
-                      (mapM_ putStrLn output)
-                      else
-                      (writeFile outFile $ concat $ intersperse "\n" output)
+                    results = map (historySolution . popSearch searches) queries
+                    output  = [ "Score: " ++ (show $ scoreOf $ head results) 
+                              , ""
+                              , concat $ intersperse "\n\n" $
+                                zipWith (outputAlignment hmm bs) results queries
+                              ]
 
 
 
@@ -126,7 +120,6 @@ popSearch :: [QuerySequence -> History Placement]
           -> History Placement
 popSearch searches q = minimum $ (parMap rseq) (\s -> s q) searches
 
-newRandoms s = randoms $ mkStdGen s
 noSearch = Aged (Scored [] negLogZero) 0 `hcons` emptyHistory
 
 
