@@ -18,19 +18,17 @@ import Viterbi
 
 nss :: NewSS
 nss hmm searchP query betas =
-      SS { gen0 = \seed -> initialize' hmm searchP seed query betas 
-         , nextGen = \seed scorer placements ->
-                      mutate' searchP query betas seed scorer placements
+      SS { gen0 = \seed -> initialize hmm searchP seed query betas 
+         , nextGen = mutate searchP query betas 
          , accept = histProgresses scoreProgresses
-         , quit = \hist age ->
-                   terminate' searchP hist age
+         , quit = terminate searchP 
          }
-initialize' :: HMM -> SearchParameters -> Seed -> QuerySequence -> [BetaStrand] -> [Placement]
-initialize' hmm searchP seed query betas = [projInitialGuess hmm (getSecPreds searchP) seed query betas]
+initialize :: HMM -> SearchParameters -> Seed -> QuerySequence -> [BetaStrand] -> [Placement]
+initialize hmm searchP seed query betas = [projInitialGuess hmm (getSecPreds searchP) seed query betas]
 
 
-terminate' :: SearchParameters -> History a -> Age -> Bool
-terminate' searchP (!hist) age = (showMe $ not $ age < (generations searchP))
+terminate :: SearchParameters -> History a -> Age -> Bool
+terminate searchP (!hist) age = (showMe $ not $ age < (generations searchP))
                                     || converge searchP hist age
   where showMe = if not $ (10.0 * ((fromIntegral age)
                                    / (fromIntegral (generations searchP))))
@@ -47,20 +45,20 @@ converge searchP (History ((_,a):as)) age =
   where maxGap = convergenceAge searchP
 
 -- invariant: len [SearchSolution] == 1
-mutate' :: SearchParameters
+mutate :: SearchParameters
         -> QuerySequence
         -> [BetaStrand]
         -> Seed
         -> Scorer Placement
         -> [Scored Placement]
         -> [Scored Placement]
-mutate' searchP query betas seed scorer placements =
-  [scorer $ mutate'' oldp 0 (mkStdGen seed) 0]
+mutate searchP query betas seed scorer placements =
+  [scorer $ mutate' oldp 0 (mkStdGen seed) 0]
   where oldp = unScored $ head placements
 
-        mutate'' :: Placement -> Int -> StdGen -> Int -> Placement
-        mutate'' [] _ _ _ = []
-        mutate'' (g:gs) i gen lastGuess = g' : mutate'' gs (i+1) gen' g'
+        mutate' :: Placement -> Int -> StdGen -> Int -> Placement
+        mutate' [] _ _ _ = []
+        mutate' (g:gs) i gen lastGuess = g' : mutate' gs (i+1) gen' g'
           where (g', gen') = randomR (lo, hi) gen
                 lo = if i == 0 then
                        0

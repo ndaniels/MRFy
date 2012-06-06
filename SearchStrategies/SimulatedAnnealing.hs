@@ -18,10 +18,10 @@ import qualified SearchStrategies.RandomHillClimb as RHC
 
 nss :: NewSS
 nss hmm searchP query betas =
-      SS { gen0    = \seed -> RHC.initialize' hmm searchP seed query betas 
-         , nextGen = RHC.mutate' searchP query betas 
+      SS { gen0    = \seed -> RHC.initialize hmm searchP seed query betas 
+         , nextGen = RHC.mutate searchP query betas 
          , accept  = histProgresses (bolzmannProgress searchP)
-         , quit    = RHC.terminate' searchP 
+         , quit    = RHC.terminate searchP 
          }
 
 bolzmannProgress :: SearchParameters -> Seed -> SearchDelta a -> Bool
