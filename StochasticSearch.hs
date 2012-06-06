@@ -16,10 +16,10 @@ import Beta
 import Constants
 import ConstantsGen
 import HMMPlus
+import LazySearchModel (SearchStrategy, searchStrategy)
 import MRFTypes
 import PsiPred
 import Score
-import SearchModel
 import Viterbi
 import Wrappers
 
@@ -42,7 +42,11 @@ import Wrappers
 
 -- need a representation of a solution
 
-type NewSS = HMM -> SearchParameters -> QuerySequence -> [BetaStrand] -> SearchStrategy Placement
+type Scorer placement = placement -> Scored placement
+
+type NewSS
+ = HMM -> SearchParameters -> QuerySequence -> [BetaStrand] -> Scorer Placement
+ -> SearchStrategy Placement
 
 data SearchParameters = SearchParameters { strategy :: NewSS
                                          , generations :: Int

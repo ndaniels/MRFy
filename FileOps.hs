@@ -23,12 +23,10 @@ import CommandArgs
 import Constants
 import HMMPlus
 import HMMProps
-import qualified LazySearchModel
-import qualified BetterLazySearchModel
+import LazySearchModel
 import MRFTypes
 import RunPsiPred
 import Score
-import SearchModel
 import ShowAlignment
 import StochasticSearch
 import Viterbi
@@ -92,19 +90,19 @@ runCommand (AlignmentSearch searchParams files) = run
                  let strat q = strategy searchParams hmm searchParams q bs
                  let scorer q = score hmm q bs
 
-                 let searchQ r q = search (strat q) (scorer q) (newRandoms r)
+                 let searchQ r q = search (strat q (scorer q)) (mkStdGen r)
                  let trySearch r q = if alignable q bs then searchQ r q else noSearch
                  rgn <- getStdGen
-                 let searches = map (\r q -> trySearch r q) $
-                       take (multiStartPopSize searchParams) ((randoms rgn) :: [Seed])
+                 let searches = map trySearch $
+                       take (multiStartPopSize searchParams) (randoms rgn)
 
                  let results = map (popSearch searches) queries
 
-                 let output  =  [ "Score: " ++ (show $ scoreOf $ fst $ head results) 
+                 let output  =  [ "Score: " ++ (show $ scoreOf $ historySolution $ head results) 
                                 , ""
                                 , concat $ intersperse "\n\n" $
-                                  zipWith (\(ss, hist) query ->
-                                          outputAlignment hmm bs ss query)
+                                  zipWith (\hist query ->
+                                          outputAlignment hmm bs (historySolution hist) query)
                                           results queries
                                 ]
                  if outFile == "stdout" then
@@ -123,12 +121,12 @@ outputAlignment hmm betas ps querySeq =
 
 
 
-popSearch :: [QuerySequence -> (Scored Placement, History Placement)]
+popSearch :: [QuerySequence -> History Placement]
           -> QuerySequence
-          -> (Scored Placement, History Placement)
+          -> History Placement
 popSearch searches q = minimum $ (parMap rseq) (\s -> s q) searches
 
 newRandoms s = randoms $ mkStdGen s
-noSearch = (Scored [] negLogZero, History [])
+noSearch = Aged (Scored [] negLogZero) 0 `hcons` emptyHistory
 
 

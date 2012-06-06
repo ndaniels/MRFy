@@ -1,3 +1,4 @@
+{-# LANGUAGE NamedFieldPuns #-}
 module SearchStrategies.SimulatedAnnealing where
 
 import qualified Data.Vector.Unboxed as V
@@ -7,9 +8,9 @@ import Debug.Trace (trace)
 
 import Beta
 import HMMPlus
+import LazySearchModel
 import MRFTypes
 import Score
-import SearchModel
 import SearchStrategy
 import StochasticSearch
 import Viterbi
@@ -17,23 +18,24 @@ import Viterbi
 import qualified SearchStrategies.RandomHillClimb as RHC
 
 nss :: NewSS
-nss hmm searchP query betas =
-      SS { gen0    = \seed -> RHC.initialize hmm searchP seed query betas 
-         , nextGen = RHC.mutate searchP query betas 
-         , accept  = histProgresses (bolzmannProgress searchP)
-         , quit    = RHC.terminate searchP 
-         }
+nss hmm searchP query betas scorer = searchStrategy
+  (\seed -> map scorer $ RHC.initialize hmm searchP seed query betas)
+  (RHC.mutate searchP query betas scorer)
+  (boltzmannUtility searchP)
+  (takeByAgeGap (acceptableAgeGap searchP))
 
-bolzmannProgress :: SearchParameters -> Seed -> SearchDelta a -> Bool
-bolzmannProgress searchP seed delta = ok (younger delta) (older delta)
-  where ok p1 p2 = boltzmann (youngerAge delta) (scoreOf p1) (scoreOf p2) >= uniform
-        boltzmann :: Age -> Score -> Score -> Double
-        boltzmann age (Score s1) (Score s2) = exp ((-(s1 - s2)) 
-                                       / (constBoltzmann * temperature))
+boltzmannUtility :: SearchParameters -> Seed -> SearchDelta a -> MoveUtility a
+boltzmannUtility searchP seed (SearchDelta { younger, older, youngerAge }) =
+  if boltzmann youngerAge (scoreOf younger) (scoreOf older) >= uniform
+  then Useful (unScored younger)
+  else Useless
+  where boltzmann :: Age -> Score -> Score -> Double
+        boltzmann age (Score s1) (Score s2) =
+          exp (negate (s1 - s2) / (constBoltzmann * temperature))
           where temperature = (constCooling ^^ age) * constInitTemp
                 
         uniform :: Double
-        uniform = (fst . random . mkStdGen) seed --- XXX horror show
+        uniform = (fst . random . mkStdGen) seed
                 
         constBoltzmann = getSearchParm searchP boltzmannConstant
         constInitTemp = getSearchParm searchP initialTemperature

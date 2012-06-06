@@ -1,126 +1,154 @@
-{-# LANGUAGE ScopedTypeVariables, BangPatterns, MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables, BangPatterns, MultiParamTypeClasses, RankNTypes, NamedFieldPuns #-}
 module LazySearchModel
-       ( Scorer(..)
-       , Age
+       ( Age
        , Seed
-       , SearchStrategy(..)
-       , search', originalSearch
-       , listRands, split3
+       , Aged(..), unAged, ageOf
+       , History(..), hcons, emptyHistory, historySolution, extendUsefulHistory
+       , scoreUtility
+       , MoveUtility(..), isUseless, consUseful
+       , SearchGen(..), SearchStop, SearchStrategy(..), searchStrategy
+       , SearchDelta(..)
+       , search
+       , AUS
        )
 
 where
   
-import Debug.Trace (trace)
+import System.Random
 import qualified System.Random as R
 
-import qualified SearchModel as S
 import Score
 import Viterbi
 --------------------------------------------------------
 
-class R.RandomGen a => RandomGen a -- abbreviation
 
 
-listRands :: R.RandomGen r => r -> [Seed]
-listRands r = n : listRands g
-  where (n, g) = R.next r
+-- @ start movequality.tex
+data MoveUtility a = Useful a | Useless
+-- @ end movequality.tex
+instance Functor MoveUtility where
+  fmap f (Useful a) = Useful (f a)
+  fmap f Useless    = Useless
 
-split3 :: R.RandomGen r => r -> (r, r, r)
-split3 r = let { (r0, r') = R.split r; (r1, r2) = R.split r' }
-           in  (r0, r1, r2)
+isUseless :: MoveUtility a -> Bool
+isUseless Useless    = True
+isUseless (Useful _) = False
 
--- @ start scoredecl.tex
-type Scorer placement = placement -> Scored placement
--- @ end scoredecl.tex
+consUseful :: MoveUtility a -> [a] -> [a]
+Useless  `consUseful` as = as
+Useful a `consUseful` as = a : as
+
+-- @ start delta.tex
+data SearchDelta a
+  = SearchDelta { younger :: Scored a
+                , older   :: Scored a
+                , youngerAge :: Age }
+-- @ end delta.tex
+
 -- @ start strategy.tex
 type Age  = Int -- number of generations explored
 type Seed = Int -- source of stochastic variation
 
-data NextState = SiblingNext | ChildNext
-data Approval = Accepted | Rejected
 type ScoredPopulation a = [Scored a]
--- is there a better name for seed?
-data SearchStrategy placement = 
- SS { gen0    :: Seed -> ScoredPopulation placement
+data SearchGen placement = 
+ SG { gen0    :: Seed -> ScoredPopulation placement
     , nextGen :: Seed -> ScoredPopulation placement
                       -> ScoredPopulation placement
-    , toApproved :: [Seed] -> Age
-                 -> [ScoredPopulation placement]
-                 -> [ScoredPopulation placement]
-       -- ^ @toApproved s age solns@ returns the smallest prefix
-       -- of @solns@ that contains an approved solution
+    , utility :: forall a . Seed -> SearchDelta a -> MoveUtility a
     }
 
-type SearchStop a = [Aged (ScoredPopulation a)] -> (Scored a, S.History a)
-
-
-children :: R.RandomGen r
-         => SearchStrategy a
-         -> r
-         -> ScoredPopulation a
-         -> [ScoredPopulation a]
-children ss r pop = map (flip (nextGen ss) pop) (listRands r)
-
-approvedPops :: R.RandomGen r
-             => SearchStrategy a
-             -> r
-             -> Age
-             -> ScoredPopulation a
-             -> [Aged (ScoredPopulation a)]
-approvedPops ss r age startPop =
-    Aged startPop age : approvedPops ss r0 (age + length kids) (last kids)
-  where kids = toApproved ss (listRands r1) age $ children ss r2 startPop
-        (r0, r1, r2) = split3 r
-
 data Aged a = Aged a Age
+  deriving (Show, Eq, Ord)
+type SearchStop a = [Aged (MoveUtility (Scored a))] -> History a
+-- @ end strategy.tex
+type AUS a = Aged (MoveUtility (Scored a))
+data SearchStrategy a = SS { searchGen :: SearchGen a, searchStop :: SearchStop a }
+searchStrategy :: (Seed -> ScoredPopulation placement)
+               -> (Seed -> ScoredPopulation placement -> ScoredPopulation placement)
+               -> (forall a . Seed -> SearchDelta a -> MoveUtility a)
+               -> SearchStop placement
+               -> SearchStrategy placement
+searchStrategy g0 n u s = SS (SG g0 n u) s
+
+
+scoreUtility :: seed -> SearchDelta a -> MoveUtility a
+scoreUtility _ (SearchDelta { younger, older }) = 
+  if scoreOf younger < scoreOf older then Useful (unScored younger) else Useless
+
+
+extendUsefulHistory :: AUS a -> History a -> History a
+extendUsefulHistory (Aged Useless _) h = h
+extendUsefulHistory (Aged (Useful a) age) h = Aged a age `hcons` h
+                                         
+
+
 instance Functor Aged where
   fmap f (Aged a age) = Aged (f a) age
+unAged :: Aged a -> a
+unAged (Aged a _) = a
+ageOf :: Aged a -> Age
+ageOf (Aged _ age) = age
+
+split3 :: RandomGen r => r -> (r, r, r)
+split3 r = let { (r0, r') = R.split r; (r1, r2) = R.split r' }
+           in  (r0, r1, r2)
+
+
+data History placement = History { unHistory :: [Aged (Scored placement)] }
+  deriving (Show, Eq)
+hcons :: Aged (Scored placement) -> History placement -> History placement
+hcons a (History as) = History (a:as)
+emptyHistory :: History a
+emptyHistory = History []
+historySolution :: History a -> Scored a
+historySolution (History (asp : _)) = unAged asp
+historySolution _ = error "solution from empty history"
+
+instance Ord (History a) where
+  compare (History h1) (History h2) = compare (map unAged h1) (map unAged h2)
+    -- ^ Histories are compared by the score of the youngest element.
+
+-- @ start children.tex
+children :: RandomGen r
+         => SearchGen a -> r -> ScoredPopulation a
+         -> [ScoredPopulation a]
+children ss r pop = map (flip (nextGen ss) pop) (R.randoms r)
+-- @ end children.tex
+
+everyGen :: forall r a .  RandomGen r
+         => SearchGen a
+         -> r
+         -> Age
+         -> ScoredPopulation a
+         -> [Aged (MoveUtility (ScoredPopulation a))]
+everyGen ss r age startPop =
+    Aged (Useful startPop) age : uselessMoves ++ everyGen ss r0 newAge newPop
+  where
+    (r0, r1, r2) = split3 r
+    kids = zipWith3 decorate (children ss r1 startPop) (R.randoms r2) [succ age..]
+    (uselessMoves, Aged (Useful newPop) newAge : _) = span (isUseless . unAged) kids
+    decorate :: ScoredPopulation a -> Seed -> Age
+             -> Aged (MoveUtility (ScoredPopulation a))
+    decorate pop seed newAge = Aged (fmap (const pop) (utility ss seed delta)) newAge
+         where delta = SearchDelta { older      = minimum startPop
+                                   , younger    = minimum pop
+                                   , youngerAge = newAge }
+
   
 --------------------------------------------------------
 -- @ start search.tex
-search' :: forall placement r
-        . R.RandomGen r
+search :: forall placement r
+       .  RandomGen r
        => SearchStrategy placement
-       -> SearchStop placement
        -> r
-       -> (Scored placement, S.History placement)
-search' strat finish rand = (finish . approvedPops strat r 0 . gen0 strat) s0
+       -> History placement
+search (SS strat test) rand =
+   (test . (map . fmap . fmap) minimum . everyGen strat r 0 . gen0 strat) s0
  where (s0, r) = R.next rand
 -- @ end search.tex
+
 
 -- TODO keep a Scored (Age, Placement) to support Simulated Annealing
 -- otherwise, need an out of band "best ever" updated at every step
 -- this is also necessary to prevent SimAn from thinking it's improving
 -- when in fact it isn't.
-
--------------------------------------------------------------------------------
---
--- code to adapt the original search function
---
-
-
-originalSearch :: forall placement  r
-               .  R.RandomGen r
-               => S.SearchStrategy placement 
-               -> Scorer placement 
-               -> r
-               -> (Scored placement, S.History placement)
-originalSearch ostrat score r = search' newstrat stop r
-  where (newstrat, stop) = adapt ostrat score
-
-adapt :: S.SearchStrategy a -> Scorer a -> (SearchStrategy a, SearchStop a)
-adapt ss score = (SS g0 nx app, stop S.emptyHistory)
-  where g0 seed = map score (S.gen0 ss seed)
-        nx = flip (S.nextGen ss) score
-        app seeds age pops = scanForGood S.emptyHistory (zip3 seeds [age..] pops)
-          where scanForGood older ((seed, age, pop) : pops) =
-                  if S.accept ss seed older age then
-                    [pop]
-                  else
-                    pop : scanForGood ((minimum pop,age) `S.hcons` older) pops
-        stop older (Aged pop age : pops) =
-          if S.quit ss older age then
-            (minimum pop, older)
-          else
-            stop ((minimum pop, age) `S.hcons` older) pops
-

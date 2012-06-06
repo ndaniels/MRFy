@@ -2,7 +2,7 @@ STRATS=`echo SearchStrategies/*.hs`
 SRC=$STRATS Beta.hs Constants.hs FileOps.hs HMMPlus.hs Main.hs Viterbi.hs \
          StochasticSearch.hs SearchStrategy.hs \
 		 HMMArby.hs HMMProps.hs \
-         Wrappers.hs ConstantsGen.hs CommandArgs.hs SearchModel.hs \
+         Wrappers.hs ConstantsGen.hs CommandArgs.hs LazySearchModel.hs \
 				 Score.hs 
 
 TGT=mrfy

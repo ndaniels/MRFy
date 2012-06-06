@@ -1,4 +1,3 @@
-{-# LANGUAGE BangPatterns #-}
 module SearchStrategies.GeneticAlgorithm where
 
 import Control.Parallel (par)
@@ -16,44 +15,34 @@ import HMMPlus
 import MRFTypes
 import NonUniform
 import Score
-import SearchModel
-import SearchStrategy
+import SearchStrategy 
+import LazySearchModel
 import Shuffle
 import StochasticSearch
 import Viterbi
 
 nss :: NewSS
-nss hmm searchP query betas =
-  SS { gen0 = \seed -> initialize' hmm searchP seed query betas 
-     , nextGen = mutate' searchP query betas
-     , accept = histProgresses scoreProgresses
-     , quit = terminate' searchP 
-     }
+nss hmm searchP query betas scorer = searchStrategy
+  (\seed -> map scorer $ initialize hmm searchP seed query betas)
+  (mutate searchP query betas scorer)
+  scoreUtility
+  (takeNGenerations (generations searchP))
 
-initialize' :: HMM -> SearchParameters -> Seed -> QuerySequence -> [BetaStrand] -> [Placement]
-initialize' hmm searchP seed query betas = 
+initialize :: HMM -> SearchParameters -> Seed -> QuerySequence -> [BetaStrand] -> [Placement]
+initialize hmm searchP seed query betas = 
   map (\s -> projInitialGuess hmm (getSecPreds searchP) s query betas)
       $ take (getSearchParm searchP populationSize) rands
   where rands = (randoms (mkStdGen seed)) :: [Int]
 
-terminate' :: SearchParameters -> History a -> Age -> Bool
-terminate' searchP (!_scores) age = showMe $ not $ age < (generations searchP)
-  where showMe = if not $ (10.0 * ((fromIntegral age)
-                                   / (fromIntegral (generations searchP))))
-                          `elem` [1.0..10.0] then
-                   id
-                 else
-                   trace ((show age) ++ " generations complete")
-
 -- invariant: len [SearchSolution] == 1
-mutate' :: SearchParameters
+mutate :: SearchParameters
         -> QuerySequence
         -> [BetaStrand]
-        -> Seed
         -> Scorer Placement
+        -> Seed
         -> [Scored Placement]
         -> [Scored Placement]
-mutate' searchP query betas seed scorer placements = fittest
+mutate searchP query betas scorer seed placements = fittest
   where fittest = fst
                   $ shuffle (mkStdGen seed)
                   $ take (getSearchParm searchP populationSize)

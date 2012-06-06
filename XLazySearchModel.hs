@@ -10,7 +10,7 @@ module LazySearchModel
 
 where
   
-import qualified SearchModel as S
+--import qualified SearchModel as S
 import Score
 import Viterbi
 --------------------------------------------------------

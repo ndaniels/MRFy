@@ -10,7 +10,7 @@ module BetterLazySearchModel
 where
   
 import LazySearchModel (RandomStream(..), Scorer, Age, Seed)
-import qualified SearchModel as S
+import qualified LazySearchModel as S
 import Score
 import Viterbi
 --------------------------------------------------------

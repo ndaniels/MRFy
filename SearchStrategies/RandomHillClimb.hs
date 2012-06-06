@@ -9,52 +9,34 @@ import Debug.Trace (trace)
 import Beta
 import Constants
 import HMMPlus
+import LazySearchModel
 import MRFTypes
 import Score
-import SearchModel
 import SearchStrategy
 import StochasticSearch
 import Viterbi
 
 nss :: NewSS
-nss hmm searchP query betas =
-      SS { gen0 = \seed -> initialize hmm searchP seed query betas 
-         , nextGen = mutate searchP query betas 
-         , accept = histProgresses scoreProgresses
-         , quit = terminate searchP 
-         }
+nss hmm searchP query betas scorer = searchStrategy
+  (\seed -> map scorer $ initialize hmm searchP seed query betas)
+  (mutate searchP query betas scorer)
+  scoreUtility
+  (takeByAgeGap (acceptableAgeGap searchP))
+
 initialize :: HMM -> SearchParameters -> Seed -> QuerySequence
            -> [BetaStrand] -> [Placement]
 initialize hmm searchP seed query betas =
   [projInitialGuess hmm (getSecPreds searchP) seed query betas]
 
-
-terminate :: SearchParameters -> History a -> Age -> Bool
-terminate searchP (!hist) age = (showMe $ not $ age < (generations searchP))
-                                    || converge searchP hist age
-  where showMe = if not $ (10.0 * ((fromIntegral age)
-                                   / (fromIntegral (generations searchP))))
-                          `elem` [1.0..10.0] then
-                   id
-                 else
-                   trace ((show age) ++ " generations complete")
-
-converge :: SearchParameters -> History placement -> Age -> Bool
-converge searchP (History ((_,a):as)) age = 
-    case maxGap of
-        Just x -> a < age - x
-        Nothing -> False
-  where maxGap = convergenceAge searchP
-
 -- invariant: len [SearchSolution] == 1
 mutate :: SearchParameters
         -> QuerySequence
         -> [BetaStrand]
-        -> Seed
         -> Scorer Placement
+        -> Seed
         -> [Scored Placement]
         -> [Scored Placement]
-mutate searchP query betas seed scorer placements =
+mutate searchP query betas scorer seed placements =
   [scorer $ mutate' oldp 0 (mkStdGen seed) 0]
   where oldp = unScored $ head placements
 
