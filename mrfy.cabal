@@ -61,7 +61,8 @@ Executable mrfy
                  parsec,
                  vector >=0.9,
                  Unixutils >= 1.48.1,
-                 QuickCheck
+                 QuickCheck,
+                 MonadRandom >= 0.1.6
 
                     -- cabal install --constraint="template-haskell == 2.5.0.0" haskell-src-meta
   

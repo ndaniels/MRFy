@@ -16,6 +16,7 @@ import MRFTypes
 import NonUniform
 import Score
 import SearchStrategy 
+import SearchStrategies.RandomHillClimb (betaRange)
 import LazySearchModel
 import Shuffle
 import StochasticSearch
@@ -56,15 +57,8 @@ mutate searchP query betas scorer seed placements = fittest
         mutateChild :: Int -> Int -> StdGen -> Placement -> Placement -> Placement
         mutateChild _ _ _ _ [] = []
         mutateChild i lastGuess gen ogs (g:gs) = g' : mutateChild (i+1) g' gen' ogs gs
-          where (g', gen') = randomR (lo, hi) gen
-                lo = if i == 0 then
-                       0
-                     else
-                       (len $ (betas !! (i - 1))) + lastGuess
-                hi = if i == (length ogs) - 1 then
-                       V.length query - (len $ betas !! i)
-                     else
-                       (ogs !! (i + 1)) - (len $ betas !! i)
+          where (g', gen') = randomR range gen
+                range = betaRange query betas ogs lastGuess i
 
 getPairings :: [Placement] -> [Placement]
 getPairings [] = []
