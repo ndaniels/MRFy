@@ -5,7 +5,7 @@ module LazySearchModel
        , Aged(..), unAged, ageOf
        , History(..), hcons, emptyHistory, historySolution, extendUsefulHistory
        , scoreUtility
-       , MoveUtility(..), isUseless, consUseful
+       , Utility(..), isUseless, consUseful
        , SearchGen(..), SearchStop, SearchStrategy(..), searchStrategy
        , SearchDelta(..)
        , search
@@ -21,20 +21,37 @@ import Score
 import Viterbi
 --------------------------------------------------------
 
+{-
+
+Preamble
+--------
+Starting from a good initial state, we generate a sequence of
+successor states using random numbers, aka `Seed`s.   A new state
+may be "useful" or "useless".  A useful state becomes the starting
+point for a new search; a useless state is eventually discarded.
+
+Both useful and useless states have *ages*; the age of a state is the
+number of states (both useful and useless) that have preceded it in
+the search.
+
+Every state is assigned a *score*; the utility of a state is solely a
+function of its age and score.
+
+-}
 
 
 -- @ start movequality.tex
-data MoveUtility a = Useful a | Useless
+data Utility a = Useful a | Useless
 -- @ end movequality.tex
-instance Functor MoveUtility where
+instance Functor Utility where
   fmap f (Useful a) = Useful (f a)
   fmap f Useless    = Useless
 
-isUseless :: MoveUtility a -> Bool
+isUseless :: Utility a -> Bool
 isUseless Useless    = True
 isUseless (Useful _) = False
 
-consUseful :: MoveUtility a -> [a] -> [a]
+consUseful :: Utility a -> [a] -> [a]
 Useless  `consUseful` as = as
 Useful a `consUseful` as = a : as
 
@@ -54,24 +71,24 @@ data SearchGen placement =
  SG { gen0    :: Seed -> ScoredPopulation placement
     , nextGen :: Seed -> ScoredPopulation placement
                       -> ScoredPopulation placement
-    , utility :: forall a . Seed -> SearchDelta a -> MoveUtility a
+    , utility :: forall a . Seed -> SearchDelta a -> Utility a
     }
 
 data Aged a = Aged a Age
   deriving (Show, Eq, Ord)
-type SearchStop a = [Aged (MoveUtility (Scored a))] -> History a
+type SearchStop a = [Aged (Utility (Scored a))] -> History a
 -- @ end strategy.tex
-type AUS a = Aged (MoveUtility (Scored a))
+type AUS a = Aged (Utility (Scored a))
 data SearchStrategy a = SS { searchGen :: SearchGen a, searchStop :: SearchStop a }
 searchStrategy :: (Seed -> ScoredPopulation placement)
                -> (Seed -> ScoredPopulation placement -> ScoredPopulation placement)
-               -> (forall a . Seed -> SearchDelta a -> MoveUtility a)
+               -> (forall a . Seed -> SearchDelta a -> Utility a)
                -> SearchStop placement
                -> SearchStrategy placement
 searchStrategy g0 n u s = SS (SG g0 n u) s
 
 
-scoreUtility :: seed -> SearchDelta a -> MoveUtility a
+scoreUtility :: seed -> SearchDelta a -> Utility a
 scoreUtility _ (SearchDelta { younger, older }) = 
   if scoreOf younger < scoreOf older then Useful (unScored younger) else Useless
 
@@ -120,7 +137,7 @@ everyGen :: forall r a .  RandomGen r
          -> r
          -> Age
          -> ScoredPopulation a
-         -> [Aged (MoveUtility (ScoredPopulation a))]
+         -> [Aged (Utility (ScoredPopulation a))]
 everyGen ss r age startPop =
     Aged (Useful startPop) age : uselessMoves ++ everyGen ss r0 newAge newPop
   where
@@ -128,7 +145,7 @@ everyGen ss r age startPop =
     kids = zipWith3 decorate (children ss r1 startPop) (R.randoms r2) [succ age..]
     (uselessMoves, Aged (Useful newPop) newAge : _) = span (isUseless . unAged) kids
     decorate :: ScoredPopulation a -> Seed -> Age
-             -> Aged (MoveUtility (ScoredPopulation a))
+             -> Aged (Utility (ScoredPopulation a))
     decorate pop seed newAge = Aged (fmap (const pop) (utility ss seed delta)) newAge
          where delta = SearchDelta { older      = minimum startPop
                                    , younger    = minimum pop

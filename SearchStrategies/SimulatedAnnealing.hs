@@ -24,7 +24,7 @@ nss hmm searchP query betas scorer = searchStrategy
   (boltzmannUtility searchP)
   (takeByAgeGap (acceptableAgeGap searchP))
 
-boltzmannUtility :: SearchParameters -> Seed -> SearchDelta a -> MoveUtility a
+boltzmannUtility :: SearchParameters -> Seed -> SearchDelta a -> Utility a
 boltzmannUtility searchP seed (SearchDelta { younger, older, youngerAge }) =
   if boltzmann youngerAge (scoreOf younger) (scoreOf older) >= uniform
   then Useful (unScored younger)
