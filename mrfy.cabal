@@ -46,29 +46,6 @@ Extra-source-files: *.hs, SearchStrategies/*.hs
 Executable mrfy
   Main-is: Main.hs
   
-  Other-modules: Beta,
-                 CommandArgs,
-                 Constants,
-                 ConstantsGen,
-                 Fasta,
-                 HMMPlus,
-                 HMMArby,
-                 HMMProps,
-                 LazySearchModel,
-                 NonUniform,
-                 PsiPred,
-                 RunPsiPred,
-                 SearchStrategy,
-                 ShowAlignment,
-                 Shuffle,
-                 StochasticSearch,
-                 Viterbi,
-                 Wrappers,
-                 SearchStrategies.GeneticAlgorithm,
-                 SearchStrategies.RandomHillClimb,
-                 SearchStrategies.SimulatedAnnealing
-
-
   -- Packages needed in order to build this package.
   Build-depends: base >= 4.0,
                  array >= 0.3,
