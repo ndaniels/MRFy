@@ -5,6 +5,7 @@ module FileOps
        )
 where
   
+import Control.Monad.Random
 import Control.Parallel.Strategies
 
 import Data.Array
@@ -97,7 +98,8 @@ runCommand (AlignmentSearch searchParams
               where popSize  = multiStartPopSize searchParams
                     searches = take popSize $ map trySearch seeds
                     trySearch r q = if alignable q bs then searchQ else noSearch
-                      where searchQ = fullSearch (strat (score hmm q bs)) $ mkStdGen r
+                      where searchQ = evalRand search (mkStdGen r)
+                            search  = fullSearch (strat (score hmm q bs))
                             strat   = strategy searchParams hmm searchParams q bs
                     results = map (historySolution . popSearch searches) queries
                     output  = [ "Score: " ++ (show $ scoreOf $ head results) 

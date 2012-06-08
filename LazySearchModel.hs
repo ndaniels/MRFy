@@ -1,7 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables, BangPatterns, MultiParamTypeClasses, RankNTypes, NamedFieldPuns, ExistentialQuantification #-}
 module LazySearchModel
        ( Age
-       , Seed
        , Aged(..), unAged, ageOf
        , History(..), unHistory, hcons, emptyHistory, historySolution
                     , extendUsefulHistory
@@ -16,8 +15,8 @@ module LazySearchModel
 
 where
   
-import System.Random
-import qualified System.Random as R
+import Control.Monad.Random
+import Control.Monad
 
 import Score
 import Viterbi
@@ -42,10 +41,6 @@ function of its age and score.
 -}
 
 -------------- Type definitions for central concepts ----------
--- @ start strategy.tex
-type Seed = Int -- source of stochastic variation
--- @ end strategy.tex
-
 -- @ start strategy.tex
 type Age  = Int -- number of generations explored
 -- @ end strategy.tex
@@ -86,8 +81,8 @@ ageOf (Aged _ age) = age
 -- by Hughes, a strategy is divided into two parts: generate
 -- and (stop) test.
 -- @ start fullstrat.tex
-data SearchStrategy a =
-  SS { searchGen  :: SearchGen a
+data SearchStrategy a gen =
+  SS { searchGen  :: SearchGen a gen
      , searchStop :: SearchStop a }
 -- @ start fullstrat.tex
 
@@ -97,12 +92,10 @@ data SearchStrategy a =
 --
 --
 -- @ start strategy.tex
-data SearchGen placement = 
- SG { gen0    :: Seed -> Scored placement
-    , nextGen :: Seed -> Scored placement
-                      -> Scored placement
-    , utility :: forall a .
-                 Seed -> SearchDelta a -> Utility a
+data SearchGen placement gen = 
+ SG { gen0    :: Rand gen (Scored placement)
+    , nextGen :: Scored placement -> Rand gen (Scored placement)
+    , utility :: forall a . SearchDelta a -> Rand gen (Utility a)
     }
 -- @ end strategy.tex
 
@@ -139,11 +132,11 @@ type SearchStop a = [Aged (Utility (Scored a))] -> History a
 -- | A constructor for search strategies.  Its role is to take
 -- four flat arguments instead of a tree.  (Not sure this is a 
 -- good idea.)
-searchStrategy :: (Seed -> Scored placement)
-               -> (Seed -> Scored placement -> Scored placement)
-               -> (forall a . Seed -> SearchDelta a -> Utility a)
+searchStrategy :: (Rand gen (Scored placement))
+               -> (Scored placement -> Rand gen (Scored placement))
+               -> (forall a . SearchDelta a -> Rand gen (Utility a))
                -> SearchStop placement
-               -> SearchStrategy placement
+               -> SearchStrategy placement gen
 searchStrategy g0 n u s = SS (SG g0 n u) s
 
 
@@ -181,8 +174,8 @@ instance Functor Aged where
   fmap f (Aged a age) = Aged (f a) age
 
 
-scoreUtility :: seed -> SearchDelta a -> Utility a
-scoreUtility _ (SearchDelta { younger, older }) = 
+scoreUtility :: SearchDelta a -> Rand gen (Utility a)
+scoreUtility (SearchDelta { younger, older }) = return $
   if scoreOf younger < scoreOf older then Useful (unScored younger) else Useless
                                          
 instance Functor Utility where 
@@ -193,75 +186,54 @@ isUseless :: Utility a -> Bool
 isUseless Useless    = True
 isUseless (Useful _) = False
 
-
-
-split3 :: RandomGen r => r -> (r, r, r)
-split3 r = let { (r0, r') = R.split r; (r1, r2) = R.split r' }
-           in  (r0, r1, r2)
-
-
-
 instance Ord (History a) where
   compare (History h1) (History h2) = compare (map unAged h1) (map unAged h2)
     -- ^ Histories are compared by the score of the youngest element.
 
--- @ start children.tex
-children :: RandomGen r
-         => SearchGen a -> r -> Scored a
-         -> [Scored a]
-children ss r pop = map (flip (nextGen ss) pop) (R.randoms r)
--- @ end children.tex
-
-everyGen :: forall r a .  RandomGen r
-         => SearchGen a
-         -> r
+-- @ start everygen.tex
+everyGen :: forall a r
+         .  SearchGen a r
          -> Age
          -> Scored a
-         -> [Aged (Utility (Scored a))]
-everyGen ss r age startPop =
-    Aged (Useful startPop) age : uselessMoves ++ everyGen ss r0 newAge newPop
-  where
-    (r0, r1, r2) = split3 r
-    kids = zipWith3 decorate (children ss r1 startPop) (R.randoms r2) [succ age..]
-    (uselessMoves, Aged (Useful newPop) newAge : _) = span (isUseless . unAged) kids
-    decorate :: Scored a -> Seed -> Age
-             -> Aged (Utility (Scored a))
-    decorate pop seed newAge = Aged (fmap (const pop) (utility ss seed delta)) newAge
-         where delta = SearchDelta { older      = startPop
-                                   , younger    = pop
-                                   , youngerAge = newAge }
+         -> Rand r [Aged (Utility (Scored a))]
+everyGen ss age startPop = do
+  children <- mapM (nextGen ss) (repeat startPop)
+  moves    <- zipWithM agedUtility children [succ age..]
+  let (useless, Aged (Useful newPop) newAge : _) = span (isUseless . unAged) moves
+  nextGens <- everyGen ss newAge newPop
+  return $ Aged (Useful startPop) age : useless ++ nextGens
+  where agedUtility :: Scored a -> Age -> Rand r (Aged (Utility (Scored a)))
+        agedUtility pop age = do u <- utility ss delta
+                                 return $ Aged (fmap (const pop) u) age
+         where delta = SearchDelta { older = startPop, younger = pop, youngerAge = age }
+-- @ end everygen.tex
 
   
 --------------------------------------------------------
 -- @ start search.tex
 search :: forall placement r
-       .  RandomGen r
-       => SearchStrategy placement
-       -> r
-       -> History placement
-search (SS strat test) rand = (test . everyGen strat r 0 . gen0 strat) s0
- where (s0, r) = R.next rand
+       .  SearchStrategy placement r
+       -> Rand r (History placement)
+search (SS strat test) = fmap test . everyGen strat 0 =<< gen0 strat
 -- @ end search.tex
 
-data FullSearchStrategy placement =
-  forall a . FSS { fssGen :: SearchGen a
+data FullSearchStrategy placement gen =
+  forall a . FSS { fssGen :: SearchGen a gen
                  , fssStop :: SearchStop a
                  , fssBest :: a -> placement }
 
 -- @ start fullsearch.tex
-fullSearch :: RandomGen r => FullSearchStrategy a -> r -> History a
-fullSearch (FSS gen stop best) rand =
-  (fmap best . stop . everyGen gen r 0 . gen0 gen) s0
-  where (s0, r) = R.next rand
+fullSearch :: FullSearchStrategy a r -> Rand r (History a)
+fullSearch (FSS gen stop best) = fmap (fmap best . stop) . everyGen gen 0 =<< gen0 gen
 -- @ end fullsearch.tex        
 
 
-fullSearchStrategy :: (Seed -> Scored placement)
-                   -> (Seed -> Scored placement -> Scored placement)
-                   -> (forall a . Seed -> SearchDelta a -> Utility a)
+fullSearchStrategy :: (Rand gen (Scored placement))
+                   -> (Scored placement -> Rand gen (Scored placement))
+                   -> (forall a . SearchDelta a -> Rand gen (Utility a))
                    -> SearchStop placement
                    -> (placement -> answer)
-                   -> FullSearchStrategy answer
+                   -> FullSearchStrategy answer gen
 fullSearchStrategy g0 n u s b = FSS (SG g0 n u) s b
 
 

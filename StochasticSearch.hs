@@ -8,7 +8,7 @@ import Data.Maybe
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
 import qualified Data.List as DL
-import System.Random (RandomGen)
+import System.Random (RandomGen, StdGen)
 
 import Debug.Trace (trace)
 
@@ -47,7 +47,7 @@ type Scorer placement = placement -> Scored placement
 
 type NewSS
  = HMM -> SearchParameters -> QuerySequence -> [BetaStrand] -> Scorer Placement
- -> FullSearchStrategy Placement
+ -> FullSearchStrategy Placement StdGen
  
 data SearchParameters = SearchParameters { strategy :: NewSS
                                          , generations :: Int

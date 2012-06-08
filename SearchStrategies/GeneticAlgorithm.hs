@@ -1,5 +1,6 @@
 module SearchStrategies.GeneticAlgorithm where
 
+import Control.Monad.Random
 import Control.Parallel (par)
 import Control.Parallel.Strategies
 
@@ -28,7 +29,7 @@ wrapBestScore as = Scored as (scoreOf $ minimum as)
 
 nss :: NewSS
 nss hmm searchP query betas scorer = fullSearchStrategy
-  (\seed -> wrapBestScore $ map scorer $ initialize hmm searchP seed query betas)
+  (fmap (wrapBestScore . map scorer) $ initialize hmm searchP query betas)
   (mutate searchP query betas scorer)
   scoreUtility
   (takeNGenerations (generations searchP))
@@ -37,30 +38,31 @@ nss hmm searchP query betas scorer = fullSearchStrategy
 type Population = [Scored Placement]
 
 initialize
-  :: HMM -> SearchParameters -> Seed -> QuerySequence -> [BetaStrand] -> [Placement]
-initialize hmm searchP seed query betas = 
-  map (\s -> projInitialGuess hmm (getSecPreds searchP) s query betas)
-      $ take (getSearchParm searchP populationSize) rands
-  where rands = randoms (mkStdGen seed) :: [Int]
+  :: RandomGen r
+  => HMM -> SearchParameters -> QuerySequence -> [BetaStrand] -> Rand r [Placement]
+initialize hmm searchP query betas = 
+  sequence $ take n $ repeat $ projInitialGuess hmm (getSecPreds searchP) query betas
+  where n = getSearchParm searchP populationSize
 
 -- invariant: len [SearchSolution] == 1
 mutate :: SearchParameters
-        -> QuerySequence
-        -> [BetaStrand]
-        -> Scorer Placement
-        -> Seed
-        -> Scored Population
-        -> Scored Population
-mutate searchP query betas scorer seed (Scored placements _) = wrapBestScore fittest
-  where fittest = fst
-                  $ shuffle (mkStdGen seed)
-                  $ take (getSearchParm searchP populationSize)
-                  $ sort
-                  $ placements ++ progeny
-        progeny = (parMap rseq) scorer
-                  $ map (\gs -> mutateChild 0 0 (mkStdGen seed) gs gs)
-                  $ getPairings
-                  $ map unScored placements
+       -> QuerySequence
+       -> [BetaStrand]
+       -> Scorer Placement
+       -> Scored Population
+       -> Rand StdGen (Scored Population)
+mutate searchP query betas scorer (Scored placements _) = fmap wrapBestScore fittest
+  where fittest = do gen <- getSplit
+                     return
+                       $ fst
+                       $ shuffle gen
+                       $ take (getSearchParm searchP populationSize)
+                       $ sort
+                       $ placements ++ progeny gen
+        progeny gen = (parMap rseq) scorer
+                      $ map (\gs -> mutateChild 0 0 gen gs gs)
+                      $ getPairings
+                      $ map unScored placements
 
         mutateChild :: Int -> Int -> StdGen -> Placement -> Placement -> Placement
         mutateChild _ _ _ _ [] = []

@@ -1,6 +1,7 @@
-{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE BangPatterns, ScopedTypeVariables #-}
 module SearchStrategy where
 
+import Control.Monad.Random
 import qualified Data.List as DL
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
@@ -69,18 +70,21 @@ acceptableAgeGap searchP a age = maybe True (age - a <=) (convergenceAge searchP
 
 
 
-type InitialGuesser = HMM -> [SSPrediction] -> Seed -> QuerySequence -> [BetaStrand] -> Placement
+type InitialGuesser r
+ = HMM -> [SSPrediction] -> QuerySequence -> [BetaStrand] -> Rand r Placement
 
-initialGuess :: InitialGuesser
-initialGuess _ _ seed qs betas = initialGuess' betas 0 $ mkStdGen seed
-  where initialGuess' :: [BetaStrand] -> Int -> StdGen -> Placement
-        initialGuess' [] _ _ = []
-        initialGuess' (b:bs) lastGuess gen = pos : initialGuess' bs (pos + len b) gen'
-          where (pos, gen') = randomR (lastGuess, betaSum) gen
-                betaSum = U.length qs - (foldr (+) 0 $ map len (b:bs))
+initialGuess :: forall r . RandomGen r => InitialGuesser r
+initialGuess _ _ qs betas = initialGuess' betas 0
+  where initialGuess' :: [BetaStrand] -> Int -> Rand r Placement
+        initialGuess' [] _ = return []
+        initialGuess' (b:bs) lastGuess = do
+          pos <- getRandomR (lastGuess, betaSum) 
+          initialGuess' bs (pos + len b) >>= return . (pos :)
+          where betaSum = U.length qs - sum (map len (b:bs))
 
-geoInitialGuess :: InitialGuesser
-geoInitialGuess _ _ seed qs betas = initialGuess' betas 0 $ mkStdGen seed
+{-
+geoInitialGuess :: InitialGuesser r
+geoInitialGuess _ _ seed qs betas = initialGuess' betas 0
   where initialGuess' :: [BetaStrand] -> Int -> StdGen -> Placement
         initialGuess' [] _ _ = []
         initialGuess' (b:bs) lastGuess gen = pos : initialGuess' bs (pos + len b) gen'
@@ -93,26 +97,32 @@ geoInitialGuess _ _ seed qs betas = initialGuess' betas 0 $ mkStdGen seed
                         $ map ((/) 1.0) 
                         $ take (betaSum - lastGuess)
                         $ map (** 1) ([1.0, 2.0..] :: [Double])) :: [Int]
+-}
 
+{-
 predInitialGuess :: InitialGuesser
 predInitialGuess _ preds seed qs betas = initialGuess' $ randoms $ mkStdGen seed
   where initialGuess' :: [Int] -> Placement
         initialGuess' [] = error "IMPOSSIBLE!"
         initialGuess' (r:rs) = trace ((show guess) ++ " --- " ++ (show $ checkGuess betas guess)) $ if checkGuess betas guess then guess else initialGuess' rs
-          where guess = genGuess r (map (\p -> (residueNum p, beta_score p)) preds) $ length betas
+          where guess = genGuess r (map (\p -> (residueNum p, beta_score p)) preds) $ le
+ngth betas
+
 
 genGuess :: (Random r, Fractional r, Ord r) => Seed -> [(Int, r)] -> Int -> Placement
 genGuess seed dist n = DL.sort $ take n $ randomsDist (mkStdGen seed) dist
+-}
 
-projInitialGuess :: InitialGuesser
-projInitialGuess hmm _ seed qs betas = initialGuess' betas 0 0
+projInitialGuess :: InitialGuesser r
+projInitialGuess hmm _ qs betas = return $ initialGuess' betas 0 0
   where initialGuess' [] _ _ = []
   -- trace ("g: " ++ show g ++ " f: " ++ show f ++ " pos: " ++ show pos ++ " lastB: " ++ show lastB ++ " lastP: " ++ show lastP) $
         initialGuess' (b:bs) lastP lastB = g : initialGuess' bs g pos
           where g = lastP + (floor $ (fromIntegral $ pos - lastB) * f)
                 f = (fromIntegral $ U.length qs) / (fromIntegral $ V.length hmm)
-                pos = (resPosition $ head $ residues b)
+                pos = resPosition $ head $ residues b
 
+-- XXX name? contract?
 checkGuess :: [BetaStrand] -> Placement -> Bool
 checkGuess [] [] = True
 checkGuess [] [g] = False
