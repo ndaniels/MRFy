@@ -18,7 +18,7 @@ import Viterbi
 import qualified SearchStrategies.RandomHillClimb as RHC
 
 nss :: NewSS
-nss hmm searchP query betas scorer = searchBundle
+nss hmm searchP query betas scorer = fullSearchStrategy
   (\seed -> scorer $ RHC.initialize hmm searchP seed query betas)
   (RHC.mutate searchP query betas scorer)
   (boltzmannUtility searchP)

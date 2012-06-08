@@ -18,7 +18,7 @@ import StochasticSearch
 import Viterbi
 
 nss :: NewSS
-nss hmm searchP query betas scorer = searchBundle
+nss hmm searchP query betas scorer = fullSearchStrategy
   (\seed -> scorer $ initialize hmm searchP seed query betas)
   (mutate searchP query betas scorer)
   scoreUtility

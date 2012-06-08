@@ -1,4 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables, BangPatterns, MultiParamTypeClasses, RankNTypes, NamedFieldPuns #-}
+{-# LANGUAGE ScopedTypeVariables, BangPatterns, MultiParamTypeClasses, RankNTypes, NamedFieldPuns, ExistentialQuantification #-}
 module LazySearchModel
        ( Age
        , Seed
@@ -8,6 +8,7 @@ module LazySearchModel
        , scoreUtility
        , Utility(..), isUseless
        , SearchGen(..), SearchStop, SearchStrategy(..), searchStrategy
+       , FullSearchStrategy, fullSearchStrategy, fullSearch
        , SearchDelta(..)
        , search
        , AUS
@@ -241,6 +242,28 @@ search :: forall placement r
 search (SS strat test) rand = (test . everyGen strat r 0 . gen0 strat) s0
  where (s0, r) = R.next rand
 -- @ end search.tex
+
+data FullSearchStrategy placement =
+  forall a . FSS { fssGen :: SearchGen a
+                 , fssStop :: SearchStop a
+                 , fssBest :: a -> placement }
+
+-- @ start fullsearch.tex
+fullSearch :: RandomGen r => FullSearchStrategy a -> r -> History a
+fullSearch (FSS gen stop best) rand =
+  (fmap best . stop . everyGen gen r 0 . gen0 gen) s0
+  where (s0, r) = R.next rand
+-- @ end fullsearch.tex        
+
+
+fullSearchStrategy :: (Seed -> Scored placement)
+                   -> (Seed -> Scored placement -> Scored placement)
+                   -> (forall a . Seed -> SearchDelta a -> Utility a)
+                   -> SearchStop placement
+                   -> (placement -> answer)
+                   -> FullSearchStrategy answer
+fullSearchStrategy g0 n u s b = FSS (SG g0 n u) s b
+
 
 
 -- TODO keep a Scored (Age, Placement) to support Simulated Annealing

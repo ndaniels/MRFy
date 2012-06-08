@@ -97,8 +97,8 @@ runCommand (AlignmentSearch searchParams
               where popSize  = multiStartPopSize searchParams
                     searches = take popSize $ map trySearch seeds
                     trySearch r q = if alignable q bs then searchQ else noSearch
-                      where searchQ = bsearch (bun (score hmm q bs)) $ mkStdGen r
-                            bun = bundle searchParams hmm searchParams q bs
+                      where searchQ = fullSearch (strat (score hmm q bs)) $ mkStdGen r
+                            strat   = strategy searchParams hmm searchParams q bs
                     results = map (historySolution . popSearch searches) queries
                     output  = [ "Score: " ++ (show $ scoreOf $ head results) 
                               , ""
