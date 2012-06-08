@@ -62,9 +62,9 @@ getParams (f:fs) =
     Verbose -> params { verbose = True }
     Version -> error "show version number"
     Help -> error "show help"
-    StratSA -> params { strategy = SimulatedAnnealing.nss }
-    StratGA -> params { strategy = GeneticAlgorithm.nss }
-    StratRand -> params { strategy = RandomHillClimb.nss }
+    StratSA -> params { bundle = SimulatedAnnealing.nss }
+    StratGA -> params { bundle = GeneticAlgorithm.nss }
+    StratRand -> params { bundle = RandomHillClimb.nss }
     Generations x -> params { generations = read x }
     MultiStartPop x -> params { multiStartPopSize = read x }
     PopSize x -> params { populationSize = Just $ read x }
@@ -84,7 +84,7 @@ getOpts argv =
       (_, _, errs) -> error (concat errs ++ usageInfo header options)
   where header = "Usage: mrfy [OPTION ...] files..."
 
-defaultSP = SearchParameters { strategy = SimulatedAnnealing.nss
+defaultSP = SearchParameters { bundle = SimulatedAnnealing.nss
                              , generations = 1000
                              , multiStartPopSize = 10
                              , verbose = True

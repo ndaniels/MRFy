@@ -96,11 +96,10 @@ data SearchStrategy a =
 --
 --
 -- @ start strategy.tex
-type ScoredPopulation a = [Scored a]
 data SearchGen placement = 
- SG { gen0    :: Seed -> ScoredPopulation placement
-    , nextGen :: Seed -> ScoredPopulation placement
-                      -> ScoredPopulation placement
+ SG { gen0    :: Seed -> Scored placement
+    , nextGen :: Seed -> Scored placement
+                      -> Scored placement
     , utility :: forall a .
                  Seed -> SearchDelta a -> Utility a
     }
@@ -139,8 +138,8 @@ type SearchStop a = [Aged (Utility (Scored a))] -> History a
 -- | A constructor for search strategies.  Its role is to take
 -- four flat arguments instead of a tree.  (Not sure this is a 
 -- good idea.)
-searchStrategy :: (Seed -> ScoredPopulation placement)
-               -> (Seed -> ScoredPopulation placement -> ScoredPopulation placement)
+searchStrategy :: (Seed -> Scored placement)
+               -> (Seed -> Scored placement -> Scored placement)
                -> (forall a . Seed -> SearchDelta a -> Utility a)
                -> SearchStop placement
                -> SearchStrategy placement
@@ -151,6 +150,13 @@ searchStrategy g0 n u s = SS (SG g0 n u) s
 -------------- History ------------------------
 --
 -- If we 
+
+instance Functor History where
+  fmap f = History . (fmap . fmap . fmap) f . unHistory
+
+-- data History placement = History [Aged (Scored placement)]
+
+
 
 hcons :: Aged (Scored placement) -> History placement -> History placement
 hcons a (History as) = History (a:as)
@@ -200,8 +206,8 @@ instance Ord (History a) where
 
 -- @ start children.tex
 children :: RandomGen r
-         => SearchGen a -> r -> ScoredPopulation a
-         -> [ScoredPopulation a]
+         => SearchGen a -> r -> Scored a
+         -> [Scored a]
 children ss r pop = map (flip (nextGen ss) pop) (R.randoms r)
 -- @ end children.tex
 
@@ -209,19 +215,19 @@ everyGen :: forall r a .  RandomGen r
          => SearchGen a
          -> r
          -> Age
-         -> ScoredPopulation a
-         -> [Aged (Utility (ScoredPopulation a))]
+         -> Scored a
+         -> [Aged (Utility (Scored a))]
 everyGen ss r age startPop =
     Aged (Useful startPop) age : uselessMoves ++ everyGen ss r0 newAge newPop
   where
     (r0, r1, r2) = split3 r
     kids = zipWith3 decorate (children ss r1 startPop) (R.randoms r2) [succ age..]
     (uselessMoves, Aged (Useful newPop) newAge : _) = span (isUseless . unAged) kids
-    decorate :: ScoredPopulation a -> Seed -> Age
-             -> Aged (Utility (ScoredPopulation a))
+    decorate :: Scored a -> Seed -> Age
+             -> Aged (Utility (Scored a))
     decorate pop seed newAge = Aged (fmap (const pop) (utility ss seed delta)) newAge
-         where delta = SearchDelta { older      = minimum startPop
-                                   , younger    = minimum pop
+         where delta = SearchDelta { older      = startPop
+                                   , younger    = pop
                                    , youngerAge = newAge }
 
   
@@ -232,8 +238,7 @@ search :: forall placement r
        => SearchStrategy placement
        -> r
        -> History placement
-search (SS strat test) rand =
-   (test . (map . fmap . fmap) minimum . everyGen strat r 0 . gen0 strat) s0
+search (SS strat test) rand = (test . everyGen strat r 0 . gen0 strat) s0
  where (s0, r) = R.next rand
 -- @ end search.tex
 

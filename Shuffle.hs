@@ -9,6 +9,7 @@ import Data.STRef
 -- Taken from:  http://www.haskell.org/haskellwiki/Random_shuffle
 -- | Randomly shuffle a list without the IO Monad
 --   /O(N)/
+-- cf Data.Random.Extras.shuffle at O(N log N)
 shuffle :: StdGen -> [a] -> ([a], StdGen)
 shuffle gen xs = runST (do
         g <- newSTRef gen

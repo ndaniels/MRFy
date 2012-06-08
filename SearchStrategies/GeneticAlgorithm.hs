@@ -22,18 +22,26 @@ import Shuffle
 import StochasticSearch
 import Viterbi
 
+wrapBestScore :: [Scored a] -> Scored [Scored a]
+wrapBestScore as = Scored as (scoreOf $ minimum as)
+
+
 nss :: NewSS
-nss hmm searchP query betas scorer = searchStrategy
-  (\seed -> map scorer $ initialize hmm searchP seed query betas)
+nss hmm searchP query betas scorer = searchBundle
+  (\seed -> wrapBestScore $ map scorer $ initialize hmm searchP seed query betas)
   (mutate searchP query betas scorer)
   scoreUtility
   (takeNGenerations (generations searchP))
+  (unScored . minimum)
 
-initialize :: HMM -> SearchParameters -> Seed -> QuerySequence -> [BetaStrand] -> [Placement]
+type Population = [Scored Placement]
+
+initialize
+  :: HMM -> SearchParameters -> Seed -> QuerySequence -> [BetaStrand] -> [Placement]
 initialize hmm searchP seed query betas = 
   map (\s -> projInitialGuess hmm (getSecPreds searchP) s query betas)
       $ take (getSearchParm searchP populationSize) rands
-  where rands = (randoms (mkStdGen seed)) :: [Int]
+  where rands = randoms (mkStdGen seed) :: [Int]
 
 -- invariant: len [SearchSolution] == 1
 mutate :: SearchParameters
@@ -41,9 +49,9 @@ mutate :: SearchParameters
         -> [BetaStrand]
         -> Scorer Placement
         -> Seed
-        -> [Scored Placement]
-        -> [Scored Placement]
-mutate searchP query betas scorer seed placements = fittest
+        -> Scored Population
+        -> Scored Population
+mutate searchP query betas scorer seed (Scored placements _) = wrapBestScore fittest
   where fittest = fst
                   $ shuffle (mkStdGen seed)
                   $ take (getSearchParm searchP populationSize)

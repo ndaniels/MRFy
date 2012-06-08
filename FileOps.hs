@@ -94,14 +94,11 @@ runCommand (AlignmentSearch searchParams
                   mapM_ putStrLn output
               else
                   mapM_ (writeFile outFile) $ intersperse "\n" output
-              where strat q = strategy searchParams hmm searchParams q bs
-                                          -- XXX why searchParams *twice* ???
-                    scorer q = score hmm q bs
-                    searchQ r q = search (strat q (scorer q)) (mkStdGen r)
-                    trySearch r q = if alignable q bs then searchQ r q else noSearch
-                    searches =
-                      map trySearch $ take (multiStartPopSize searchParams) seeds
-
+              where popSize  = multiStartPopSize searchParams
+                    searches = take popSize $ map trySearch seeds
+                    trySearch r q = if alignable q bs then searchQ else noSearch
+                      where searchQ = bsearch (bun (score hmm q bs)) $ mkStdGen r
+                            bun = bundle searchParams hmm searchParams q bs
                     results = map (historySolution . popSearch searches) queries
                     output  = [ "Score: " ++ (show $ scoreOf $ head results) 
                               , ""

@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE BangPatterns, ExistentialQuantification, RankNTypes #-}
 module StochasticSearch where
 
 import Control.Parallel (par)
@@ -8,6 +8,7 @@ import Data.Maybe
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
 import qualified Data.List as DL
+import System.Random (RandomGen)
 
 import Debug.Trace (trace)
 
@@ -16,7 +17,9 @@ import Beta
 import Constants
 import ConstantsGen
 import HMMPlus
-import LazySearchModel (SearchStrategy, searchStrategy)
+import LazySearchModel ( SearchStrategy, searchStrategy, SearchStop, Seed
+                       , SearchDelta, Utility, History, search
+                       )
 import MRFTypes
 import PsiPred
 import Score
@@ -44,11 +47,27 @@ import Wrappers
 
 type Scorer placement = placement -> Scored placement
 
+data SearchBundle = forall a . SB { bundledStrat :: SearchStrategy a
+                                  , bestPlacement :: a -> Placement }
+
 type NewSS
  = HMM -> SearchParameters -> QuerySequence -> [BetaStrand] -> Scorer Placement
- -> SearchStrategy Placement
+ -> SearchBundle
+ 
 
-data SearchParameters = SearchParameters { strategy :: NewSS
+bsearch :: RandomGen r => SearchBundle -> r -> History Placement
+bsearch (SB strat best) = fmap best . search strat
+
+searchBundle :: (Seed -> Scored p)
+             -> (Seed -> Scored p -> Scored p)
+             -> (forall a . Seed -> SearchDelta a -> Utility a)
+             -> SearchStop p
+             -> (p -> Placement)
+             -> SearchBundle
+searchBundle g0 n u s b = SB (searchStrategy g0 n u s) b
+
+
+data SearchParameters = SearchParameters { bundle :: NewSS
                                          , generations :: Int
                                          , multiStartPopSize :: Int
                                          , verbose :: Bool

@@ -18,11 +18,12 @@ import Viterbi
 import qualified SearchStrategies.RandomHillClimb as RHC
 
 nss :: NewSS
-nss hmm searchP query betas scorer = searchStrategy
-  (\seed -> map scorer $ RHC.initialize hmm searchP seed query betas)
+nss hmm searchP query betas scorer = searchBundle
+  (\seed -> scorer $ RHC.initialize hmm searchP seed query betas)
   (RHC.mutate searchP query betas scorer)
   (boltzmannUtility searchP)
   (takeByAgeGap (acceptableAgeGap searchP))
+  id
 
 boltzmannUtility :: SearchParameters -> Seed -> SearchDelta a -> Utility a
 boltzmannUtility searchP seed (SearchDelta { younger, older, youngerAge }) =

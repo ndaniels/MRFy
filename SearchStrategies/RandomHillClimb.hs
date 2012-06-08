@@ -18,16 +18,17 @@ import StochasticSearch
 import Viterbi
 
 nss :: NewSS
-nss hmm searchP query betas scorer = searchStrategy
-  (\seed -> map scorer $ initialize hmm searchP seed query betas)
+nss hmm searchP query betas scorer = searchBundle
+  (\seed -> scorer $ initialize hmm searchP seed query betas)
   (mutate searchP query betas scorer)
   scoreUtility
   (takeByAgeGap (acceptableAgeGap searchP))
+  id
 
 initialize :: HMM -> SearchParameters -> Seed -> QuerySequence
-           -> [BetaStrand] -> [Placement]
+           -> [BetaStrand] -> Placement
 initialize hmm searchP seed query betas =
-  singleton $ projInitialGuess hmm (getSecPreds searchP) seed query betas
+  projInitialGuess hmm (getSecPreds searchP) seed query betas
 
 -- invariant: len [SearchSolution] == 1
 mutate :: SearchParameters
@@ -35,14 +36,13 @@ mutate :: SearchParameters
         -> [BetaStrand]
         -> Scorer Placement
         -> Seed
-        -> [Scored Placement]
-        -> [Scored Placement]
-mutate searchP query betas scorer seed placements =
-  singleton $ scorer $ mutate' oldp 0 (mkStdGen seed) 0
-  where oldp = unScored $ head placements
-        mutate' :: Placement -> Int -> StdGen -> Int -> Placement
-        mutate' [] _ _ _ = []
-        mutate' (g:gs) i gen lastGuess = g' : mutate' gs (i+1) gen' g'
+        -> Scored Placement
+        -> Scored Placement
+mutate searchP query betas scorer seed (Scored oldp _) =
+  scorer $ mutate oldp 0 (mkStdGen seed) 0
+  where mutate :: Placement -> Int -> StdGen -> Int -> Placement
+        mutate [] _ _ _ = []
+        mutate (g:gs) i gen lastGuess = g' : mutate gs (i+1) gen' g'
           where (g', gen') = randomR range gen
                 range = betaRange query betas oldp lastGuess i
 
