@@ -152,10 +152,11 @@ sliceQuery :: QuerySequence -> [BetaStrand] -> Placement -> Int -> [QuerySequenc
 sliceQuery query betas placement queryPos queries = reverse $ sliceQuery' betas placement queryPos queries
   where sliceQuery' :: [BetaStrand] -> Placement -> Int -> [QuerySequence] -> [QuerySequence]
         sliceQuery' [] [] queryPos queries = U.drop queryPos query : queries
-        sliceQuery' [b] [g] queryPos queries = if length betas /= 1 then
-                                             sliceQuery' [] [] queryPos queries
-                                           else
-                                             sliceQuery' [] [] endRes (bQuery : vQuery : [])
+        sliceQuery' [b] [_] queryPos queries =
+          if length betas /= 1 then
+            sliceQuery' [] [] queryPos queries
+          else
+            sliceQuery' [] [] endRes [bQuery, vQuery]
           where firstRes = resPosition . head . residues
                 endRes = firstRes b + len b
                 vQuery = uslice "1" 0 (firstRes b) query
@@ -175,9 +176,14 @@ sliceQuery query betas placement queryPos queries = reverse $ sliceQuery' betas 
         
                 betas' = if queryPos == 1 then (b:b2:bs) else (b2:bs)
                 guesses' = if queryPos == 1 then (g:g2:gs) else (g2:gs)
-        sliceQuery' [] (_:_) _ _ = error "sliceQuery precondition violated"
-        sliceQuery' (_:_) [] _ _ = error "sliceQuery precondition violated"
+        sliceQuery' _ _ _ _ = error "sliceQuery precondition violated"
 
+sliceHMMs :: V.Vector a
+          -> [BetaStrand]
+          -> Int
+          -> [V.Vector a]
+          -> [BetaOrViterbi]
+          -> ([V.Vector a], [BetaOrViterbi])
 sliceHMMs hmm betas hmmPos hmms atypes = (reverse hmms', reverse atypes')
   where (hmms', atypes') = sliceHMMs' betas hmmPos hmms atypes
   -- TODO: alternating beta and viterbi can be simplified with 'intersperse' from prelude
