@@ -1,15 +1,11 @@
+{-# OPTIONS_GHC -Wall -fno-warn-name-shadowing #-}
 {-# LANGUAGE BangPatterns, ScopedTypeVariables #-}
 module SearchStrategies.RandomHillClimb where
 
 import Control.Monad.Random
 import qualified Data.Vector.Unboxed as V
-import System.Random (mkStdGen, randomR, StdGen, next)
-
-import Debug.Trace (trace)
 
 import Beta
-import Constants
-import HMMPlus
 import LazySearchModel
 import MRFTypes
 import Score
@@ -39,11 +35,11 @@ mutate :: forall r
        -> Scorer Placement
        -> Scored Placement
        -> Rand r (Scored Placement)
-mutate searchP query betas scorer (Scored oldp _) =
+mutate _ query betas scorer (Scored oldp _) =
   fmap scorer $ mutate oldp 0 0
   where mutate :: Placement -> Int -> Int -> Rand r Placement
         mutate [] _ _ = return []
-        mutate (g:gs) i lastGuess = do
+        mutate (_:gs) i lastGuess = do
           g'  <- getRandomR $ betaRange query betas oldp lastGuess i
           gs' <- mutate gs (i+1) g'
           return $ g' : gs'

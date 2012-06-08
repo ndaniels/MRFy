@@ -1,4 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables, BangPatterns, MultiParamTypeClasses, RankNTypes, NamedFieldPuns, ExistentialQuantification #-}
+{-# OPTIONS_GHC -Wall -fno-warn-name-shadowing #-}
 module LazySearchModel
        ( Age
        , Aged(..), unAged, ageOf
@@ -7,7 +8,7 @@ module LazySearchModel
        , scoreUtility
        , Utility(..), isUseless
        , SearchGen(..), SearchStop, SearchStrategy(..), searchStrategy
-       , FullSearchStrategy, fullSearchStrategy, fullSearch
+       , FullSearchStrategy(..), fullSearchStrategy, fullSearch
        , SearchDelta(..)
        , search
        , AUS
@@ -19,7 +20,6 @@ import Control.Monad.Random
 import Control.Monad
 
 import Score
-import Viterbi
 --------------------------------------------------------
 
 {-
@@ -180,7 +180,7 @@ scoreUtility (SearchDelta { younger, older }) = return $
                                          
 instance Functor Utility where 
   fmap f (Useful a) = Useful (f a)
-  fmap f Useless    = Useless
+  fmap _ Useless    = Useless
 
 isUseless :: Utility a -> Bool
 isUseless Useless    = True

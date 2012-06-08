@@ -1,20 +1,13 @@
+{-# OPTIONS_GHC -Wall -fno-warn-name-shadowing #-}
 module SearchStrategies.GeneticAlgorithm where
 
 import Control.Monad.Random
-import Control.Parallel (par)
 import Control.Parallel.Strategies
 
 import Data.List
-import qualified Data.Vector.Unboxed as V
-import System.Random (mkStdGen, randomR, randoms, StdGen)
-
-import Debug.Trace (trace)
 
 import Beta
-import Constants
-import HMMPlus
 import MRFTypes
-import NonUniform
 import Score
 import SearchStrategy 
 import SearchStrategies.RandomHillClimb (betaRange)
@@ -66,7 +59,7 @@ mutate searchP query betas scorer (Scored placements _) = fmap wrapBestScore fit
 
         mutateChild :: Int -> Int -> StdGen -> Placement -> Placement -> Placement
         mutateChild _ _ _ _ [] = []
-        mutateChild i lastGuess gen ogs (g:gs) = g' : mutateChild (i+1) g' gen' ogs gs
+        mutateChild i lastGuess gen ogs (_:gs) = g' : mutateChild (i+1) g' gen' ogs gs
           where (g', gen') = randomR range gen
                 range = betaRange query betas ogs lastGuess i
 
@@ -81,7 +74,7 @@ getPairings (p1:p2:ps) = crossover p1 p2 : getPairings ps
 crossover :: Placement -> Placement -> Placement
 crossover ps qs = sort $ crossover' ps qs
 
--- invariant: length ps == length qs
+-- precondition: length ps == length qs
 crossover' :: Placement -> Placement -> Placement
 crossover' [] [] = []
 crossover' [p] [q] = if p < q then [p] else [q]
@@ -90,4 +83,6 @@ crossover' (p:ps) (q:qs) = leftmost:rightmost:crossover' (init ps) (init qs)
         rightmost = if lastp > lastq then lastp else lastq
         lastp = last ps
         lastq = last qs
+crossover' [] (_:_) = error "crossover precondition violated"
+crossover' (_:_) [] = error "crossover precondition violated"
 

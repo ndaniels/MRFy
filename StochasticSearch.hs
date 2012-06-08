@@ -1,22 +1,19 @@
+{-# OPTIONS_GHC -Wall -fno-warn-name-shadowing #-}
 {-# LANGUAGE BangPatterns, ExistentialQuantification, RankNTypes #-}
 module StochasticSearch where
 
-import Control.Parallel (par)
 import Control.Parallel.Strategies
 
 import Data.Maybe
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
 import qualified Data.List as DL
-import System.Random (RandomGen, StdGen)
-
-import Debug.Trace (trace)
+import System.Random (StdGen)
 
 -- import qualified Wrappers as W 
 import Beta
 import Constants
 import ConstantsGen
-import HMMPlus
 import LazySearchModel ( FullSearchStrategy )
 import MRFTypes
 import PsiPred
@@ -62,6 +59,7 @@ data SearchParameters = SearchParameters { strategy :: NewSS
                                          , secPreds :: Maybe [SSPrediction]
                                          }
 
+getSearchParm :: SearchParameters -> (SearchParameters ->  Maybe a) -> a
 getSearchParm searchP parm = fromMaybe (error "Not a valid parameter.") (parm searchP)
 
 getSecPreds :: SearchParameters -> [SSPrediction]
@@ -77,6 +75,7 @@ data BetaOrViterbi = Beta
                      | Viterbi
                      deriving Show
 
+oppAligner :: BetaOrViterbi -> BetaOrViterbi
 oppAligner Beta = Viterbi
 oppAligner Viterbi = Beta
 
@@ -88,19 +87,21 @@ alignable q bs = bLen < qLen
 
 vfoldr3 :: (BetaResidue -> HMMNode -> Int -> Score -> Score) -> Score -> [BetaResidue] -> HMM -> QuerySequence -> Score
 -- vfoldr3 :: (a -> b -> c -> d -> d) -> d -> [a] -> Vector b -> Vector c -> d 
-vfoldr3 f init [] _ _ = init
+vfoldr3 _ init [] _ _ = init
 vfoldr3 f init (r:rs) hmm query = f r (n V.! 0) (q U.! 0) $ vfoldr3 f init rs ns qs
   where (n, ns)  = V.splitAt 1 hmm
         (q, qs) = U.splitAt 1 query
 
+dupeElements :: [a] -> [a]
 dupeElements [] = []
-dupeElements (x:xs) = x : x : (dupeElements xs)
+dupeElements (x:xs) = x : x : dupeElements xs
 
 statePath :: HMM -> QuerySequence -> [BetaStrand] -> Scored Placement -> StatePath
 statePath hmm query betas ps = foldr (++) [] $ map viterbiOrBeta $ DL.zip4 hmmAlignTypes (map traceid miniHMMs) miniQueries $ dupeElements [0..]
   where viterbiOrBeta :: (BetaOrViterbi, HMM, QuerySequence, Int) -> StatePath
-        viterbiOrBeta (Beta, ns, qs, i) = take (len (betas !! i)) $ repeat BMat
-        viterbiOrBeta (Viterbi, ns, qs, i) = unScored $ viterbi consPath (False, False) qs ns
+        viterbiOrBeta (Beta,   _ns, _qs, i) = take (len (betas !! i)) $ repeat BMat
+        viterbiOrBeta (Viterbi, ns, qs, _i) =
+          unScored $ viterbi consPath (False, False) qs ns
 
         -- traceid hmm = trace (show (V.map nodeNum hmm)) $ id hmm 
         -- traceid = (trace (show guesses)) id 
@@ -117,7 +118,7 @@ score hmm query betas ps = Scored ps (foldr (+) negLogOne $ (parMap rseq) viterb
         -- so we can use the last node of a Viterbi segment to inform the transition
         -- to Match for the Beta score.
         viterbiOrBeta (Beta, ns, qs, i) = betaScore query ps (residues (betas !! i)) ns qs
-        viterbiOrBeta (Viterbi, ns, qs, i) = scoreOf $ viterbi consNoPath (False, False) qs ns
+        viterbiOrBeta (Viterbi, ns, qs, _) = scoreOf $ viterbi consNoPath (False, False) qs ns
 
         -- traceid hmm = trace (show (V.map nodeNum hmm)) $ id hmm 
         traceid = id
@@ -150,7 +151,7 @@ betaScore query guesses = vfoldr3 betaScore' negLogOne
 sliceQuery :: QuerySequence -> [BetaStrand] -> Placement -> Int -> [QuerySequence] -> [QuerySequence]
 sliceQuery query betas placement queryPos queries = reverse $ sliceQuery' betas placement queryPos queries
   where sliceQuery' :: [BetaStrand] -> Placement -> Int -> [QuerySequence] -> [QuerySequence]
-        sliceQuery' [] [] queryPos queries = (U.drop queryPos query) : queries
+        sliceQuery' [] [] queryPos queries = U.drop queryPos query : queries
         sliceQuery' [b] [g] queryPos queries = if length betas /= 1 then
                                              sliceQuery' [] [] queryPos queries
                                            else
@@ -174,6 +175,8 @@ sliceQuery query betas placement queryPos queries = reverse $ sliceQuery' betas 
         
                 betas' = if queryPos == 1 then (b:b2:bs) else (b2:bs)
                 guesses' = if queryPos == 1 then (g:g2:gs) else (g2:gs)
+        sliceQuery' [] (_:_) _ _ = error "sliceQuery precondition violated"
+        sliceQuery' (_:_) [] _ _ = error "sliceQuery precondition violated"
 
 sliceHMMs hmm betas hmmPos hmms atypes = (reverse hmms', reverse atypes')
   where (hmms', atypes') = sliceHMMs' betas hmmPos hmms atypes

@@ -1,19 +1,13 @@
 {-# LANGUAGE NamedFieldPuns #-}
+{-# OPTIONS_GHC -Wall -fno-warn-name-shadowing #-}
 module SearchStrategies.SimulatedAnnealing where
 
 import Control.Monad.Random
-import qualified Data.Vector.Unboxed as V
 
-import Debug.Trace (trace)
-
-import Beta
-import HMMPlus
 import LazySearchModel
-import MRFTypes
 import Score
 import SearchStrategy
 import StochasticSearch
-import Viterbi
 
 import qualified SearchStrategies.RandomHillClimb as RHC
 
