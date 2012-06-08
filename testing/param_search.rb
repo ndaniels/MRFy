@@ -13,7 +13,7 @@ numRuns = 4
 
 @mrfy_path = ARGV[2] || "mrfy"
 
-constArgs = " +RTS -N2"
+constArgs = " +RTS -N12"
 
 io_pairs = [
     ["8.hmm+", "8.fasta"], # positive
