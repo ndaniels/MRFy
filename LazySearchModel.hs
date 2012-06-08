@@ -95,9 +95,10 @@ data SearchStrategy a gen =
 data SearchGen placement gen = 
  SG { gen0    :: Rand gen (Scored placement)
     , nextGen :: Scored placement -> Rand gen (Scored placement)
-    , utility :: forall a . SearchDelta a -> Rand gen (Utility a)
+    , utility :: forall a . SearchDelta a -> Rand gen (Utility (Scored a))
     }
 -- @ end strategy.tex
+ -- ^ utility returns the *younger* item in the delta
 
  -- | In a just world, a search would produce an infinite list of
  -- useful states tagged with score and age, and the stop function
@@ -134,7 +135,7 @@ type SearchStop a = [Aged (Utility (Scored a))] -> History a
 -- good idea.)
 searchStrategy :: (Rand gen (Scored placement))
                -> (Scored placement -> Rand gen (Scored placement))
-               -> (forall a . SearchDelta a -> Rand gen (Utility a))
+               -> (forall a . SearchDelta a -> Rand gen (Utility (Scored a)))
                -> SearchStop placement
                -> SearchStrategy placement gen
 searchStrategy g0 n u s = SS (SG g0 n u) s
@@ -174,9 +175,9 @@ instance Functor Aged where
   fmap f (Aged a age) = Aged (f a) age
 
 
-scoreUtility :: SearchDelta a -> Rand gen (Utility a)
+scoreUtility :: SearchDelta a -> Rand gen (Utility (Scored a))
 scoreUtility (SearchDelta { younger, older }) = return $
-  if scoreOf younger < scoreOf older then Useful (unScored younger) else Useless
+  if scoreOf younger < scoreOf older then Useful younger else Useless
                                          
 instance Functor Utility where 
   fmap f (Useful a) = Useful (f a)
@@ -203,8 +204,7 @@ everyGen ss age startPop = do
   nextGens <- everyGen ss newAge newPop
   return $ Aged (Useful startPop) age : useless ++ nextGens
   where agedUtility :: Scored a -> Age -> Rand r (Aged (Utility (Scored a)))
-        agedUtility pop age = do u <- utility ss delta
-                                 return $ Aged (fmap (const pop) u) age
+        agedUtility pop age = utility ss delta >>= \u -> return $ Aged u age
          where delta = SearchDelta { older = startPop, younger = pop, youngerAge = age }
 -- @ end everygen.tex
 
@@ -230,7 +230,7 @@ fullSearch (FSS gen stop best) = fmap (fmap best . stop) . everyGen gen 0 =<< ge
 
 fullSearchStrategy :: (Rand gen (Scored placement))
                    -> (Scored placement -> Rand gen (Scored placement))
-                   -> (forall a . SearchDelta a -> Rand gen (Utility a))
+                   -> (forall a . SearchDelta a -> Rand gen (Utility (Scored a)))
                    -> SearchStop placement
                    -> (placement -> answer)
                    -> FullSearchStrategy answer gen
