@@ -10,7 +10,7 @@ import Beta
 import MRFTypes
 import Score
 import SearchStrategy 
-import SearchStrategies.RandomHillClimb (betaRange)
+import SearchStrategies.RandomHillClimb (betaRange, rightBound)
 import LazySearchModel
 import Shuffle
 import StochasticSearch
@@ -62,6 +62,13 @@ mutate searchP query betas scorer (Scored placements _) = fmap wrapBestScore fit
         mutateChild i lastGuess gen ogs (_:gs) = g' : mutateChild (i+1) g' gen' ogs gs
           where (g', gen') = randomR range gen
                 range = betaRange query betas ogs lastGuess i
+
+        _moveChild i leftBound oldp =
+          if i == length oldp then return []
+          else do g  <- getRandomR (leftBound, rightBound oldp i query - width)
+                  gs <- _moveChild (i+1) (g + width) oldp
+                  return $ g : gs
+            where width = len (betas !! i)
 
 getPairings :: [Placement] -> [Placement]
 getPairings [] = []
