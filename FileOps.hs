@@ -7,6 +7,7 @@ where
   
 import Control.Monad.Random
 import Control.Parallel.Strategies
+import ParRandom
 
 import Data.Array
 import Data.List as DL
