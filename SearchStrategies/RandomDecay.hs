@@ -2,19 +2,18 @@
 {-# LANGUAGE BangPatterns, ScopedTypeVariables #-}
 module SearchStrategies.RandomDecay where
 
---import Data.List (last
 import Control.Monad.Random
 import qualified Data.Vector.Unboxed as V
 
 import Beta
 import LazySearchModel
---import MRFTypes
+import ParRandom
 import Score
---import SearchStrategy
+import SearchStrategy
 import StochasticSearch
 import Viterbi
 
---import qualified SearchStrategies.RandomHillClimb as RHC
+import qualified SearchStrategies.RandomHillClimb as RHC
 
 {-
 
@@ -50,15 +49,54 @@ bogusPlacement query (beta:betas) =
                        place (leftBound + len beta) (rightBound + len b) b bs
           return $ start : rest
           
-
+-- | Represents a decaying population of placements
 data Pop = Pop { improved :: Bool   -- ^ Better than previous generation
                , logPop   :: Double -- ^ log(ideal population)
-               , logDecay :: Double -- ^ log(d), always negative
                , placements :: [Scored Placement] -- ^ true population
                }
 -- ^ Invariant: the @placements@ list is *nearly* sorted
 -- in order of decreasing score (best score at end).
+-- Invariant: @length placements == ceiling (exp logPop)@.
 
+
+firstPop :: Int -> Scorer Placement -> Rand r Placement -> Rand r Pop
+firstPop n score placement = do
+  ps <- fmap (map score) $ sequence $ take n $ repeat placement
+  return $ Pop True (log (fromIntegral n)) ps
+
+nss :: NewSS
+nss _hmm searchP query betas scorer = fullSearchStrategy
+  (fmap scorePop $ firstPop nGens scorer (bogusPlacement query betas))
+  (fmap scorePop . nextPop nextPlacement scorer logDecay . unScored)
+  scoreUtility -- bogus!  see comment on scorePop below
+  (takeNGenerations nGens)
+  (unScored . last . isort . placements)
+  where popSize = getSearchParm searchP populationSize
+        nGens   = generations searchP
+        logDecay = - log (fromIntegral popSize) / fromIntegral nGens
+        nextPlacement = flip (RHC.randomizePlacement' betas) (V.length query)
+
+
+nextPop :: RandomGen r => (Placement -> Rand r Placement) -> Scorer Placement -> Double
+        -> (Pop -> Rand r Pop)
+nextPop nextPlacement scorer logDecay pop =
+  do randomSteps <- parRandom $
+                    map (fmap scorer . nextPlacement . unScored) oldPlacements
+     let newPlacements = zipWith min randomSteps oldPlacements
+         hasBetter     = or $ zipWith (<) newPlacements oldPlacements
+     return $ Pop hasBetter logPop' (cull newPlacements)
+  where oldPlacements = placements pop
+        logPop' = logPop pop + logDecay
+        cull ps = if logPop' >= 0.0 && ceiling logPop' < length ps then
+                    drop (length ps - ceiling logPop') (isort ps)
+                  else
+                    ps
+
+
+        
+-- | This one is incredibly bogus.   We'd prefer to accept
+-- a new population if *any* score improves.  But the interface
+-- makes this impossible.  Interfaces can be changed.
 scorePop :: Pop -> Scored Pop
 scorePop (pop @ Pop { placements = ps }) = Scored pop (scoreOf $ minimum ps)
 
@@ -68,55 +106,3 @@ isort = foldr insert []
         insert a (b:bs)
           | a < b     = b : insert a bs
           | otherwise = insert a (b:bs)
-
-
-
-firstPop :: Int -> Double -> Scorer Placement -> Rand r Placement -> Rand r Pop
-firstPop n decay score placement = do
-  ps <- fmap (map score) $ sequence $ take n $ repeat placement
-  if decay < 1.0 && decay > 0.0 then
-    return $ Pop True (log (fromIntegral n)) (log decay) ps
-  else
-    error "decay constant out of bounds"
-
-
-nss :: NewSS
-nss _hmm searchP query betas scorer = fullSearchStrategy
-  (fmap scorePop $ firstPop nGens decay scorer (bogusPlacement query betas))
-  undefined
-  undefined
-  undefined -- (takeNGenerations nGens)
-  undefined -- (last . isort . placements)
-  where popSize = getSearchParm searchP populationSize
-        nGens   = generations searchP
-        decay = exp (- log (fromIntegral popSize) / fromIntegral nGens)
-
-
-mutate :: forall r
-       .  RandomGen r
-       => SearchParameters
-       -> QuerySequence
-       -> [BetaStrand]
-       -> Scorer Placement
-       -> Scored Placement
-       -> Rand r (Scored Placement)
-mutate _ query betas scorer (Scored oldp _) =
-  fmap scorer $ mutate oldp 0 0
-  where mutate :: Placement -> Int -> Int -> Rand r Placement
-        mutate [] _ _ = return []
-        mutate _p@(_:gs) i lastGuess = do -- loop inv: i+length _p == length oldp
-          g'  <- getRandomR $ betaRange query betas oldp lastGuess i
-          gs' <- mutate gs (i+1) g'
-          return $ g' : gs'
-
-        _move i leftBound =
-          if i == length oldp then return []
-          else
-            do g  <- getRandomR (leftBound, rightBound oldp i query - width)
-               gs <- _move (i+1) (g + width)
-               return $ g : gs
-          where width = len (betas !! i)
-              
-        betaRange = undefined
-        rightBound = undefined
-        
