@@ -1,7 +1,7 @@
+{-# OPTIONS_GHC -Wall -fno-warn-name-shadowing #-}
 module CommandArgs where
 
 import System.Console.GetOpt
-import Data.Maybe (fromMaybe)
 
 import StochasticSearch
 
@@ -9,9 +9,10 @@ import StochasticSearch
 import qualified SearchStrategies.GeneticAlgorithm as GeneticAlgorithm
 import qualified SearchStrategies.RandomHillClimb as RandomHillClimb
 import qualified SearchStrategies.SimulatedAnnealing as SimulatedAnnealing
+import qualified SearchStrategies.RandomDecay as RandomDecay
 
 data Flag = Verbose | Version | Help
-            | StratSA | StratGA | StratRand
+            | StratSA | StratGA | StratRand | StratRD
             | Generations String | MultiStartPop String
             | PopSize String | InitTemp String | CoolingFact String
             | BoltzmannConst String | MutationRate String | Convergence String
@@ -32,6 +33,7 @@ options =
   , Option ['s'] ["simanneal"] (NoArg StratSA) "use simulated annealing"
   , Option ['g'] ["genetic"] (NoArg StratGA) "use genetic algorithms"
   , Option ['r'] ["random"] (NoArg StratRand) "use random hill climbing"
+  , Option ['d'] ["decay"] (NoArg StratRD) "use random decay"
   ]
 
 data Files = Files { hmmPlusF :: String
@@ -65,6 +67,7 @@ getParams (f:fs) =
     StratSA -> params { strategy = SimulatedAnnealing.nss }
     StratGA -> params { strategy = GeneticAlgorithm.nss }
     StratRand -> params { strategy = RandomHillClimb.nss }
+    StratRD -> params { strategy = RandomDecay.nss }
     Generations x -> params { generations = read x }
     MultiStartPop x -> params { multiStartPopSize = read x }
     PopSize x -> params { populationSize = Just $ read x }
@@ -84,6 +87,7 @@ getOpts argv =
       (_, _, errs) -> error (concat errs ++ usageInfo header options)
   where header = "Usage: mrfy [OPTION ...] files..."
 
+defaultSP :: SearchParameters
 defaultSP = SearchParameters { strategy = SimulatedAnnealing.nss
                              , generations = 1000
                              , multiStartPopSize = 10
