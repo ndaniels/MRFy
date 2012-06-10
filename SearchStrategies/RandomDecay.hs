@@ -78,11 +78,13 @@ nextPop nextPlacement scorer logDecay pop =
 
 
         
--- | This one is incredibly bogus.   We'd prefer to accept
--- a new population if *any* score improves.  But the interface
--- makes this impossible.  Interfaces can be changed.
+-- | A population's score is the average score if its members.
+-- This way if *any* score improves, the whole population improves,
+-- because when we make the new population, we keep only
+-- those scores that have improved.
 scorePop :: Pop -> Scored Pop
-scorePop (pop @ Pop { placements = ps }) = Scored pop (scoreOf $ minimum ps)
+scorePop (pop @ Pop { placements = ps }) = Scored pop (Score average)
+  where average = (unScore . sum . map scoreOf) ps  / (fromIntegral . length) ps
 
 isort :: Ord a => [a] -> [a]
 isort = foldr insert []
