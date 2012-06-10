@@ -26,6 +26,7 @@ import CommandArgs
 import Constants
 import HMMPlus
 import HMMProps
+import HyperTriangles
 import LazySearchModel
 import MRFTypes
 import RunPsiPred
@@ -81,6 +82,12 @@ runCommand (TestHMM "micro8-strings") =
 
 runCommand (TestHMM "tickProp") =
   do quickCheck tickProp
+
+runCommand (TestHMM "countEnumLaw") =
+  do quickCheck countEnumLaw
+
+runCommand (TestHMM "pointsWidthLaw") =
+  do quickCheck pointsWidthLaw
 
 runCommand (TestHMM t) =
   error $ "I never heard of test " ++ t
