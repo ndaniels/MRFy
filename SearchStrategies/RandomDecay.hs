@@ -5,13 +5,11 @@ module SearchStrategies.RandomDecay where
 import Control.Monad.Random
 import qualified Data.Vector.Unboxed as V
 
-import Beta
 import LazySearchModel
 import ParRandom
 import Score
 import SearchStrategy
 import StochasticSearch
-import Viterbi
 
 import qualified SearchStrategies.RandomHillClimb as RHC
 
@@ -35,20 +33,6 @@ criteria.
 -}
 
 
--- | This needs to be implemented properly based on counting triangles,
--- but for now, just a hack.
-bogusPlacement :: RandomGen r => QuerySequence -> [BetaStrand] -> Rand r Placement
-bogusPlacement _ [] = return []
-bogusPlacement query (beta:betas) =
-  place 0 (V.length query - sum (map len betas)) beta betas
-  where place leftBound rightBound beta betas = do
-          start <- getRandomR (leftBound, rightBound)
-          rest  <- case betas of
-                     [] -> return []
-                     b : bs ->
-                       place (leftBound + len beta) (rightBound + len b) b bs
-          return $ start : rest
-          
 -- | Represents a decaying population of placements
 data Pop = Pop { improved :: Bool   -- ^ Better than previous generation
                , logPop   :: Double -- ^ log(ideal population)
@@ -66,7 +50,7 @@ firstPop n score placement = do
 
 nss :: NewSS
 nss _hmm searchP query betas scorer = fullSearchStrategy
-  (fmap scorePop $ firstPop nGens scorer (bogusPlacement query betas))
+  (fmap scorePop $ firstPop nGens scorer (equalPlacement query betas))
   (fmap scorePop . nextPop nextPlacement scorer logDecay . unScored)
   scoreUtility -- bogus!  see comment on scorePop below
   (takeNGenerations nGens)

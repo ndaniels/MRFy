@@ -89,6 +89,18 @@ runCommand (TestHMM "countEnumLaw") =
 runCommand (TestHMM "pointsWidthLaw") =
   do quickCheck pointsWidthLaw
 
+runCommand (TestHMM "twoCountsLaw") =
+  do quickCheck twoCountsLaw
+
+runCommand (TestHMM "freqLaw") =
+  do quickCheck freqLaw
+
+runCommand (TestHMM "isEnumLaw") =
+  do quickCheck isEnumLaw
+
+runCommand (TestHMM "randomLaw") =
+  do quickCheck randomLaw
+
 runCommand (TestHMM t) =
   error $ "I never heard of test " ++ t
 

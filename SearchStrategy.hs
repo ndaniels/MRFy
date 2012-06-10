@@ -10,6 +10,7 @@ import Test.QuickCheck
 
 import Beta
 import HMMPlus
+import qualified HyperTriangles as HT
 import LazySearchModel
 import MRFTypes
 import NonUniform
@@ -144,3 +145,18 @@ checkGuess (b:bs) (g:gs) = noClash && next
 -- projection
 -- projection with mutation
 -- distribution of gaps
+
+
+
+--------------------------
+-- | Chooses every possible placement with equal probability
+equalPlacement :: RandomGen r => QuerySequence -> [BetaStrand] -> Rand r Placement
+equalPlacement query betas = do
+  gap : gaps <- HT.pointInTri (HT.D nGaps) (HT.L width)
+  return $ place gap betas gaps
+  where nGaps = length betas + 1
+        width = U.length query - sum (map len betas)
+        place i (beta:betas) (gapAfter:gaps) =
+          i : place (i+len beta+gapAfter) betas gaps
+        place i [] [] = if i == U.length query then []
+                        else error "gaps in equalPlacement don't add up"
