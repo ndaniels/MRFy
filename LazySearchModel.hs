@@ -18,6 +18,7 @@ where
   
 import Control.Monad.Random
 import Control.Monad
+import Data.Function
 
 import Score
 --------------------------------------------------------
@@ -188,7 +189,7 @@ isUseless Useless    = True
 isUseless (Useful _) = False
 
 instance Ord (History a) where
-  compare (History h1) (History h2) = compare (map unAged h1) (map unAged h2)
+  compare = compare `on` map unAged . unHistory
     -- ^ Histories are compared by the score of the youngest element.
 
 -- @ start everygen.tex

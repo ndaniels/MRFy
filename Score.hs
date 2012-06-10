@@ -6,6 +6,7 @@ module Score
        )
 where
 
+import Data.Function
 import Data.Vector.Generic.Base
 import Data.Vector.Generic.Mutable
 import qualified Data.Vector.Unboxed as U
@@ -43,10 +44,10 @@ infix /+/
 x /+/ Scored a y = Scored a (x + y)
 
 instance Eq (Scored a) where
-  x == x' = scoreOf x == scoreOf x'
+  (==) = (==) `on` scoreOf
 instance Ord (Scored a) where
-  x < x' = scoreOf x < scoreOf x'
-  compare x x' = compare (scoreOf x) (scoreOf x')
+  (<) =  (<) `on` scoreOf
+  compare = compare `on` scoreOf
 instance Show a => Show (Scored a) where
   show s = "(Score: " ++ (show $ scoreOf s) ++ ", " ++ (show $ unScored s) ++ ")"
 
