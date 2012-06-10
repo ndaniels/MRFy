@@ -59,7 +59,7 @@ everyGen ss r age startPop =
     decorate :: ScoredPopulation a -> Seed -> Age
              -> SearchStream (ScoredPopulation a)
              -> SearchStream (ScoredPopulation a)
-    decorate pop seed newAge = quality ss seed (undefined delta)
+    decorate pop seed newAge = quality ss seed (error "this just cannot work" delta)
          where delta = S.SearchDelta { S.older   = (minimum startPop, age)
                                      , S.younger = (minimum pop, newAge) }
           -- Perhaps this code makes it a bit clearer what the delta is --NR
