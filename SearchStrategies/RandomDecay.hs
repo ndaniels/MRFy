@@ -3,6 +3,7 @@
 module SearchStrategies.RandomDecay where
 
 import Control.Monad.Random
+import Data.List (sortBy)
 import qualified Data.Vector.Unboxed as V
 
 import LazySearchModel
@@ -46,7 +47,7 @@ data Pop = Pop { improved :: Bool   -- ^ Better than previous generation
 firstPop :: Int -> Scorer Placement -> Rand r Placement -> Rand r Pop
 firstPop n score placement = do
   ps <- fmap (map score) $ sequence $ take n $ repeat placement
-  return $ Pop True (log (fromIntegral n)) ps
+  return $ Pop True (log (fromIntegral n)) (sortBy (flip compare) ps)
 
 nss :: NewSS
 nss _hmm searchP query betas scorer = fullSearchStrategy
@@ -86,6 +87,10 @@ scorePop :: Pop -> Scored Pop
 scorePop (pop @ Pop { placements = ps }) = Scored pop (Score average)
   where average = (unScore . sum . map scoreOf) ps  / (fromIntegral . length) ps
 
+-- | Insertion sort.  We use it because we expect the placements list
+-- to be sorted or nearly sorted, so that the expected cost is around
+-- linear.
+        
 isort :: Ord a => [a] -> [a]
 isort = foldr insert []
   where insert a [] = [a]
