@@ -20,8 +20,8 @@ nss hmm searchP query betas scorer = fullSearchStrategy
   id
 
 boltzmannUtility
-  :: RandomGen r => SearchParameters -> SearchDelta a -> Rand r (Utility (Scored a))
-boltzmannUtility searchP (SearchDelta { younger, older, youngerAge }) = do
+  :: RandomGen r => SearchParameters -> Move a -> Rand r (Utility (Scored a))
+boltzmannUtility searchP (Move { younger, older, youngerAge }) = do
   uniform <- getRandom
   return $ if boltzmann youngerAge (scoreOf younger) (scoreOf older) >= uniform
            then Useful younger

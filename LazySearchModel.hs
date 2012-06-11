@@ -9,7 +9,7 @@ module LazySearchModel
        , Utility(..), isUseless
        , SearchGen(..), SearchStop, SearchStrategy(..), searchStrategy
        , FullSearchStrategy(..), fullSearchStrategy, fullSearch
-       , SearchDelta(..)
+       , Move(..)
        , search
        , AUS
        )
@@ -50,17 +50,16 @@ type Age  = Int -- number of generations explored
 data Utility a = Useful a | Useless
 -- @ end utility.tex
 
--- | A @SearchDelta@ is used to make a decision about
+-- | A @Move@ is used to make a decision about
 -- whether a younger state is useless.  The decision
 -- uses the score of the most recent useful state
 -- (aka the @older@ state) as well as the score and
 -- age of the state under scrutiny (the @younger@ state).
--- @ start delta.tex
-data SearchDelta a
-  = SearchDelta { older   :: Scored a
-                , younger :: Scored a
-                , youngerAge :: Age }
--- @ end delta.tex
+-- @ start move.tex
+data Move pt = Move { older      :: Scored pt
+                    , younger    :: Scored pt
+                    , youngerAge :: Age }
+-- @ end move.tex
 
 -- | Many internal decisions are made based on age,
 -- so we provide a way to tag any value with its age.
@@ -81,24 +80,25 @@ ageOf (Aged _ age) = age
 -- placement but a population of placements.   As advocated 
 -- by Hughes, a strategy is divided into two parts: generate
 -- and (stop) test.
--- @ start fullstrat.tex
-data SearchStrategy a gen =
-  SS { searchGen  :: SearchGen a gen
-     , searchStop :: SearchStop a }
--- @ start fullstrat.tex
+-- @ start strat.tex
+data SearchStrategy pt r =
+  SS { searchGen  :: SearchGen pt r
+     , searchStop :: SearchStop pt }
+-- @ end strat.tex
 
 -- Why doesn't the generator take a random thing and produce an
 -- infinite list of scored populations?  Because that would imply that
 -- *every* population is useful.
 --
 --
--- @ start strategy.tex
-data SearchGen placement gen = 
- SG { gen0    :: Rand gen (Scored placement)
-    , nextGen :: Scored placement -> Rand gen (Scored placement)
-    , utility :: forall a . SearchDelta a -> Rand gen (Utility (Scored a))
+
+-- @ start gen.tex
+data SearchGen pt r = 
+ SG { pt0     :: Rand r (Scored pt)
+    , nextPt  :: Scored pt -> Rand r (Scored pt)
+    , utility :: Move pt -> Rand r (Utility (Scored pt))
     }
--- @ end strategy.tex
+-- @ end gen.tex
  -- ^ utility returns the *younger* item in the delta
 
  -- | In a just world, a search would produce an infinite list of
@@ -136,7 +136,7 @@ type SearchStop a = [Aged (Utility (Scored a))] -> History a
 -- good idea.)
 searchStrategy :: (Rand gen (Scored placement))
                -> (Scored placement -> Rand gen (Scored placement))
-               -> (forall a . SearchDelta a -> Rand gen (Utility (Scored a)))
+               -> (forall a . Move a -> Rand gen (Utility (Scored a)))
                -> SearchStop placement
                -> SearchStrategy placement gen
 searchStrategy g0 n u s = SS (SG g0 n u) s
@@ -176,8 +176,8 @@ instance Functor Aged where
   fmap f (Aged a age) = Aged (f a) age
 
 
-scoreUtility :: SearchDelta a -> Rand gen (Utility (Scored a))
-scoreUtility (SearchDelta { younger, older }) = return $
+scoreUtility :: Move a -> Rand gen (Utility (Scored a))
+scoreUtility (Move { younger, older }) = return $
   if scoreOf younger < scoreOf older then Useful younger else Useless
                                          
 instance Functor Utility where 
@@ -192,30 +192,30 @@ instance Ord (History a) where
   compare = compare `on` map unAged . unHistory
     -- ^ Histories are compared by the score of the youngest element.
 
+-------------------------------------------------------V
 -- @ start everygen.tex
-everyGen :: forall a r
-         .  SearchGen a r
-         -> Age
-         -> Scored a
-         -> Rand r [Aged (Utility (Scored a))]
-everyGen ss age startPop = do
-  children <- mapM (nextGen ss) (repeat startPop)
-  moves    <- zipWithM agedUtility children [succ age..]
-  let (useless, Aged (Useful newPop) newAge : _) = span (isUseless . unAged) moves
-  nextGens <- everyGen ss newAge newPop
-  return $ Aged (Useful startPop) age : useless ++ nextGens
-  where agedUtility :: Scored a -> Age -> Rand r (Aged (Utility (Scored a)))
-        agedUtility pop age = utility ss delta >>= \u -> return $ Aged u age
-         where delta = SearchDelta { older = startPop, younger = pop, youngerAge = age }
+everyPt :: SearchGen pt r -> Age -> Scored pt
+         -> Rand r [Aged (Utility (Scored pt))]
+everyPt ss age startPt = do
+  successors <- mapM (nextPt ss) (repeat startPt)
+  tagged <- zipWithM agedUtility successors [succ age..]
+  let (useless, Aged (Useful newPt) newAge : _) =
+                        span (isUseless . unAged) tagged
+  nextPts <- everyPt ss newAge newPt
+  return $ Aged (Useful startPt) age : useless ++ nextPts
+
+  where agedUtility pt age =
+           utility ss move >>= \u -> return $ Aged u age
+         where move = Move { older = startPt, younger = pt
+                           , youngerAge = age }
 -- @ end everygen.tex
 
   
 --------------------------------------------------------
 -- @ start search.tex
-search :: forall placement r
-       .  SearchStrategy placement r
-       -> Rand r (History placement)
-search (SS strat test) = fmap test . everyGen strat 0 =<< gen0 strat
+search :: SearchStrategy pt r -> Rand r (History pt)
+search (SS strat test) =
+  fmap test . everyPt strat 0 =<< pt0 strat
 -- @ end search.tex
 
 data FullSearchStrategy placement gen =
@@ -225,13 +225,13 @@ data FullSearchStrategy placement gen =
 
 -- @ start fullsearch.tex
 fullSearch :: FullSearchStrategy a r -> Rand r (History a)
-fullSearch (FSS gen stop best) = fmap (fmap best . stop) . everyGen gen 0 =<< gen0 gen
+fullSearch (FSS gen stop best) = fmap (fmap best . stop) . everyPt gen 0 =<< pt0 gen
 -- @ end fullsearch.tex        
 
 
 fullSearchStrategy :: (Rand gen (Scored placement))
                    -> (Scored placement -> Rand gen (Scored placement))
-                   -> (forall a . SearchDelta a -> Rand gen (Utility (Scored a)))
+                   -> (forall a . Move a -> Rand gen (Utility (Scored a)))
                    -> SearchStop placement
                    -> (placement -> answer)
                    -> FullSearchStrategy answer gen

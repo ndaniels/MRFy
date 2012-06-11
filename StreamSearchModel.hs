@@ -26,7 +26,7 @@ data SearchStrategy placement =
  SS { gen0    :: Seed -> ScoredPopulation placement
     , nextGen :: Seed -> ScoredPopulation placement
                       -> ScoredPopulation placement
-    , quality :: forall a . Seed -> S.SearchDelta a
+    , quality :: forall a . Seed -> S.Move a
               -> SearchStream a -> SearchStream a
     }
 
@@ -60,7 +60,7 @@ everyGen ss r age startPop =
              -> SearchStream (ScoredPopulation a)
              -> SearchStream (ScoredPopulation a)
     decorate pop seed newAge = quality ss seed (error "this just cannot work" delta)
-         where delta = S.SearchDelta { S.older   = (minimum startPop, age)
+         where delta = S.Move { S.older   = (minimum startPop, age)
                                      , S.younger = (minimum pop, newAge) }
           -- Perhaps this code makes it a bit clearer what the delta is --NR
     
