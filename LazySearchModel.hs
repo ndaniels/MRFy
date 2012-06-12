@@ -28,9 +28,9 @@ import Score
 Preamble
 --------
 Starting from a good initial state, we generate a sequence of
-successor states using random numbers, aka `Seed`s.   A new state
-may be "useful" or "useless".  A useful state becomes the starting
-point for a new search; a useless state is eventually discarded.
+successor states using random numbers.  A new state may be "useful" or
+"useless".  A useful state becomes the starting point for a new
+search; a useless state is eventually discarded.
 
 Both useful and useless states have *ages*; the age of a state is the
 number of states (both useful and useless) that have preceded it in
