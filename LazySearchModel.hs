@@ -215,10 +215,10 @@ search (SS strat test) =
   fmap test . everyPt strat 0 =<< pt0 strat
 -- @ end search.tex
 
-data FullSearchStrategy placement gen =
-  forall a . FSS { fssGen :: SearchGen a gen
-                 , fssStop :: SearchStop a
-                 , fssBest :: a -> placement }
+data FullSearchStrategy placement r =
+  forall pt . FSS { fssGen  :: SearchGen pt r
+                  , fssStop :: SearchStop pt
+                  , fssBest :: pt -> placement }
 
 -- @ start fullsearch.tex
 fullSearch :: FullSearchStrategy a r -> Rand r (History a)
