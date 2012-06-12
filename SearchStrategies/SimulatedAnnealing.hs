@@ -27,8 +27,8 @@ boltzmannUtility searchP (Move { younger, older, youngerAge }) = do
            then Useful younger
            else Useless
   where boltzmann :: Age -> Score -> Score -> Double
-        boltzmann age (Score s1) (Score s2) =
-          exp (negate (s1 - s2) / (constBoltzmann * temperature))
+        boltzmann age (Score youngScore) (Score oldScore) =
+          exp (negate (youngScore - oldScore) / (constBoltzmann * temperature))
           where temperature = (constCooling ^^ age) * constInitTemp
                 
         constBoltzmann = getSearchParm searchP boltzmannConstant
