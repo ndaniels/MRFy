@@ -19,7 +19,7 @@ io_pairs = [
     ["8.hmm+", "8.fasta"], # positive
     # ["7.hmm+", "7.fasta"], # positive
     # ["6.hmm+", "6.fasta"], # positive
-    # ["barwin.hmm+", "barwin.fasta"], # positive
+    ["barwin.hmm+", "barwin.fasta"], # positive
     # ["sandwich.hmm+", "sandwich.fasta"] # positive
     # ["8.hmm+", "double_thermo.fasta"], # negative
     # ["51182_smurf-lite.hmm+", "thermotoga_Q9X0A3.fasta"], # negative
