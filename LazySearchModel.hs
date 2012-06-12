@@ -117,7 +117,7 @@ data SearchGen pt r =
  -- We need a short word meaning 'birthday' or 'date of manufacture'.
  
 -- @ start history.tex
-data History placement = History [Aged (Scored placement)]
+newtype History placement = History [Aged (Scored placement)]
 -- @ end history.tex
   deriving (Show, Eq)
 unHistory :: History a -> [Aged (Scored a)]
@@ -166,9 +166,6 @@ extendUsefulHistory :: AUS a -> History a -> History a
 extendUsefulHistory (Aged Useless _) h = h
 extendUsefulHistory (Aged (Useful a) age) h = Aged a age `hcons` h
 
-
-
-
 type AUS a = Aged (Utility (Scored a))
 
 
@@ -195,17 +192,17 @@ instance Ord (History a) where
 -------------------------------------------------------V
 -- @ start everygen.tex
 everyPt :: SearchGen pt r -> Age -> Scored pt
-         -> Rand r [Aged (Utility (Scored pt))]
-everyPt ss age startPt = do
-  successors <- mapM (nextPt ss) (repeat startPt)
+        -> Rand r [Aged (Utility (Scored pt))]
+everyPt sg age startPt = do
+  successors <- mapM (nextPt sg) (repeat startPt)
   tagged <- zipWithM agedUtility successors [succ age..]
   let (useless, Aged (Useful newPt) newAge : _) =
                         span (isUseless . unAged) tagged
-  nextPts <- everyPt ss newAge newPt
+  nextPts <- everyPt sg newAge newPt
   return $ Aged (Useful startPt) age : useless ++ nextPts
 
   where agedUtility pt age =
-           utility ss move >>= \u -> return $ Aged u age
+           utility sg move >>= \u -> return $ Aged u age
          where move = Move { older = startPt, younger = pt
                            , youngerAge = age }
 -- @ end everygen.tex
