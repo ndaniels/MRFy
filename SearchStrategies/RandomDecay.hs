@@ -2,7 +2,7 @@
 {-# LANGUAGE BangPatterns, ScopedTypeVariables #-}
 module SearchStrategies.RandomDecay where
 
-import Control.Monad.Random
+import Control.Monad.LazyRandom
 import Data.List (sortBy)
 import qualified Data.Vector.Unboxed as V
 
@@ -44,7 +44,7 @@ data Pop = Pop { improved :: Bool   -- ^ Better than previous generation
 -- Invariant: @length placements == ceiling (exp logPop)@.
 
 
-firstPop :: Int -> Scorer Placement -> Rand r Placement -> Rand r Pop
+firstPop :: RandomGen r => Int -> Scorer Placement -> Rand r Placement -> Rand r Pop
 firstPop n score placement = do
   ps <- fmap (map score) $ sequence $ take n $ repeat placement
   return $ Pop True (log (fromIntegral n)) (sortBy (flip compare) ps)

@@ -9,37 +9,27 @@ Name:                mrfy
 -- standards guiding when and how versions should be incremented.
 Version:             0.1
 
--- A short (one-line) description of the package.
 Synopsis:            Protein remote homology detection using Markov random fields
 
--- A longer description of the package.
 -- Description:         
 
--- URL for the project homepage or repository.
 Homepage:            http://bcb.cs.tufts.edu/mrfy
 
--- The license under which the package is released.
 License:             MIT
 
 -- The file containing the license text.
 --License-file:        LICENSE
 
 -- The package author(s).
-Author:              Noah M. Daniels
-
--- An email address to which users can send suggestions, bug reports,
--- and patches.
+Author:              Noah M. Daniels, Andrew Gallant, Norman Ramsey
 Maintainer:          ndaniels@cs.tufts.edu
-
 -- A copyright notice.
 -- Copyright:           
 
 Category:            Science
-
 Build-type:          Simple
 
--- Constraint on the version of Cabal needed to build this package.
-Cabal-version:       >=1.2
+Cabal-version:       >=1.6
 
 Extra-source-files: *.hs, SearchStrategies/*.hs
 
@@ -60,9 +50,9 @@ Executable mrfy
                  data-memocombinators >=0.4.2,
                  parsec,
                  vector >=0.9,
-                 Unixutils >= 1.48.1,
-                 QuickCheck,
-                 MonadRandom >= 0.1.6
+                 Unixutils == 1.48.1,   
+                      -- Unixutils 1.50 fails to install
+                 QuickCheck
 
                     -- cabal install --constraint="template-haskell == 2.5.0.0" haskell-src-meta
   

@@ -1,7 +1,7 @@
 {-# LANGUAGE BangPatterns, ScopedTypeVariables #-}
 module SearchStrategy where
 
-import Control.Monad.Random
+import Control.Monad.LazyRandom
 import qualified Data.List as DL
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
@@ -114,7 +114,7 @@ genGuess :: (Random r, Fractional r, Ord r) => Seed -> [(Int, r)] -> Int -> Plac
 genGuess seed dist n = DL.sort $ take n $ randomsDist (mkStdGen seed) dist
 -}
 
-projInitialGuess :: InitialGuesser r
+projInitialGuess :: RandomGen r => InitialGuesser r
 projInitialGuess hmm _ qs betas = return $ initialGuess' betas 0 0
   where initialGuess' [] _ _ = []
   -- trace ("g: " ++ show g ++ " f: " ++ show f ++ " pos: " ++ show pos ++ " lastB: " ++ show lastB ++ " lastP: " ++ show lastP) $

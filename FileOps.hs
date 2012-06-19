@@ -5,7 +5,7 @@ module FileOps
        )
 where
   
-import Control.Monad.Random
+import Control.Monad.LazyRandom
 import Control.Parallel.Strategies
 import ParRandom
 

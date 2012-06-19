@@ -15,3 +15,9 @@ output
 psipred-trash
 *~
 /dist
+/mrfy.aux
+/mrfy.hp
+/mrfy.ps
+/mrfy.summary
+/mrfy.summary*ghc-opt
+

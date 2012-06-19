@@ -2,7 +2,7 @@
 {-# OPTIONS_GHC -Wall -fno-warn-name-shadowing #-}
 module SearchStrategies.SimulatedAnnealing where
 
-import Control.Monad.Random
+import Control.Monad.LazyRandom
 
 import LazySearchModel
 import Score

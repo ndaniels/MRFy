@@ -16,7 +16,7 @@ module LazySearchModel
 
 where
   
-import Control.Monad.Random
+import Control.Monad.LazyRandom
 import Control.Monad
 import Data.Function
 
@@ -173,7 +173,7 @@ instance Functor Aged where
   fmap f (Aged a age) = Aged (f a) age
 
 
-scoreUtility :: Move a -> Rand gen (Utility (Scored a))
+scoreUtility :: RandomGen gen => Move a -> Rand gen (Utility (Scored a))
 scoreUtility (Move { younger, older }) = return $
   if scoreOf younger < scoreOf older then Useful younger else Useless
                                          
@@ -191,7 +191,8 @@ instance Ord (History a) where
 
 -------------------------------------------------------V
 -- @ start everygen.tex
-everyPt :: SearchGen pt r -> Age -> Scored pt
+everyPt :: RandomGen r
+        => SearchGen pt r -> Age -> Scored pt
         -> Rand r [Aged (Utility (Scored pt))]
 everyPt sg age startPt = do
   successors <- mapM (nextPt sg) (repeat startPt)
@@ -210,7 +211,8 @@ everyPt sg age startPt = do
   
 --------------------------------------------------------
 -- @ start search.tex
-search :: SearchStrategy pt r -> Rand r (History pt)
+search :: RandomGen r
+       => SearchStrategy pt r -> Rand r (History pt)
 search (SS strat test) =
   fmap test . everyPt strat 0 =<< pt0 strat
 -- @ end search.tex
@@ -221,7 +223,7 @@ data FullSearchStrategy placement r =
                   , fssBest :: pt -> placement }
 
 -- @ start fullsearch.tex
-fullSearch :: FullSearchStrategy a r -> Rand r (History a)
+fullSearch :: RandomGen r => FullSearchStrategy a r -> Rand r (History a)
 fullSearch (FSS gen stop best) = fmap (fmap best . stop) . everyPt gen 0 =<< pt0 gen
 -- @ end fullsearch.tex        
 

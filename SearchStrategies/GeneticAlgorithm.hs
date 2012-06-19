@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -Wall -fno-warn-name-shadowing #-}
 module SearchStrategies.GeneticAlgorithm where
 
-import Control.Monad.Random
+import Control.Monad.LazyRandom
 import Control.Parallel.Strategies
 
 import Data.List

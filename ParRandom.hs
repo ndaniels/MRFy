@@ -3,7 +3,7 @@ module ParRandom
        )
        where
 
-import Control.Monad.Random
+import Control.Monad.LazyRandom
 import Control.Parallel.Strategies
 
 -- | Performs a bunch of stochastic computations in parallel.

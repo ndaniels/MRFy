@@ -7,7 +7,7 @@ module HyperTriangles
        where
 
 -- ^ Functions for counting and finding points in hypertriangles
-import Control.Monad.Random
+import Control.Monad.LazyRandom
 import Data.Ratio
 
 import Test.QuickCheck

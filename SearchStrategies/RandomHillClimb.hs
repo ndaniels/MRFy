@@ -2,7 +2,7 @@
 {-# LANGUAGE BangPatterns, ScopedTypeVariables #-}
 module SearchStrategies.RandomHillClimb where
 
-import Control.Monad.Random
+import Control.Monad.LazyRandom
 import qualified Data.Vector.Unboxed as V
 
 import Beta
@@ -21,7 +21,7 @@ nss hmm searchP query betas scorer = fullSearchStrategy
   (takeByAgeGap (acceptableAgeGap searchP))
   id
 
-initialize :: HMM -> SearchParameters -> QuerySequence
+initialize :: RandomGen r => HMM -> SearchParameters -> QuerySequence
            -> [BetaStrand] -> Rand r Placement
 initialize hmm searchP query betas =
   projInitialGuess hmm (getSecPreds searchP) query betas
