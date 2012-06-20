@@ -67,6 +67,7 @@ takeByAgeGap continue = take emptyHistory
 -- If no maximum gap is specified, then *every* gap is acceptable.
 acceptableAgeGap :: SearchParameters -> Age -> Age -> Bool
 acceptableAgeGap searchP a age = maybe True (age - a <=) (convergenceAge searchP)
+                                 && age < generations searchP
 
 
 
