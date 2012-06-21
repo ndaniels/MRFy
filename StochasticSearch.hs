@@ -62,7 +62,7 @@ getSecPreds searchP = case secPreds searchP of
                         Just preds -> preds
                         Nothing -> []
 
-type Placement = [Int] -- list of *starting* residue positions of each beta strand
+type Placement = [Int]-- list of *starting* residue positions of each beta strand
 
 type Temperature = Double
 
@@ -103,7 +103,11 @@ statePath hmm query betas ps = foldr (++) [] $ map viterbiOrBeta $ DL.zip4 hmmAl
         miniQueries = sliceQuery query betas (unScored ps) 1 []
 
 score :: HMM -> QuerySequence -> [BetaStrand] -> Scorer Placement
-score hmm query betas ps = Scored ps (foldr (+) negLogOne $ (parMap rseq) viterbiOrBeta $ DL.zip4 hmmAlignTypes (map traceid miniHMMs) miniQueries $ dupeElements [0..])
+score hmm query betas ps =
+  Scored ps (foldr (+) negLogOne
+  $ (parMap rseq) viterbiOrBeta
+  $ DL.zip4 hmmAlignTypes (map traceid miniHMMs) miniQueries
+  $ dupeElements [0..])
   where viterbiOrBeta :: (BetaOrViterbi, HMM, QuerySequence, Int) -> Score
         -- NMD note: I think we'll have to do something with seq here
         -- to force evaluation of the Viterbis before the Betas (Vs can still be in parallel)
@@ -143,11 +147,16 @@ betaScore query guesses = vfoldr3 betaScore' negLogOne
 sliceQuery :: QuerySequence -> [BetaStrand] -> Placement -> Int -> [QuerySequence] -> [QuerySequence]
 sliceQuery query betas placement queryPos queries = reverse $ sliceQuery' betas placement queryPos queries
   where sliceQuery' :: [BetaStrand] -> Placement -> Int -> [QuerySequence] -> [QuerySequence]
-        sliceQuery' [] [] queryPos queries = (V.drop queryPos query) : queries
-        sliceQuery' [b] [g] queryPos queries = if length betas /= 1 then
-                                             sliceQuery' [] [] queryPos queries
-                                           else
-                                             sliceQuery' [] [] endRes (bQuery : vQuery : [])
+        sliceQuery' [] [] queryPos queries =
+          if length betas == 0 then
+            [query]
+          else
+            (V.drop queryPos query) : queries
+        sliceQuery' [b] [g] queryPos queries =
+          if length betas /= 1 then
+             sliceQuery' [] [] queryPos queries
+          else
+             sliceQuery' [] [] endRes (bQuery : vQuery : [])
           where firstRes = resPosition . head . residues
                 endRes = firstRes b + len b
                 vQuery = vslice "1" 0 (firstRes b) query
