@@ -72,7 +72,7 @@ search strat scorer (s0:seeds) = runFrom seeds firstGen (History []) 0
   firstGen = map scorer $ gen0 strat s0
   runFrom :: [Seed] -> [Scored placement] -> History placement
           -> Age -> (Scored placement, History placement)
-  runFrom (s1:s2:_) oldPop oldHist age =
+  runFrom (s1:s2:seeds') oldPop oldHist age =
     let trialPop  = nextGen strat s1 scorer oldPop
         trialHist = (winner, age) `hcons` oldHist
         winner = minimum trialPop

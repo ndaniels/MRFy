@@ -153,7 +153,7 @@ sliceQuery query betas placement queryPos queries = reverse $ sliceQuery' betas 
           if length betas == 0 then
             [query]
           else
-            (V.drop queryPos query) : queries
+            (U.drop queryPos query) : queries
         sliceQuery' [b] [g] queryPos queries =
           if length betas /= 1 then
              sliceQuery' [] [] queryPos queries
