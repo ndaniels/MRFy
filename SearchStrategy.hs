@@ -2,6 +2,7 @@ module SearchStrategy where
 
 import qualified Data.List as DL
 import qualified Data.Vector as V
+import qualified Data.Vector.Unboxed as U
 import System.Random (mkStdGen, Random, random, randomR, randoms, StdGen)
 
 import Beta
@@ -24,7 +25,7 @@ initialGuess _ _ seed qs betas = initialGuess' betas 0 $ mkStdGen seed
         initialGuess' [] _ _ = []
         initialGuess' (b:bs) lastGuess gen = pos : initialGuess' bs (pos + len b) gen'
           where (pos, gen') = randomR (lastGuess, betaSum) gen
-                betaSum = V.length qs - (foldr (+) 0 $ map len (b:bs))
+                betaSum = U.length qs - (foldr (+) 0 $ map len (b:bs))
 
 geoInitialGuess :: InitialGuesser
 geoInitialGuess _ _ seed qs betas = initialGuess' betas 0 $ mkStdGen seed
@@ -32,7 +33,7 @@ geoInitialGuess _ _ seed qs betas = initialGuess' betas 0 $ mkStdGen seed
         initialGuess' [] _ _ = []
         initialGuess' (b:bs) lastGuess gen = pos : initialGuess' bs (pos + len b) gen'
           where pos = head rand
-                betaSum = V.length qs - (foldr (+) 0 $ map len (b:bs))
+                betaSum = U.length qs - (foldr (+) 0 $ map len (b:bs))
                 (seed, gen') = random gen
 
                 rand = (randomsDist (mkStdGen seed) 
@@ -57,7 +58,7 @@ projInitialGuess hmm _ seed qs betas = initialGuess' betas 0 0
   -- trace ("g: " ++ show g ++ " f: " ++ show f ++ " pos: " ++ show pos ++ " lastB: " ++ show lastB ++ " lastP: " ++ show lastP) $
         initialGuess' (b:bs) lastP lastB = g : initialGuess' bs g pos
           where g = lastP + (floor $ (fromIntegral $ pos - lastB) * f)
-                f = (fromIntegral $ V.length qs) / (fromIntegral $ V.length hmm)
+                f = (fromIntegral $ U.length qs) / (fromIntegral $ V.length hmm)
                 pos = (resPosition $ head $ residues b)
 
 checkGuess :: [BetaStrand] -> Placement -> Bool

@@ -1,6 +1,6 @@
 module Constants where
 
-import Data.Vector
+import Data.Vector.Unboxed
 
 type Alphabet = Vector Char
   

@@ -5,7 +5,7 @@ import Control.Parallel (par)
 import Control.Parallel.Strategies
 
 import Data.List
-import qualified Data.Vector as V
+import qualified Data.Vector.Unboxed as V
 import System.Random (mkStdGen, randomR, randoms, StdGen)
 
 import Debug.Trace (trace)
@@ -25,12 +25,9 @@ import Viterbi
 nss :: NewSS
 nss hmm searchP query betas =
   SS { gen0 = \seed -> initialize' hmm searchP seed query betas 
-     , nextGen = \seed scorer placements ->
-                  mutate' searchP query betas seed scorer placements
-     , accept = \seed hist age -> 
-                 accept' searchP seed hist age
-     , quit = \hist age ->
-               terminate' searchP hist age
+     , nextGen = mutate' searchP query betas
+     , accept = histProgresses scoreProgresses
+     , quit = terminate' searchP 
      }
 
 initialize' :: HMM -> SearchParameters -> Seed -> QuerySequence -> [BetaStrand] -> [Placement]
@@ -39,13 +36,7 @@ initialize' hmm searchP seed query betas =
       $ take (getSearchParm searchP populationSize) rands
   where rands = (randoms (mkStdGen seed)) :: [Int]
 
-accept' :: SearchParameters -> Seed -> History Placement -> Age -> Bool
-accept' _ _ (History ps) _ = ok ps
-  where ok []        = error "empty history passed to accept predicate" 
-        ok [s1]      = True 
-        ok ((s1,_):(s2,_):_) = scoreOf s1 < scoreOf s2 
-
-terminate' :: SearchParameters -> History Placement -> Age -> Bool
+terminate' :: SearchParameters -> History a -> Age -> Bool
 terminate' searchP (!_scores) age = showMe $ not $ age < (generations searchP)
   where showMe = if not $ (10.0 * ((fromIntegral age)
                                    / (fromIntegral (generations searchP))))

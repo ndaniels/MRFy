@@ -2,6 +2,7 @@ module ShowAlignment where
 
 import Data.Char
 import qualified Data.Vector as V
+import qualified Data.Vector.Unboxed as U
 
 import Beta
 import Constants
@@ -46,11 +47,11 @@ showAlignment :: HMM
               -> Alphabet
               -> String
 showAlignment hmm betas query path len alpha = 
-  niceify $ showA (map (getResidue alpha) $ V.toList query) path 1 Mat [] [] []
-  where model i = alpha V.! ai
-          where (_, ai, _) = V.foldl minWithInd 
+  niceify $ showA (map (getResidue alpha) $ U.toList query) path 1 Mat [] [] []
+  where model i = alpha U.! ai
+          where (_, ai, _) = U.foldl minWithInd 
                                      (0, 0, negLogZero) 
-                                     (V.slice 0 ((V.length mEmissions) - 1) mEmissions)
+                                     (U.slice 0 ((U.length mEmissions) - 1) mEmissions)
                 mEmissions = matchEmissions $ hmm V.! i
 
         minWithInd :: (Int, Int, Score) -> Score -> (Int, Int, Score)

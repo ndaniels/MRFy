@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 module QCTesting where
 
-import qualified Data.Vector as V
+import qualified Data.Vector.Unboxed as V
 import System.Random
 import Test.QuickCheck
 import Test.QuickCheck.Gen

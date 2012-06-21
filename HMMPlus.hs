@@ -10,6 +10,7 @@ where
 
 import Data.Ix
 import qualified Data.Vector as V
+import qualified Data.Vector.Unboxed as U
 import Text.ParserCombinators.Parsec hiding (many, optional, (<|>))
 import Text.ParserCombinators.Parsec.Char
 import Text.Parsec.String
@@ -163,11 +164,11 @@ hmmNodeNum = optSpaces *> (try (const 0 <$> string "COMPO") <|> p_int) <* optSpa
 
 junk = lexeme decimal <* count 2 (lexeme $ char '-')
 
-hmmMatchEmissions     = optSpaces *> (V.fromList <$> many1 (lexeme logProb)) 
+hmmMatchEmissions     = optSpaces *> (U.fromList <$> many1 (lexeme logProb)) 
                       <* optional junk <* eol
                       <?> "matchEmissions"
 
-hmmInsertionEmissions = optSpaces *> (V.fromList <$> many1 (lexeme logProb)) <* eol 
+hmmInsertionEmissions = optSpaces *> (U.fromList <$> many1 (lexeme logProb)) <* eol 
                       <?> "insertionEmissions"
 
 hmmTransitions        = optSpaces *> 

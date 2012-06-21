@@ -1,9 +1,12 @@
-{-# LANGUAGE ScopedTypeVariables, BangPatterns #-}
+{-# LANGUAGE ScopedTypeVariables, BangPatterns, RankNTypes #-}
 module SearchModel
        ( Scorer(..)
        , Age
        , Seed
-       , SearchStrategy(..), History(..)
+       , SearchStrategy(..)
+       , History(..), hcons, emptyHistory
+       , ShortHistory(..)
+       , histProgresses, scoreProgresses
        , search
        )
 
@@ -21,24 +24,40 @@ type Scorer placement = placement -> Scored placement
 -- @ start strategy.tex
 type Age  = Int -- number of generations explored
 type Seed = Int -- source of stochastic variation
-data History placement = History [(Scored placement, Age)]
+data History placement = History { unHistory :: [(Scored placement, Age)] }
   deriving (Show, Eq, Ord)
-hmin :: History placement -> (Scored placement, Age)
-hmin (History as) = minimum as
 hcons :: (Scored placement, Age) -> History placement -> History placement
 hcons a (History as) = History (a:as)
-hmap :: ((Scored placement, Age) -> b) -> (History placement) -> [b]
-hmap f (History as) = map f as
+emptyHistory :: History a
+emptyHistory = History []
 
 -- is there a better name for seed?
 data SearchStrategy placement = 
  SS { gen0    :: Seed -> [placement]
     , nextGen :: Seed -> Scorer placement
               -> [Scored placement] -> [Scored placement]
-    , accept  :: Seed -> History placement -> Age -> Bool
-    , quit    ::         History placement -> Age -> Bool
+    , accept  :: forall a . Seed -> History a -> Age -> Bool
+    , quit    :: forall a .         History a -> Age -> Bool
     }
 -- @ end strategy.tex
+
+
+data ShortHistory a = ShortHistory { younger :: (Scored a, Age)
+                                   , older   :: (Scored a, Age)
+                                   }
+histProgresses :: (Seed -> ShortHistory a -> Bool)
+               -> Seed -> History a -> Age -> Bool
+histProgresses progress seed (History scores) age = ok scores
+  where ok [] = error "asked about scores in an empty history"
+        ok [_] = True
+        ok (s1:s2:_) =
+          if snd s1 == age then
+            progress seed $ ShortHistory { younger = s1, older = s2 }
+          else
+            error "age passed to accept function is inconsistent with history"
+
+scoreProgresses :: Seed -> ShortHistory a -> Bool
+scoreProgresses _ h = (scoreOf . fst . younger) h < (scoreOf . fst . older) h
 
 --------------------------------------------------------
 -- @ start search.tex
@@ -63,8 +82,8 @@ search strat scorer (s0:seeds) = runFrom seeds firstGen (History []) 0
           else
             (oldPop, oldHist)
     in  if quit strat newHist age then
-          (fst $ hmin newHist, newHist) 
+          (fst $ minimum (unHistory newHist), newHist) 
         else
-          runFrom seeds newPop newHist (age + 1)
+          runFrom seeds' newPop newHist (age + 1)
 -- @ end search.tex
 

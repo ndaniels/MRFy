@@ -2,9 +2,10 @@ module HMMProps
 where
   
 import qualified Data.Vector as V
+import qualified Data.Vector.Unboxed as U
 import Test.QuickCheck
 import Test.QuickCheck.Monadic
-
+import Debug.Trace (trace)
 import CommandArgs (Files(..))
 import HMMPlus
 import MRFTypes
@@ -42,7 +43,7 @@ nodeCount = ((+) 1) . sum . map count
 -- | Admissible solution to a problem
 -- admissibleSolution :: HMMModel -> QuerySquence -> [HMMState] -> Bool
 admissibleSolution model query states =
-  residueCount states == V.length query &&
+  residueCount states == U.length query &&
   nodeCount states == V.length model &&
   isPlan7 states
 
@@ -58,36 +59,51 @@ oneTestAdmissible (_, model, queries) =
 oneTestResults ::  (a, HMM, [QuerySequence]) -> [String]
 oneTestResults (_, model, queries) = concatMap (string model) queries
     where string model query =
-            [ "Expected " ++ show (V.length query) ++ " residues; got " ++
+            [ "Expected " ++ show (U.length query) ++ " residues; got " ++
               show (residueCount states)
             , "Expected " ++ show (V.length model) ++ " nodes; got " ++
               show (nodeCount states)
             , "Solution " ++ (if isPlan7 states then "respects" else "violates") ++
-              " Plan7 invariant"]
+              " Plan7 invariant"
+            , "Score is " ++ show (scoreHMM model query states)
+            ]
               where states = unScored $ viterbi (:) (False, False) query model
 
 
 
 scoreHMM :: HMM -> QuerySequence -> [HMMState] -> Score
-scoreHMM nss qss hss = scoreHMM' (V.toList nss) (V.toList qss) hss
+scoreHMM nss qss hss = scoreHMM' (reverse $ V.toList nss) 
+                                 (reverse $ U.toList qss)
+                                 (reverse hss)
+                                 Mat
+-- It is now reversed. So we're reading from the end node
+-- BUT we have to start with the extra (node n) aScore
+-- and we terminate with M, I, or D but must handle node 0 properly
+-- we only *see* node zero if its Ins states are present
+-- (end) Ins: Ins: Mat: Mat: [](beg)
   where
-    scoreHMM' []     []     []       = Score 0.0
-    scoreHMM' (n:ns) (q:qs) (Mat:hs) = eScore n q Mat +
-                                       aScore (head hs) Mat (head ns) +
-                                       scoreHMM'  ns    (q:qs) hs
-    scoreHMM' (n:ns) (q:qs) (Ins:hs) = eScore n q Ins +
-                                       aScore (head hs) Ins n  +
-                                       scoreHMM' (n:ns) (q:qs) hs
-    scoreHMM' (n:ns) (q:qs) (Del:hs) = aScore (head hs) Del (head ns) + 
-                                       scoreHMM' (n:ns) qs  hs
-    scoreHMM' (n:ns) (q:qs) (_  :hs) = error "Invalid state"
-    scoreHMM' _      _      _        = error "WTF"
-    eScore n q state = 
-        case state of
-          Mat -> (matchEmissions     n) V.! q 
-          Ins -> (insertionEmissions n) V.! q 
-          _   -> error ("State " ++ (show state) ++ "cannot emit")
-    aScore = undefined
-
+    scoreHMM' [] [] []         _       = Score 0.0 -- begin
+    scoreHMM' (n:[]) [] []     t       = aScore n Mat t
+    scoreHMM' (n:[]) (q:[]) (Mat:[]) _ = error "node 0 Mat does not emit"
+    scoreHMM' (n:[]) (q:[]) (Del:[]) _ = error "node 0 Del forbidden"
+    scoreHMM' (n:[]) (q:[]) (Ins:[]) _ = eScore n q Ins +
+                                         aScore n Mat Ins
+    -- -- TODO check all these base cases vs Viterbi
+    -- scoreHMM' (n:[]) (q:[]) (Ins:[]) = eScore n q Ins +
+    --                                    aScore n (head hs) Ins  +
+    --                                    scoreHMM' (n:ns) (q:qs) hs
+    scoreHMM' (n:ns) qs (Del:hs) t     = aScore n Del t + 
+                                         scoreHMM' ns qs hs Del
+    scoreHMM' (n:ns) (q:qs) (Mat:hs) t = eScore n q Mat +
+                                         aScore n Mat t +
+                                         scoreHMM' ns qs hs Mat
+    scoreHMM' (n:ns) (q:qs) (Ins:hs) t = eScore n q Ins +
+                                         aScore n Ins t +
+                                         scoreHMM' (n:ns) qs hs Ins
+    scoreHMM' (n:ns) (q:qs) (_:hs)   t = error "Invalid state"
+    scoreHMM' _      _      _        _ = error "WTF"
+    -- note: we are assuming we trust the below functions from Viterbi
+    eScore = emissionScoreNode
+    aScore = transScoreNode
 
 -- next up: perturbing a solution leads to a worse scoring solution
