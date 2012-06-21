@@ -3,9 +3,11 @@ where
   
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
+import Debug.Trace (trace)
 import Test.QuickCheck
 import Test.QuickCheck.Monadic
-import Debug.Trace (trace)
+import System.Random
+
 import CommandArgs (Files(..))
 import HMMPlus
 import MRFTypes
@@ -69,7 +71,49 @@ oneTestResults (_, model, queries) = concatMap (string model) queries
             ]
               where states = unScored $ viterbi (:) (False, False) query model
 
+oneLocalPerturb :: (a, HMM, [QuerySequence]) -> [Double] -> [String]
+oneLocalPerturb (_, model, queries) rands = map string queries
+  where string query =
+          "Original [HMMState]: (" ++ 
+            show (U.length query) ++ " residues; " ++
+            show (V.length model) ++ " nodes)" ++ "\n" ++ show states ++ "\n\n" ++
+          "Globally perturbed [HMMState]: (" ++
+            show (residueCount states') ++ " residues; " ++
+            show (nodeCount states') ++ " nodes)" ++ "\n" ++ show states' ++ "\n\n" ++
+          "Same? " ++ (if states == states' then "YES" else "NO") ++ "\n"
+          where states = unScored $ viterbi (:) (False, False) query model
+                states' = viterbiLocalPerturb rands states
 
+viterbiLocalPerturb :: [Double] -> [HMMState] -> [HMMState]
+viterbiLocalPerturb rands states = vlp rands states
+
+vlp :: [Double] -> [HMMState] -> [HMMState]
+vlp (r:rs) (Mat:Mat:Mat:Mat:ss) =
+  if r <= 0.5 then
+    vlp' rs ss [Mat, Mat, Mat, Mat] [Mat, Ins, Mat, Del, Mat]
+  else
+    vlp' rs ss [Mat, Mat, Mat, Mat] [Mat, Del, Mat, Ins, Mat]
+vlp rs (Ins:Mat:Mat:Del:ss) = vlp' rs ss [Ins, Mat, Mat, Del]
+                                         [Ins, Ins, Mat, Del, Del]
+vlp rs (Del:Mat:Mat:Ins:ss) = vlp' rs ss [Del, Mat, Mat, Ins]
+                                         [Del, Del, Mat, Ins, Ins]
+vlp rs (Mat:Mat:Mat:Del:ss) = vlp' rs ss [Mat, Mat, Mat, Del]
+                                         [Mat, Ins, Mat, Del, Del]
+vlp rs (Del:Mat:Mat:Mat:ss) = vlp' rs ss [Del, Mat, Mat, Mat]
+                                         [Del, Del, Mat, Ins, Mat]
+vlp rs (Mat:Mat:Mat:Ins:ss) = vlp' rs ss [Mat, Mat, Mat, Ins]
+                                         [Mat, Del, Mat, Ins, Ins]
+vlp rs (Ins:Mat:Mat:Mat:ss) = vlp' rs ss [Ins, Mat, Mat, Mat]
+                                         [Ins, Ins, Mat, Del, Mat]
+vlp rs (s:ss) = s : (vlp rs ss)
+vlp _ [] = []
+
+vlp' :: [Double] -> [HMMState] -> [HMMState] -> [HMMState] -> [HMMState]
+vlp' (r:rs) states original transformed =
+  if r <= 0.5 then
+    (head original) : (vlp rs $ (tail original) ++ states)
+  else
+    transformed ++ (vlp rs states)
 
 scoreHMM :: HMM -> QuerySequence -> [HMMState] -> Score
 scoreHMM nss qss hss = scoreHMM' (reverse $ V.toList nss) 
