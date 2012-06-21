@@ -8,6 +8,8 @@ module SearchModel
        )
 
 where
+
+import Debug.Trace (trace)
   
 import Score
 import Viterbi
@@ -40,8 +42,9 @@ data SearchStrategy placement =
 
 --------------------------------------------------------
 -- @ start search.tex
-search :: forall placement 
-        . SearchStrategy placement 
+search :: forall placement
+       . (Show placement)
+       => SearchStrategy placement 
        -> Scorer placement 
        -> [Seed]
        -> (Scored placement, History placement)
@@ -50,7 +53,7 @@ search strat scorer (s0:seeds) = runFrom seeds firstGen (History []) 0
   firstGen = map scorer $ gen0 strat s0
   runFrom :: [Seed] -> [Scored placement] -> History placement
           -> Age -> (Scored placement, History placement)
-  runFrom (s1:s2:seeeds) oldPop oldHist age =
+  runFrom (s1:s2:_) oldPop oldHist age =
     let trialPop  = nextGen strat s1 scorer oldPop
         trialHist = (winner, age) `hcons` oldHist
         winner = minimum trialPop
@@ -59,13 +62,9 @@ search strat scorer (s0:seeds) = runFrom seeds firstGen (History []) 0
             (trialPop, trialHist)
           else
             (oldPop, oldHist)
-    in  if quit strat newHist age then -- TODO quit must change: consider best-ever, convergence
+    in  if quit strat newHist age then
           (fst $ hmin newHist, newHist) 
         else
           runFrom seeds newPop newHist (age + 1)
 -- @ end search.tex
 
--- TODO keep a Scored (Age, Placement) to support Simulated Annealing
--- otherwise, need an out of band "best ever" updated at every step
--- this is also necessary to prevent SimAn from thinking it's improving
--- when in fact it isn't.
