@@ -1,73 +1,106 @@
-{-# LANGUAGE BangPatterns #-}
+{-# OPTIONS_GHC -Wall -fno-warn-name-shadowing #-}
+{-# LANGUAGE BangPatterns, ScopedTypeVariables #-}
 module SearchStrategies.RandomHillClimb where
 
+import Control.Monad.LazyRandom
 import qualified Data.Vector.Unboxed as V
-import System.Random (mkStdGen, randomR, StdGen)
-
-import Debug.Trace (trace)
 
 import Beta
-import Constants
-import HMMPlus
+import LazySearchModel
 import MRFTypes
 import Score
-import SearchModel
 import SearchStrategy
 import StochasticSearch
 import Viterbi
 
 nss :: NewSS
-nss hmm searchP query betas =
-      SS { gen0 = \seed -> initialize' hmm searchP seed query betas 
-         , nextGen = \seed scorer placements ->
-                      mutate' searchP query betas seed scorer placements
-         , accept = histProgresses scoreProgresses
-         , quit = \hist age ->
-                   terminate' searchP hist age
-         }
-initialize' :: HMM -> SearchParameters -> Seed -> QuerySequence -> [BetaStrand] -> [Placement]
-initialize' hmm searchP seed query betas = [projInitialGuess hmm (getSecPreds searchP) seed query betas]
+nss hmm searchP query betas scorer = fullSearchStrategy
+  (fmap scorer $ initialize hmm searchP query betas)
+  (mutate searchP query betas scorer)
+  scoreUtility
+  (takeByAgeGap (acceptableAgeGap searchP))
+  id
 
+initialize :: RandomGen r => HMM -> SearchParameters -> QuerySequence
+           -> [BetaStrand] -> Rand r Placement
+initialize hmm searchP query betas =
+  projInitialGuess hmm (getSecPreds searchP) query betas
 
-terminate' :: SearchParameters -> History a -> Age -> Bool
-terminate' searchP (!hist) age = (showMe $ not $ age < (generations searchP))
-                                    || converge searchP hist age
-  where showMe = if not $ (10.0 * ((fromIntegral age)
-                                   / (fromIntegral (generations searchP))))
-                          `elem` [1.0..10.0] then
-                   id
-                 else
-                   trace ((show age) ++ " generations complete")
+mutate :: forall r
+       .  RandomGen r
+       => SearchParameters
+       -> QuerySequence
+       -> [BetaStrand]
+       -> Scorer Placement
+       -> Scored Placement
+       -> Rand r (Scored Placement)
+mutate _ query betas scorer (Scored oldp _) =
+  fmap scorer $ mutate oldp 0 0
+  where mutate :: Placement -> Int -> Int -> Rand r Placement
+        mutate [] _ _ = return []
+        mutate _p@(_:gs) i lastGuess = do -- loop inv: i+length _p == length oldp
+          g'  <- getRandomR $ betaRange query betas oldp lastGuess i
+          gs' <- mutate gs (i+1) g'
+          return $ g' : gs'
 
-converge :: SearchParameters -> History placement -> Age -> Bool
-converge searchP (History ((_,a):as)) age = 
-    case maxGap of
-        Just x -> a < age - x
-        Nothing -> False
-  where maxGap = convergenceAge searchP
+        _move i leftBound =
+          if i == length oldp then return []
+          else
+            do g  <- getRandomR (leftBound, rightBound oldp i query - width)
+               gs <- _move (i+1) (g + width)
+               return $ g : gs
+          where width = len (betas !! i)
+              
 
--- invariant: len [SearchSolution] == 1
-mutate' :: SearchParameters
-        -> QuerySequence
-        -> [BetaStrand]
-        -> Seed
-        -> Scorer Placement
-        -> [Scored Placement]
-        -> [Scored Placement]
-mutate' searchP query betas seed scorer placements =
-  [scorer $ mutate'' oldp 0 (mkStdGen seed) 0]
-  where oldp = unScored $ head placements
+-- | Calling @randomizePlacement betas oldp n@ returns a new placement in which
+-- each beta strand is placed in a random location chosen uniformly between
+-- its left and right bounds.  The left and right bound of each beta
+-- strand is the adjacent beta strand; where there is no adjacent beta
+-- strand, the bound is 0 on the left and @n@ on the right.  The representation
+-- is a list @betas@ of beta strands and a list @oldp@ of their leftmost positions.
+--
+-- precondition: length betas == length oldp && maxRight >= sum betas
+randomizePlacement 
+  :: RandomGen r => [BetaStrand] -> Placement -> Int -> Rand r Placement
+randomizePlacement betas oldp maxRight = shiftFrom 0 0
+  where shiftFrom i leftBound =
+          if i == length oldp then return []
+          else do g  <- getRandomR (leftBound, rightBound - width)
+                  gs <- shiftFrom (i+1) (g+width)
+                  return $ g : gs
+            where width = len (betas !! i)
+                  rightBound = if succ i < length oldp then oldp !! succ i
+                               else maxRight
 
-        mutate'' :: Placement -> Int -> StdGen -> Int -> Placement
-        mutate'' [] _ _ _ = []
-        mutate'' (g:gs) i gen lastGuess = g' : mutate'' gs (i+1) gen' g'
-          where (g', gen') = randomR (lo, hi) gen
-                lo = if i == 0 then
-                       0
-                     else
-                       (len $ (betas !! (i - 1))) + lastGuess
-                hi = if i == (length oldp) - 1 then
-                       V.length query - (len $ betas !! i)
-                     else
-                       (oldp !! (i + 1)) - (len $ betas !! i)
+-- here's another version that passes a list of right bounds
+randomizePlacement' 
+  :: RandomGen r => [BetaStrand] -> Placement -> Int -> Rand r Placement
+randomizePlacement' betas oldp maxRight = shiftFrom betas 0 (tail oldp ++ [maxRight])
+  where shiftFrom (beta:betas) leftBound (rightBound:nextBounds) = do
+          g  <- getRandomR (leftBound, rightBound - len beta)
+          gs <- shiftFrom betas (g + len beta) nextBounds
+          return $ g : gs
+        shiftFrom [] _ [] = return []
+        shiftFrom _ _ _ = error "Norman blew the shift"
 
+randomizePlacementNoAllocation
+  :: RandomGen r => [BetaStrand] -> Placement -> Int -> Rand r Placement
+randomizePlacementNoAllocation betas oldp maxRight = shiftFrom betas 0 (tail oldp)
+  where shiftFrom (beta:betas) leftBound rights = do
+          g  <- getRandomR (leftBound, rightBound - len beta)
+          gs <- shiftFrom betas (g + len beta) nextBounds
+          return $ g : gs
+            where (rightBound, nextBounds) =
+                    case rights of []     -> (maxRight, error "shift bounds")
+                                   (b:bs) -> (b, bs)
+        shiftFrom [] _ _ = return []
+
+rightBound :: Placement -> Int -> QuerySequence -> Int
+rightBound oldp i query = if succ i < length oldp then oldp !! succ i
+                          else V.length query
+       
+betaRange :: QuerySequence -> [BetaStrand] -> Placement -> Int -> Int -> (Int, Int)
+betaRange query betas oldp lastGuess i =
+  (leftBound, rightBound oldp i query - len (betas !! i))
+  where leftBound  = if i == 0 then 0
+                     else len (betas !! pred i) + lastGuess

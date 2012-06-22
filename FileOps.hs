@@ -5,7 +5,9 @@ module FileOps
        )
 where
   
+import Control.Monad.LazyRandom
 import Control.Parallel.Strategies
+import ParRandom
 
 import Data.Array
 import Data.List as DL
@@ -13,6 +15,7 @@ import System.Console.CmdArgs
 import System.Random (getStdGen, mkStdGen, randoms)
 import qualified Data.Vector.Unboxed as V hiding (map)
 import System.Environment
+import Test.QuickCheck
 
 import Bio.Sequence
 import Bio.Sequence.Fasta
@@ -23,12 +26,12 @@ import CommandArgs
 import Constants
 import HMMPlus
 import HMMProps
-import qualified LazySearchModel
-import qualified BetterLazySearchModel
+import HyperTriangles
+import LazySearchModel
 import MRFTypes
 import RunPsiPred
 import Score
-import SearchModel
+import SearchStrategy (tickProp)
 import ShowAlignment
 import StochasticSearch
 import Viterbi
@@ -86,40 +89,53 @@ runCommand (TestHMM "viterbi-local-perturb-micro8") =
      rng <- getStdGen
      mapM_ putStrLn $ oneLocalPerturb test $ randoms rng
 
+runCommand (TestHMM "tickProp") =
+  do quickCheck tickProp
+
+runCommand (TestHMM "countEnumLaw") =
+  do quickCheck countEnumLaw
+
+runCommand (TestHMM "pointsWidthLaw") =
+  do quickCheck pointsWidthLaw
+
+runCommand (TestHMM "twoCountsLaw") =
+  do quickCheck twoCountsLaw
+
+runCommand (TestHMM "freqLaw") =
+  do quickCheck freqLaw
+
+runCommand (TestHMM "isEnumLaw") =
+  do quickCheck isEnumLaw
+
+runCommand (TestHMM "randomLaw") =
+  do quickCheck randomLaw
+
 runCommand (TestHMM t) =
   error $ "I never heard of test " ++ t
 
-runCommand (AlignmentSearch searchParams files) = run
-  where hmmPlusFile = hmmPlusF files
-        fastaFile = fastaF files
-        outFile = outputF files
-        run = do -- secPred <- getSecondary $ fastaFile
-                 (header, hmm, queries) <- loadTestData files
-                 let bs = betas header
-
-                 -- putStrLn $ show queries
-                 let strat q = strategy searchParams hmm searchParams q bs
-                 let scorer q = score hmm q bs
-
-                 let searchQ r q = search (strat q) (scorer q) (newRandoms r)
-                 let trySearch r q = if alignable q bs then searchQ r q else noSearch
-                 rgn <- getStdGen
-                 let searches = map (\r q -> trySearch r q) $
-                       take (multiStartPopSize searchParams) ((randoms rgn) :: [Seed])
-
-                 let results = map (popSearch searches) queries
-
-                 let output  =  [ "Score: " ++ (show $ scoreOf $ fst $ head results) 
-                                , ""
-                                , concat $ intersperse "\n\n" $
-                                  zipWith (\(ss, hist) query ->
-                                          outputAlignment hmm bs ss query)
-                                          results queries
-                                ]
-                 if outFile == "stdout" then
-                      (mapM_ putStrLn output)
-                      else
-                      (writeFile outFile $ concat $ intersperse "\n" output)
+runCommand (AlignmentSearch searchParams
+                (files @ Files { hmmPlusF = hmmPlusFile, outputF = outFile })) = do
+  (header, hmm, queries) <- loadTestData files
+  rgn <- getStdGen
+  -- secPred <- getSecondary $ fastaF files
+  finish (betas header) hmm queries (randoms rgn)
+      where finish bs hmm queries seeds =
+              if outFile == "stdout" then
+                  mapM_ putStrLn output
+              else
+                  mapM_ (writeFile outFile) $ intersperse "\n" output
+              where popSize  = multiStartPopSize searchParams
+                    searches = take popSize $ map trySearch seeds
+                    trySearch r q = if alignable q bs then searchQ else noSearch
+                      where searchQ = evalRand search (mkStdGen r)
+                            search  = fullSearch (strat (score hmm q bs))
+                            strat   = strategy searchParams hmm searchParams q bs
+                    results = map (historySolution . popSearch searches) queries
+                    output  = [ "Score: " ++ (show $ scoreOf $ head results) 
+                              , ""
+                              , concat $ intersperse "\n\n" $
+                                zipWith (outputAlignment hmm bs) results queries
+                              ]
 
 
 
@@ -132,12 +148,11 @@ outputAlignment hmm betas ps querySeq =
 
 
 
-popSearch :: [QuerySequence -> (Scored Placement, History Placement)]
+popSearch :: [QuerySequence -> History Placement]
           -> QuerySequence
-          -> (Scored Placement, History Placement)
+          -> History Placement
 popSearch searches q = minimum $ (parMap rseq) (\s -> s q) searches
 
-newRandoms s = randoms $ mkStdGen s
-noSearch = (Scored [] negLogZero, History [])
+noSearch = Aged (Scored [] negLogZero) 0 `hcons` emptyHistory
 
 

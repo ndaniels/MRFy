@@ -1,6 +1,7 @@
 module MRFTypes
 where
 
+import Data.Function
 import Data.Ix
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
@@ -135,10 +136,11 @@ instance Show BetaStrand where
            " [Length: " ++ (show $ len s) ++ "]" ++
            "\n" ++ (intercalate "\n" $ map show $ residues s)
 instance Eq BetaStrand where
-  s1 == s2 = (serial s1) == (serial s2)
+  s1 == s2 = (serial s1 == serial s2)
 instance Ord BetaStrand where
-  compare s1 s2 = compare (firstRes s1) (firstRes s2)
-    where firstRes = resPosition . head . residues
+  compare = compare `on` residues
+  -- fixed previous version that gave phony equalities
+  -- by considering only the first residue ---NR
 
 
 instance Show BetaResidue where
@@ -146,9 +148,9 @@ instance Show BetaResidue where
            ++ " [Strand serial: " ++ (show $ resStrandSerial r)
            ++ "\n" ++ (intercalate "\n" $ map show $ pairs r)
 instance Eq BetaResidue where
-  r1 == r2 = (resPosition r1) == (resPosition r2)
+  (==) = (==) `on` resPosition
 instance Ord BetaResidue where
-  compare r1 r2 = compare (resPosition r1) (resPosition r2)
+  compare = compare `on` resPosition
 
 
 instance Show BetaPair where
@@ -158,6 +160,6 @@ instance Show BetaPair where
            ", Residue Index: " ++ (show $ residueInd p) ++ "]"
 
 instance Eq BetaPair where
-  p1 == p2 = (pairPosition p1) == (pairPosition p2)
+  (==) = (==) `on` pairPosition
 instance Ord BetaPair where
-  compare p1 p2 = compare (pairPosition p1) (pairPosition p2)
+  compare = compare `on` pairPosition

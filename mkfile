@@ -2,7 +2,7 @@ STRATS=`echo SearchStrategies/*.hs`
 SRC=$STRATS Beta.hs Constants.hs FileOps.hs HMMPlus.hs Main.hs Viterbi.hs \
          StochasticSearch.hs SearchStrategy.hs \
 		 HMMArby.hs HMMProps.hs \
-         Wrappers.hs ConstantsGen.hs CommandArgs.hs SearchModel.hs \
+         Wrappers.hs ConstantsGen.hs CommandArgs.hs LazySearchModel.hs \
 				 Score.hs 
 
 TGT=mrfy
@@ -32,6 +32,7 @@ tags:V:
 clean:V:
 	rm -rf .crud-*
 	rm -f $TGT ${TGT}prof
+    rm -f *.hi */*.hi *.o */*.o
 
 test:V: $TGT
 	./$TGT testing/8.hmm+ testing/8.fasta
