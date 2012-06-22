@@ -1,3 +1,5 @@
+{-# LANGUAGE BangPatterns #-}
+
 module MRFTypes
 where
 
@@ -18,10 +20,10 @@ type InsertEmissions = EmissionProbabilities
 type HMM = V.Vector HMMNode
 
 data HMMNode = 
-     HMMNode { nodeNum :: Int
-             , matchEmissions :: EmissionProbabilities
-             , insertionEmissions :: InsertEmissions
-             , transitions :: StateTransitions
+     HMMNode { nodeNum :: !Int
+             , matchEmissions :: !EmissionProbabilities
+             , insertionEmissions :: !InsertEmissions
+             , transitions :: !StateTransitions
              }
              deriving (Show)
 
@@ -30,15 +32,15 @@ data HMMState = Mat | Ins | Del
                 deriving (Show, Ord, Eq, Enum, Ix)
 
 data TransitionProbabilities = 
-     TransitionProbabilities { m_m :: TransitionProbability
-                             , m_i :: TransitionProbability
-                             , m_d :: TransitionProbability
-                             , i_m :: TransitionProbability
-                             , i_i :: TransitionProbability
-                             , d_m :: TransitionProbability
-                             , d_d :: TransitionProbability
-                             , b_m :: TransitionProbability
-                             , m_e :: TransitionProbability
+     TransitionProbabilities { m_m :: !TransitionProbability
+                             , m_i :: !TransitionProbability
+                             , m_d :: !TransitionProbability
+                             , i_m :: !TransitionProbability
+                             , i_i :: !TransitionProbability
+                             , d_m :: !TransitionProbability
+                             , d_d :: !TransitionProbability
+                             , b_m :: !TransitionProbability
+                             , m_e :: !TransitionProbability
                              }
                              deriving (Show)
 
@@ -48,9 +50,9 @@ mkTransProbs t0 t1 t2 t3 t4 t5 t6 = TransitionProbabilities t0 t1 t2 t3 t4 t5 t6
                                                             (mkTransProb Mat End negLogZero)
 
 data TransitionProbability = 
-     TransitionProbability { logProbability :: Score
-                           , fromState :: HMMState
-                           , toState :: HMMState
+     TransitionProbability { logProbability :: !Score
+                           , fromState :: !HMMState
+                           , toState :: !HMMState
                            } deriving (Show)
 
 mkTransProb :: HMMState -> HMMState -> Score -> TransitionProbability
