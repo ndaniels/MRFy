@@ -91,37 +91,37 @@ runCommand (TestHMM "viterbi-local-perturb-micro8") =
      mapM_ putStrLn $ oneLocalPerturb test $ randoms rng
 
 runCommand (TestHMM "tickProp") =
-  do quickCheck tickProp
+  quickCheck tickProp
 
 runCommand (TestHMM "ubProp") =
-  do quickCheck ubProp
+  quickCheck ubProp
 
 runCommand (TestHMM "buProp") =
-  do quickCheck buProp
+  quickCheck buProp
 
 runCommand (TestHMM "blockNoMergeProp") =
-  do quickCheck blockNoMergeProp
+  quickCheck blockNoMergeProp
 
 runCommand (TestHMM "mergeMergeProp") =
-  do quickCheck mergeMergeProp
+  quickCheck mergeMergeProp
 
 runCommand (TestHMM "countEnumLaw") =
-  do quickCheck countEnumLaw
+  quickCheck countEnumLaw
 
 runCommand (TestHMM "pointsWidthLaw") =
-  do quickCheck pointsWidthLaw
+  quickCheck pointsWidthLaw
 
 runCommand (TestHMM "twoCountsLaw") =
-  do quickCheck twoCountsLaw
+  quickCheck twoCountsLaw
 
 runCommand (TestHMM "freqLaw") =
-  do quickCheck freqLaw
+  quickCheck freqLaw
 
 runCommand (TestHMM "isEnumLaw") =
-  do quickCheck isEnumLaw
+  quickCheck isEnumLaw
 
 runCommand (TestHMM "randomLaw") =
-  do quickCheck randomLaw
+  quickCheck randomLaw
 
 runCommand (TestHMM t) =
   error $ "I never heard of test " ++ t
