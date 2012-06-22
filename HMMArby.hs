@@ -1,7 +1,9 @@
 {-# LANGUAGE FlexibleInstances #-}
-module QCTesting where
+module HMMArby where
 
-import qualified Data.Vector.Unboxed as V
+import Control.Monad
+import qualified Data.Vector as V
+import qualified Data.Vector.Unboxed as U
 import System.Random
 import Test.QuickCheck
 import Test.QuickCheck.Gen
@@ -30,22 +32,27 @@ verifySearchGuess hmm (b:bs) (g:gs) = range && noClash
 
 
 instance Arbitrary (V.Vector Int) where
+{-
   arbitrary = do
     let aas = choose (0, 20) :: Gen Int
     seq <- listOf aas :: Gen [Int]
     return $ V.fromList seq
+-}
+  arbitrary = fmap V.fromList arbitrary
+
+prob :: Gen Double
+prob = choose (0.0, 1.0)
 
 instance Arbitrary HMMNode where
   arbitrary = do
-    rMatEmi <- vectorOf 20 $ choose (0.0, 1.0) :: Gen [Double]
-    rInsEmi <- vectorOf 20 $ choose (0.0, 1.0) :: Gen [Double]
+    (rMatEmi, rInsEmi) <- fmap unzip $ listOf1 (liftM2 (,) prob prob)
     rTrans <- arbitrary :: Gen TransitionProbabilities
     return HMMNode { nodeNum = 0
-                   , matchEmissions = toScoreVec rMatEmi
+                   , matchEmissions     = toScoreVec rMatEmi
                    , insertionEmissions = toScoreVec rInsEmi
                    , transitions = rTrans
                    }
-    where toScoreVec = V.fromList . map toScore
+    where toScoreVec = U.fromList . map toScore
 
 instance Arbitrary TransitionProbabilities where
   arbitrary = do

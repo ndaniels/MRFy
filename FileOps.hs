@@ -24,6 +24,7 @@ import Beta
 
 import CommandArgs
 import Constants
+import HMMArby
 import HMMPlus
 import HMMProps
 import HyperTriangles
@@ -91,6 +92,18 @@ runCommand (TestHMM "viterbi-local-perturb-micro8") =
 
 runCommand (TestHMM "tickProp") =
   do quickCheck tickProp
+
+runCommand (TestHMM "ubProp") =
+  do quickCheck ubProp
+
+runCommand (TestHMM "buProp") =
+  do quickCheck buProp
+
+runCommand (TestHMM "blockNoMergeProp") =
+  do quickCheck blockNoMergeProp
+
+runCommand (TestHMM "mergeMergeProp") =
+  do quickCheck mergeMergeProp
 
 runCommand (TestHMM "countEnumLaw") =
   do quickCheck countEnumLaw

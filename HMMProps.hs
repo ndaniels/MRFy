@@ -1,6 +1,7 @@
 module HMMProps
 where
   
+import Control.Monad
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
 import Debug.Trace (trace)
@@ -24,6 +25,8 @@ isPlan7 = ok
         ok (_:states)  = ok states
         ok []  = True
         
+blockIsPlan7 :: [Block HMMState] -> Bool
+blockIsPlan7 = isPlan7 . map state
 
 
 -- | Counting residues and plan7 nodes
@@ -36,7 +39,7 @@ residueCount = sum . map count
 -- The final node of the HMM is never considered
 -- in the state path, because it's a transition
 -- to the non-emitting end state
-nodeCount = ((+) 1) . sum . map count
+nodeCount = succ . sum . map count
   where count Mat = 1
         count Del = 1
         count Ins = 0
@@ -86,6 +89,47 @@ oneLocalPerturb (_, model, queries) rands = map string queries
 
 viterbiLocalPerturb :: [Double] -> [HMMState] -> [HMMState]
 viterbiLocalPerturb rands states = vlp rands states
+
+data Block a = Block { state :: a, number :: Int }
+  -- ^ invariant, number > 0
+  deriving (Eq, Show)
+
+blockify :: Eq a => [a] -> [Block a]
+blockify [] = []
+blockify (s:ss) = accum s 1 ss
+  where accum cur count [] = [Block cur count]
+        accum cur count (s:ss)
+          | s == cur  = accum cur (succ count) ss
+          | otherwise = Block cur count : accum s 1 ss
+                        
+unblockify :: [Block a] -> [a]
+unblockify = concatMap (\b -> replicate (number b) (state b))
+
+instance (Arbitrary a) => Arbitrary (Block a) where
+  arbitrary = do Positive pos <- arbitrary
+                 state <- arbitrary
+                 return $ Block state (pos `min` 1000)
+
+mergeBlocks :: Eq a => [Block a] -> [Block a]
+mergeBlocks (b1 : b2 : bs)
+  | state b1 == state b2 = mergeBlocks (Block (state b1) (number b1 + number b2) : bs)
+mergeBlocks (b : bs) = b : mergeBlocks bs
+mergeBlocks [] = []
+
+ubProp :: [HMMState] -> Bool
+ubProp ss = (unblockify . blockify) ss == ss
+buProp :: [Block HMMState] -> Bool
+buProp bs = (blockify . unblockify) bs == mergeBlocks bs
+
+blockNoMergeProp :: [HMMState] -> Bool
+blockNoMergeProp ss = mergeBlocks blocks == blocks
+  where blocks = blockify ss
+        
+mergeMergeProp :: [Block HMMState] -> Bool
+mergeMergeProp bs = mergeBlocks bs == (mergeBlocks . mergeBlocks) bs
+
+
+
 
 vlp :: [Double] -> [HMMState] -> [HMMState]
 vlp (r:rs) (Mat:Mat:Mat:Mat:ss) =
