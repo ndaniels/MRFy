@@ -3,7 +3,7 @@ SRC=$STRATS Beta.hs Constants.hs FileOps.hs HMMPlus.hs Main.hs Viterbi.hs \
          StochasticSearch.hs SearchStrategy.hs \
 		 HMMArby.hs HMMProps.hs \
          Wrappers.hs ConstantsGen.hs CommandArgs.hs LazySearchModel.hs \
-				 Score.hs 
+				 Score.hs Perturb.hs
 
 TGT=mrfy
 CRUDOPTS= -hidir .crud -odir .crud
