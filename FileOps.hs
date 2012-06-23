@@ -128,7 +128,7 @@ runCommand (TestHMM "randomLaw") =
   quickCheck randomLaw
 
 runCommand (TestHMM "all-props") =
-  mapM_ run $ hmmProps ++ hyperProps
+  mapM_ run $ perturbProps ++ hmmProps ++ hyperProps
     where run (s, p) = do { putStrLn ("Testing " ++ s); quickCheck p }
 
 runCommand (TestHMM t) =

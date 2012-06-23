@@ -118,6 +118,11 @@ rejoin xs' ys = foldl (flip (:)) ys xs'
 allMoversStates :: SSeq -> [SSeq]
 allMoversStates = map unblockify . concat . allMovers . blockify
 
+withTaggedStates movers =
+  map (leftMap unblockify) . concat . zipWith tag [1..] . movers . blockify 
+  where tag n bs = map (\b -> (b,n)) bs
+        leftMap f (x, y) = (f x, y)
+        
 roundRobin :: [[a]] -> [[a]]
 roundRobin [] = []
 roundRobin queues = let (heads, tails) = peel queues
@@ -142,7 +147,70 @@ allRightMovers bs = roundRobin $ go [] bs
         okAfter [] = const True
         okAfter (b : _) = canFollow (state b)
 
+decayMovers :: BSeq -> [[BSeq]]
+decayMovers bs = map concat $ roundRobin $ go [] bs
+  where
+    go :: BSeq -> BSeq -> [[[BSeq]]]
+    go left' [] = []
+    go left' (b : right) = decayB b : go (b : left') right
+      where decayB (Block Mat n) =
+              [ block | i <- [1..n], ions <- [(Ins,Del), (Del,Ins)]
+                      , block <- split (i-1) (n-i) ions ]
+            decayB _ = []
+            split :: Int -> Int -> (State, State) -> [[BSeq]]
+            split k_l k_r (plus, minus) =
+              map catMaybes $ diagonals canJoin newLeft' newRight
+                where newLeft' = newSide plus k_l left'
+                      newRight = newSide minus k_r right
+newSide ion n_matches rest =
+  addIon ion tail `consMaybe` rightMovesInto (const True) ion tail
+    where tail = addBlock Mat n_matches rest
 
+
+consMaybe Nothing xs = xs
+consMaybe (Just x) xs = x : xs
+
+addIon :: State -> BSeq -> Maybe BSeq
+addIon s [] = Just [Block s 1]
+addIon s (Block s' n : bs)
+  | s == s' = Just (Block s (succ n) : bs)
+  | canFollow s s' = Just (Block s 1 : Block s' n : bs)
+  | otherwise = Nothing
+
+addBlock :: State -> Int -> BSeq -> BSeq
+addBlock _ 0 bs = bs
+addBlock s n (Block s' n' : bs)
+  | s == s' = Block s (n+n') : bs
+addBlock s n bs = Block s n : bs
+
+canJoin bs@(Block s _ : _) bs'@(Block s' _ : _)
+  | not (canFollow s s') = Nothing
+canJoin bs bs' = Just (bs `rejoin` bs')
+    
+----------------------------------------------------------
+--
+        
+diagonals :: (a -> b -> c) -> [a] -> [b] -> [[c]]
+diagonals f (x0:xs) (y0:ys) =
+  [f x0 y0] : zipCons (map (f x0) ys) (diagonals f xs (y0:ys))
+diagonals _ _ _ = []
+
+zipCons (x:xs) (ys:yss) = (x:ys) : zipCons xs yss
+zipCons []     yss      = yss
+zipCons xs     []       = map (\xs -> [xs]) xs
+
+
+diagonalProp (Positive n) = all nematch $ take (n `min` 200) $ diagonals (+) [0..] [0..]
+  where nematch (x:xs) = all (==x) xs
+        nematch [] = False
+
+
+diagonalsCount :: Positive Int -> Positive Int -> Bool
+diagonalsCount (Positive n') (Positive m') =
+  length (diagonals (\_ _ -> ()) [1..n] [1..m]) == m + n - 1
+    where m = min m' 300
+          n = min m' 300
+ 
 ------------------------------------
 -- properties
 
@@ -150,9 +218,10 @@ rightMoversPermutesProp (Plan7 ss) = all match (rightMoversStates ss)
   where match ss' = sort ss' == sort ss -- big hammer
 
 
-{- needs Arbitrary Plan7
 perturbProps :: [(String, Property)]
-perturbProps = [ ("rightMoversPermutes", property rightMoversPermutesProp)
+perturbProps = [ ("diagonal", property diagonalProp)
+               , ("diagonalCount", property diagonalsCount)
+               , ("rightMoversPermutes", property $
+                                         (error "waiting on (Arbitrary Plan7)" 
+                                         rightMoversPermutesProp :: Gen Bool))
                ]
--}
-perturbProps = error "waiting on (Arbitrary Plan7)"
