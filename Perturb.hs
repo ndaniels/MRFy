@@ -221,7 +221,6 @@ rightMoversPermutesProp (Plan7 ss) = all match (rightMoversStates ss)
 perturbProps :: [(String, Property)]
 perturbProps = [ ("diagonal", property diagonalProp)
                , ("diagonalCount", property diagonalsCount)
-               , ("rightMoversPermutes", property $
-                                         (error "waiting on (Arbitrary Plan7)" 
-                                         rightMoversPermutesProp :: Gen Bool))
+               , ("plan7gen", property isPlan7Prop)
+               , ("rightMoversPermutes", property rightMoversPermutesProp)
                ]
