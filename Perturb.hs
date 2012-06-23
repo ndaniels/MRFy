@@ -111,6 +111,50 @@ allRightMovers bs = roundRobin $ go [] bs
         okAfter [] = const True
         okAfter (b : _) = canFollow (state b)
 
+decayMovers :: BSeq -> [[BSeq]]
+decayMovers bs = map concat $ roundRobin $ go [] bs
+  where
+    go :: BSeq -> BSeq -> [[[BSeq]]]
+    go left' [] = []
+    go left' (b : right) = decayB b : go (b : left') right
+      where decayB (Block Mat n) = split 0 (n-1) (Ins,Del)
+{-
+              [split (i-1) (n-i) pair | i <- [1..n], pair <- [(Ins,Del), (Del,Ins)]] ++
+-}
+            split :: Int -> Int -> (State, State) -> [[BSeq]]
+            split k_l k_r (plus, minus) =
+              map catMaybes $ diagonals canJoin newLeft' newRight
+                where newLeft' = newSide plus k_l left'
+                      newRight = newSide minus k_r right
+    newSide ion n_matches rest =
+      (addBlock ion 1 tail) : rightMovesInto (const True) ion tail
+        where tail = addBlock Mat n_matches rest
+    merge = map concat . roundRobin
+
+addBlock :: State -> Int -> BSeq -> BSeq
+addBlock _ 0 bs = bs
+addBlock s n (Block s' n' : bs)
+  | s == s' = Block s (n+n') : bs
+addBlock s n bs = Block s n : bs
+
+canJoin bs@(Block s _ : _) bs'@(Block s' _ : _)
+  | not (canFollow s s') = Nothing
+canJoin bs bs' = Just (bs `rejoin` bs')
+    
+----------------------------------------------------------
+--
+        
+diagonals :: (a -> b -> c) -> [a] -> [b] -> [[c]]
+diagonals f (x0:xs) (y0:ys) =
+  [f x0 y0] : zipWith (:) (map (f x0) ys) (diagonals f xs (y0:ys))
+diagonals _ _ _ = []
+
+diagonalProp (Positive n) = all nematch $ take (n `min` 200) $ diagonals (+) [0..] [0..]
+  where nematch (x:xs) = all (==x) xs
+        nematch [] = False
+
+
+
 
 ------------------------------------
 -- properties
@@ -121,9 +165,9 @@ rightMoversPermutesProp (Plan7 ss) = all match (rightMoversStates ss)
   where match ss' = sort ss' == sort ss -- big hammer
 
 
-{- needs Arbitrary Plan7
 perturbProps :: [(String, Property)]
-perturbProps = [ ("rightMoversPermutes", property rightMoversPermutesProp)
+perturbProps = [ ("diagonal", property diagonalProp)
+               , ("rightMoversPermutes", property $
+                                         (error "waiting on (Arbitrary Plan7)" 
+                                         rightMoversPermutesProp :: Gen Bool))
                ]
--}
-perturbProps = error "waiting on (Arbitrary Plan7)"
