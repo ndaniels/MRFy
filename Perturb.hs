@@ -17,6 +17,34 @@ type SSeq = [State]
 type BSeq = [Block State]
 type Pred = State -> Bool
 
+newtype Plan7 = Plan7 SSeq
+
+unPlan7 :: Plan7 -> [HMMState]
+unPlan7 (Plan7 states) = states
+
+instance Arbitrary Plan7 where
+  shrink (Plan7 states) = map Plan7 $ filter isPlan7 $ shrink states
+  arbitrary = fmap Plan7 $ sized $ \n ->
+    do len <- choose (0, n)
+       case len of 0 -> return []
+                   n -> do first <- elements [Mat, Ins, Del]
+                           rest <- procededBy (pred n) first
+                           return $ first : rest
+    where procededBy 0 _ = return []
+          procededBy n Mat = do
+            next <- elements [Mat, Ins, Del]
+            rest <- procededBy (pred n) next
+            return $ next : rest
+          procededBy n Ins = do
+            next <- elements [Mat, Ins]
+            rest <- procededBy (pred n) next
+            return $ next : rest
+          procededBy n Del = do
+            next <- elements [Mat, Del]
+            rest <- procededBy (pred n) next
+            return $ next : rest
+          procededBy n state = error $ "Unsupported state: " ++ show state
+
 -- | @rightMovers p bs@ returns a list of all the sequences that can be
 -- obtained by taking the first element of @bs@ and moving it to the right,
 -- subject to the constraint that the first state of the new sequence satisfies 
@@ -114,8 +142,6 @@ allRightMovers bs = roundRobin $ go [] bs
 
 ------------------------------------
 -- properties
-
-newtype Plan7 = Plan7 SSeq
 
 rightMoversPermutesProp (Plan7 ss) = all match (rightMoversStates ss)
   where match ss' = sort ss' == sort ss -- big hammer
