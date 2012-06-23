@@ -3,6 +3,7 @@ module HyperTriangles
        ( countEnumLaw, pointsWidthLaw, twoCountsLaw, freqLaw, randomLaw
        , isEnumLaw
        , pointInTri, Dimension(..), Length(..)
+       , hyperProps
        )
        where
 
@@ -12,6 +13,15 @@ import Data.Ratio
 
 import Test.QuickCheck
 import Test.QuickCheck.Monadic
+
+hyperProps :: [(String, Property)]
+hyperProps = [ ("randomTriangle", property randomLaw)
+             , ("countEnum", property countEnumLaw)
+             , ("pointsWidth", property pointsWidthLaw)
+             , ("isEnum", property isEnumLaw)
+             , ("twoCounts", property twoCountsLaw)
+             , ("freq", property freqLaw)
+             ]
 
 
 newtype Dimension = D Int
@@ -78,7 +88,7 @@ unNn (NonNegative n) = n
 unCount (Count n) = n
 
 instance Arbitrary Dimension where
-  arbitrary = fmap D $ sized (\n -> choose (1, min n 7))
+  arbitrary = fmap D $ sized (\n -> choose (1, max 1 (min n 7)))
   shrink (D n) = map (D. unPos) $ shrink $ Positive n
 
 instance Arbitrary Length where
@@ -112,4 +122,3 @@ weightedRandom xs = getRandomR (1, total) >>= (`pick` xs)
          | otherwise = pick (n-k) xs
        pick _ _  = error "bad bounds calculation in weightedRandom"
 
-  

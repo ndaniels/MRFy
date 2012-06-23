@@ -123,6 +123,10 @@ runCommand (TestHMM "isEnumLaw") =
 runCommand (TestHMM "randomLaw") =
   quickCheck randomLaw
 
+runCommand (TestHMM "all-props") =
+  mapM_ run $ hmmProps ++ hyperProps
+    where run (s, p) = do { putStrLn ("Testing " ++ s); quickCheck p }
+
 runCommand (TestHMM t) =
   error $ "I never heard of test " ++ t
 

@@ -10,10 +10,20 @@ import Test.QuickCheck.Monadic
 import System.Random
 
 import CommandArgs (Files(..))
+import HMMArby()
 import HMMPlus
 import MRFTypes
 import Score
 import Viterbi
+
+hmmProps :: [(String, Property)]
+hmmProps = [ ("ubProp", property ubProp)
+           , ("buProp", property buProp)
+           , ("blockNoMergeProp", property blockNoMergeProp)
+           , ("mergeMergeProp", property mergeMergeProp)
+           ]
+
+
 
 -- | Predicate tells whether a sequence of states
 -- is a legitimate path through a Plan7 Hidden Markov Model
@@ -111,6 +121,7 @@ instance (Arbitrary a) => Arbitrary (Block a) where
                  return $ Block state (pos `min` 1000)
 
 mergeBlocks :: Eq a => [Block a] -> [Block a]
+mergeBlocks (b : bs) | number b == 0 = mergeBlocks bs
 mergeBlocks (b1 : b2 : bs)
   | state b1 == state b2 = mergeBlocks (Block (state b1) (number b1 + number b2) : bs)
 mergeBlocks (b : bs) = b : mergeBlocks bs
