@@ -30,6 +30,7 @@ import HMMProps
 import HyperTriangles
 import LazySearchModel
 import MRFTypes
+import Perturb
 import RunPsiPred
 import Score
 import SearchStrategy (tickProp)
