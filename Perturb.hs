@@ -35,23 +35,25 @@ rightMovers p (Block s n : b2 : bs)
   | otherwise = map (Block s (pred n) :) $ rightMovesInto (canFollow s) s (b2:bs)
   
 rightMovesInto, rightMovesBefore :: Pred -> State -> BSeq -> [BSeq]
+  -- if a move can be viewed either as 'into' or 'before',
+  -- always treat it as 'before'.  In particular, if the state
+  -- is equal to the first state, this is 'before' and not 'into'.
 rightMovesInto _ _ [] = []
 rightMovesInto ok s (Block s' n : bs)
   | not (ok s') = []
-  | s == s'     = (Block s' (succ n) : bs) :
-                  map (Block s' n :) (rightMovesBefore (canFollow s') s bs)
-  | otherwise   = if n > 1 && canMix s s' then
-                    [Block s' i : Block s 1 : Block s' (n-1) : bs | i <- [1..n-1]]
+  | otherwise   = if n > 1 && s /= s' && canMix s s' then
+                    [Block s' i : Block s 1 : Block s' (n-i) : bs | i <- [1..n-1]]
                     ++ skipThisBlock
                   else
                     skipThisBlock
-       where skipThisBlock = map (Block s' n :) (rightMovesBefore (canFollow s') s bs)
+       where skipThisBlock = map (Block s' n :) (moves (canFollow s') s bs)
+             moves = if s == s' then rightMovesInto else rightMovesBefore
 
 rightMovesBefore ok s (Block s' n : bs)
-  | ok s   = (mergeBlocks [Block s 1, Block s' n] ++ bs) :
+  | ok s && canFollow s s'
+           = (mergeBlocks [Block s 1, Block s' n] ++ bs) :
              rightMovesInto ok s (Block s' n : bs)
-  | ok s'  = rightMovesInto ok s (Block s' n : bs)
-  | otherwise = []
+  | otherwise = rightMovesInto ok s (Block s' n : bs)
 rightMovesBefore ok s [] = if ok s then [[Block s 1]] else []
 
 
@@ -61,26 +63,29 @@ canFollow _   _   = True
 
 canMix s1 s2 = canFollow s1 s2 && canFollow s2 s1
 
-rightMoversStates :: SSeq -> [SSeq]
+rightMoversStates, leftMoversStates :: SSeq -> [SSeq]
 rightMoversStates = map unblockify . rightMovers (const True) . blockify
+leftMoversStates  = map unblockify . leftMovers  (const True) . blockify
 
 rightMovesIntoStates :: State -> SSeq -> [SSeq]
 rightMovesIntoStates s = map unblockify . rightMovesInto (const True) s . blockify
 
-allMovers' :: BSeq -> [[BSeq]]
-allMovers' bs = roundRobin $ go [] bs
-  where movers left' right = rightMovers (okAfter left')  right ++
-                             leftMovers  (okBefore right) left'
-        go left' right = movers left' right :
+allMovers :: BSeq -> [[BSeq]]
+allMovers bs = roundRobin $ go [] bs
+  where both left' right = map (left' `rejoin`) (rightMovers (okAfter left') right) ++
+                           map (`rejoin` right) (rightMovers (okAfter right) left')
+        go left' right = both left' right :
                          case right of b:bs -> go (b : left') bs
                                        []   -> []
         okAfter [] = const True
         okAfter (b : _) = canFollow (state b)
-        okBefore = okAfter -- everything is reversible
+
+rejoin :: [a] -> [a] -> [a]
+rejoin xs' ys = foldl (flip (:)) ys xs'
+  -- using fold to hope for list fusion
 
 allMoversStates :: SSeq -> [SSeq]
-allMoversStates = map unblockify . concat . allMovers' . blockify
-  where mapLeft f (a, b) = (f a, b)
+allMoversStates = map unblockify . concat . allMovers . blockify
 
 roundRobin :: [[a]] -> [[a]]
 roundRobin [] = []
@@ -91,8 +96,24 @@ roundRobin queues = let (heads, tails) = peel queues
         dequeue (a:as) = Just (a, as)
 
 ------------------------------------
+-- debugging code
+
+allRightMoversStates :: SSeq -> [(SSeq, Int)]
+allRightMoversStates = map (mapLeft unblockify) . concat . allRightMovers . blockify
+  where mapLeft f (a, b) = (f a, b)
+
+allRightMovers :: BSeq -> [[(BSeq, Int)]]
+allRightMovers bs = roundRobin $ go [] bs
+  where movers left' right = map (rejoin left') (rightMovers (okAfter left') right)
+        go left' right = zip (movers left' right) [1..] :
+                         case right of b:bs -> go (b : left') bs
+                                       []   -> []
+        okAfter [] = const True
+        okAfter (b : _) = canFollow (state b)
 
 
+------------------------------------
+-- properties
 
 newtype Plan7 = Plan7 SSeq
 
