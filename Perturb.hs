@@ -1,5 +1,6 @@
 module Perturb
        ( perturbProps
+       , isPlan7Prop
        )
 where
   
@@ -17,10 +18,12 @@ type SSeq = [State]
 type BSeq = [Block State]
 type Pred = State -> Bool
 
-newtype Plan7 = Plan7 SSeq
+newtype Plan7 = Plan7 SSeq deriving Show
 
 unPlan7 :: Plan7 -> [HMMState]
 unPlan7 (Plan7 states) = states
+
+isPlan7Prop (Plan7 states) = isPlan7 states
 
 instance Arbitrary Plan7 where
   shrink (Plan7 states) = map Plan7 $ filter isPlan7 $ shrink states

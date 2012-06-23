@@ -91,6 +91,9 @@ runCommand (TestHMM "viterbi-local-perturb-micro8") =
      rng <- getStdGen
      mapM_ putStrLn $ oneLocalPerturb test $ randoms rng
 
+runCommand (TestHMM "plan7GenProp") =
+  quickCheck isPlan7Prop
+
 runCommand (TestHMM "tickProp") =
   quickCheck tickProp
 
