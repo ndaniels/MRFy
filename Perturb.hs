@@ -152,7 +152,7 @@ addBlock s n (Block s' n' : bs)
   | s == s' = Block s (n+n') : bs
 addBlock s n bs = Block s n : bs
 
-canJoin bs@(Block s _ : _) bs'@(Block s' _ : _)
+canJoin (Block s _ : _) (Block s' _ : _)
   | not (canFollow s s') = Nothing
 canJoin bs bs' = Just (bs `rejoin` bs')
     
