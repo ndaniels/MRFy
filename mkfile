@@ -27,7 +27,7 @@ ${TGT}prof: $TGT
 	ghc `./ghc-opts profile2` --make Main.hs -o ${TGT}prof
 
 tags:V:
-	hasktags *.hs
+	hasktags *.hs */*.hs
 
 clean:V:
 	rm -rf .crud-*
