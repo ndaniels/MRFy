@@ -13,6 +13,8 @@ import Test.QuickCheck
 
 import HMMProps
 import MRFTypes
+import Score
+import Viterbi
 
 
 type State = HMMState
@@ -256,6 +258,11 @@ instance Arbitrary Plan7 where
 
 rightMoversPermutesProp (Plan7 ss) = all match (rightMoversStates ss)
   where match ss' = sort ss' == sort ss -- big hammer
+
+optimal :: (SSeq -> [SSeq]) -> HMM -> QuerySequence -> Bool
+optimal f model query = all (score >) $ map (scoreHMM model query) $ f states
+  where (states, score) = (unScored v, scoreOf v)
+        v = viterbi (:) (False, False) query model
 
 -- | Predicate @<==>@ judges the equivalence of two Plan7 sequences.
 -- N.B. It does not guarantee both lists are Plan7, just that
