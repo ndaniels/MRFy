@@ -53,6 +53,7 @@ Executable mrfy
                  Unixutils == 1.48.1,   
                       -- Unixutils 1.50 fails to install
                  QuickCheck
+                 -- TernaryTrees == 0.2.* -- incompatible with bio
 
                     -- cabal install --constraint="template-haskell == 2.5.0.0" haskell-src-meta
   

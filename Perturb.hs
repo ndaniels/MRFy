@@ -9,6 +9,8 @@ import Control.Monad
 import Control.Applicative
 import Data.List
 import Data.Maybe
+-- import qualified Data.Set.TernarySet as Set -- cabal troubles
+import qualified Data.Set as Set
 import Test.QuickCheck
 
 import HMMProps
@@ -269,6 +271,11 @@ preservesInvariants f (Plan7 ss) = all (<==> ss) $ take 100000 $ f ss
 
 isPlan7Prop (Plan7 states) = isPlan7 states
 
+distinctPerturbations p1 p2 (Plan7 ss) =
+  disjoint (Set.fromList $ concat $ p1 bs) (Set.fromList $ concat $ p2 bs)
+  where bs = blockify ss
+        disjoint s s' = Set.null $ s `Set.intersection` s'
+
 perturbProps :: [(String, Property)]
 perturbProps = [ ("diagonal", property diagonalProp)
                , ("diagonalCount", property diagonalsCount)
@@ -278,4 +285,6 @@ perturbProps = [ ("diagonal", property diagonalProp)
                   property $ preservesInvariants $ withStates allMovers)
                , ("decayMoversInvariant",
                   property $ preservesInvariants $ withStates decayMovers)
+               , ("distinct-movers-decay",
+                  property $ distinctPerturbations allMovers decayMovers)
                ]
