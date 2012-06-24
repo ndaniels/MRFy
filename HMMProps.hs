@@ -102,7 +102,7 @@ viterbiLocalPerturb rands states = vlp rands states
 
 data Block a = Block { state :: a, number :: Int }
   -- ^ invariant, number > 0
-  deriving (Eq, Show)
+  deriving (Eq, Ord, Show)
 
 blockify :: Eq a => [a] -> [Block a]
 blockify [] = []
