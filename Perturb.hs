@@ -173,7 +173,7 @@ addBlock s n (Block s' n' : bs)
   | s == s' = Block s (n+n') : bs
 addBlock s n bs = Block s n : bs
 
-canJoin bs@(Block s _ : _) bs'@(Block s' _ : _)
+canJoin (Block s _ : _) (Block s' _ : _)
   | not (canFollow s s') = Nothing
 canJoin bs bs' = Just (bs `rejoin` bs')
     
@@ -211,7 +211,6 @@ rightMoversPermutesProp (Plan7 ss) = all match (rightMoversStates ss)
 perturbProps :: [(String, Property)]
 perturbProps = [ ("diagonal", property diagonalProp)
                , ("diagonalCount", property diagonalsCount)
-               , ("rightMoversPermutes", property $
-                                         (error "waiting on (Arbitrary Plan7)" 
-                                         rightMoversPermutesProp :: Gen Bool))
+               , ("plan7gen", property isPlan7Prop)
+               , ("rightMoversPermutes", property rightMoversPermutesProp)
                ]
