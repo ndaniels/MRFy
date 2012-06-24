@@ -30,12 +30,10 @@ isPlan7Prop (Plan7 states) = isPlan7 states
 instance Arbitrary Plan7 where
   shrink (Plan7 states) = map Plan7 $ filter isPlan7 $ shrink states
   arbitrary = fmap Plan7 $ sized $ \n ->
-                join $ procededBy <$> choose (0,n) <*> elements goodStates
-    where goodStates = [Mat, Ins, Del]
-          procededBy 0 _ = return []
-          procededBy n state = do
-            next <- elements $ filter (canFollow state) goodStates
-            rest <- procededBy (pred n) next
+                take <$> choose (0,n) <*> procededBy (const True)
+    where procededBy ok = do
+            next <- elements $ filter ok [Mat, Ins, Del]
+            rest <- procededBy (canFollow next)
             return $ next : rest
 
 -- | @rightMovers p bs@ returns a list of all the sequences that can be
