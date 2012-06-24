@@ -1,6 +1,7 @@
 module Perturb
-       ( perturbProps
-       , isPlan7Prop
+       ( allMovers, decayMovers
+       , withStates
+       , perturbProps, isPlan7Prop
        )
 where
   
