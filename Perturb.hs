@@ -4,6 +4,7 @@ module Perturb
        )
 where
   
+import Control.Applicative
 import Data.List
 import Data.Maybe
 import Test.QuickCheck
@@ -29,24 +30,13 @@ instance Arbitrary Plan7 where
   shrink (Plan7 states) = map Plan7 $ filter isPlan7 $ shrink states
   arbitrary = fmap Plan7 $ sized $ \n ->
     do len <- choose (0, n)
-       case len of 0 -> return []
-                   n -> do first <- elements [Mat, Ins, Del]
-                           rest <- procededBy (pred n) first
-                           return $ first : rest
+       first <- elements [Mat, Ins, Del]
+       procededBy len first
     where procededBy 0 _ = return []
-          procededBy n Mat = do
-            next <- elements [Mat, Ins, Del]
+          procededBy n state = do
+            next <- elements $ filter (canFollow state) $ [Mat, Ins, Del]
             rest <- procededBy (pred n) next
             return $ next : rest
-          procededBy n Ins = do
-            next <- elements [Mat, Ins]
-            rest <- procededBy (pred n) next
-            return $ next : rest
-          procededBy n Del = do
-            next <- elements [Mat, Del]
-            rest <- procededBy (pred n) next
-            return $ next : rest
-          procededBy n state = error $ "Unsupported state: " ++ show state
 
 -- | @rightMovers p bs@ returns a list of all the sequences that can be
 -- obtained by taking the first element of @bs@ and moving it to the right,
