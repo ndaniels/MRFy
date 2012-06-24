@@ -103,9 +103,10 @@ rejoin :: [a] -> [a] -> [a]
 rejoin xs' ys = foldl (flip (:)) ys xs'
   -- using fold to hope for list fusion
 
-allMoversStates :: SSeq -> [SSeq]
-allMoversStates = map unblockify . concat . allMovers . blockify
+withStates       :: (BSeq -> [[BSeq]]) -> (SSeq -> [SSeq])
+withTaggedStates :: (BSeq -> [[BSeq]]) -> (SSeq -> [(SSeq, Int)])
 
+withStates movers = map unblockify . concat . movers . blockify
 withTaggedStates movers =
   map (leftMap unblockify) . concat . zipWith tag [1..] . movers . blockify 
   where tag n bs = map (\b -> (b,n)) bs
@@ -205,10 +206,19 @@ diagonalsCount (Positive n') (Positive m') =
 rightMoversPermutesProp (Plan7 ss) = all match (rightMoversStates ss)
   where match ss' = sort ss' == sort ss -- big hammer
 
+(<==>) :: SSeq -> SSeq -> Bool
+ss <==> ss' = agree nodeCount && agree residueCount && agree isPlan7
+  where agree f = f ss == f ss'
+
+preservesInvariants f (Plan7 ss) = all (<==> ss) $ take 100000 $ f ss
 
 perturbProps :: [(String, Property)]
 perturbProps = [ ("diagonal", property diagonalProp)
                , ("diagonalCount", property diagonalsCount)
                , ("plan7gen", property isPlan7Prop)
                , ("rightMoversPermutes", property rightMoversPermutesProp)
+               , ("allMoversInvariant",
+                  property $ preservesInvariants $ withStates allMovers)
+               , ("decayMoversInvariant",
+                  property $ preservesInvariants $ withStates decayMovers)
                ]
