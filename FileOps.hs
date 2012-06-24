@@ -99,13 +99,11 @@ runCommand (TestHMM "decay-perturb-micro8") =
 
 runCommand (TestHMM "local-perturb-8") =
   do test <- loadTestData $ Files "testing/8.hmm+" "testing/8.fasta" "/dev/null"
-     rng <- getStdGen
-     mapM_ putStrLn $ oneLocalPerturb test $ randoms rng
+     putStrLn $ oneLocalPerturb test
 
 runCommand (TestHMM "local-perturb-micro8") =
   do test <- loadTestData $ Files "testing/micro8.hmm+" "testing/micro8.fasta" "/dev/null"
-     rng <- getStdGen
-     mapM_ putStrLn $ oneLocalPerturb test $ randoms rng
+     putStrLn $ oneLocalPerturb test
 
 runCommand (TestHMM "plan7GenProp") =
   quickCheck isPlan7Prop

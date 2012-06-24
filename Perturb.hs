@@ -16,6 +16,7 @@ import Data.Maybe
 import qualified Data.Set as Set
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
+import Debug.Trace (trace)
 import Test.QuickCheck
 
 import HMMProps
@@ -308,64 +309,47 @@ perturbProps = [ ("diagonal", property diagonalProp)
 oneAllMoversPerturb :: (a, HMM, [QuerySequence]) -> String
 oneAllMoversPerturb (_, model, queries) = 
   if all pass queries then
-    "all-perturb-8 PASSED"
+    "all-perturb PASSED"
   else
-    "all-perturb-8 FAILED"
+    "all-perturb FAILED"
   where pass query = optimal (withStates allMovers) model query
 
 oneDecayMoversPerturb :: (a, HMM, [QuerySequence]) -> String
 oneDecayMoversPerturb (_, model, queries) = 
   if all pass queries then
-    "decay-perturb-8 PASSED"
+    "decay-perturb PASSED"
   else
-    "decay-perturb-8 FAILED"
+    "decay-perturb FAILED"
   where pass query = optimal (withStates decayMovers) model query
 
--- This is still borked. Need to figure out how to remove [Double]
--- and have it generate all possible *linear* permutations.
--- But what if we just ran it a bunch of times with different random
--- seeds?
-oneLocalPerturb :: (a, HMM, [QuerySequence]) -> [Double] -> [String]
-oneLocalPerturb (_, model, queries) rands = map string queries
-  where string query =
-          "Original [HMMState]: (" ++ 
-            show (U.length query) ++ " residues; " ++
-            show (V.length model) ++ " nodes)" ++ "\n" ++ show states ++ "\n\n" ++
-          "Globally perturbed [HMMState]: (" ++
-            show (residueCount states') ++ " residues; " ++
-            show (nodeCount states') ++ " nodes)" ++ "\n" ++ show states' ++ "\n\n" ++
-          "Same? " ++ (if states == states' then "YES" else "NO") ++ "\n"
+-- This is broken. Bandwidth allotment exceeded.
+-- I'm finding it difficult to debug (I needed witnesses).
+oneLocalPerturb :: (a, HMM, [QuerySequence]) -> String
+oneLocalPerturb (_, model, queries) = 
+  if all pass queries then
+    "local-perturb PASSED"
+  else
+    "local-perturb FAILED"
+  where pass query = all (states <==>) $ viterbiLocalPerturb states
           where states = unScored $ viterbi (:) (False, False) query model
-                states' = viterbiLocalPerturb rands states
 
-        viterbiLocalPerturb :: [Double] -> [HMMState] -> [HMMState]
-        viterbiLocalPerturb rands states = vlp rands states
-        
-        vlp :: [Double] -> [HMMState] -> [HMMState]
-        vlp (r:rs) (Mat:Mat:Mat:Mat:ss) =
-          if r <= 0.5 then
-            vlp' rs ss [Mat, Mat, Mat, Mat] [Mat, Ins, Mat, Del, Mat]
-          else
-            vlp' rs ss [Mat, Mat, Mat, Mat] [Mat, Del, Mat, Ins, Mat]
-        vlp rs (Ins:Mat:Mat:Del:ss) = vlp' rs ss [Ins, Mat, Mat, Del]
-                                                 [Ins, Ins, Mat, Del, Del]
-        vlp rs (Del:Mat:Mat:Ins:ss) = vlp' rs ss [Del, Mat, Mat, Ins]
-                                                 [Del, Del, Mat, Ins, Ins]
-        vlp rs (Mat:Mat:Mat:Del:ss) = vlp' rs ss [Mat, Mat, Mat, Del]
-                                                 [Mat, Ins, Mat, Del, Del]
-        vlp rs (Del:Mat:Mat:Mat:ss) = vlp' rs ss [Del, Mat, Mat, Mat]
-                                                 [Del, Del, Mat, Ins, Mat]
-        vlp rs (Mat:Mat:Mat:Ins:ss) = vlp' rs ss [Mat, Mat, Mat, Ins]
-                                                 [Mat, Del, Mat, Ins, Ins]
-        vlp rs (Ins:Mat:Mat:Mat:ss) = vlp' rs ss [Ins, Mat, Mat, Mat]
-                                                 [Ins, Ins, Mat, Del, Mat]
-        vlp rs (s:ss) = s : (vlp rs ss)
-        vlp _ [] = []
-        
-        vlp' :: [Double] -> [HMMState] -> [HMMState] -> [HMMState] -> [HMMState]
-        vlp' (r:rs) states original transformed =
-          if r <= 0.5 then
-            (head original) : (vlp rs $ (tail original) ++ states)
-          else
-            transformed ++ (vlp rs states)
+        viterbiLocalPerturb :: [HMMState] -> [[HMMState]]
+        viterbiLocalPerturb states = trace (show $ head perturbs) perturbs
+          where perturbs = nTimes tx 10 states
 
+        nTimes :: ([a] -> [a]) -> Int -> [a] -> [[a]]
+        nTimes tx 0 as = [as]
+        nTimes _ _ [] = []
+        nTimes tx n (a1:a2:a3:a4:as) =
+          [a1:a2:a3:a4:bs | bs <- nTimes tx n as] ++
+          [(tx (a1:a2:a3:a4:[])) ++ bs | bs <- nTimes tx (pred n) as]
+        nTimes tx n (_:as) = [as]
+
+        tx :: [HMMState] -> [HMMState]
+        tx (Mat:Mat:Mat:Mat:[]) = [Mat, Ins, Mat, Del, Mat]
+        tx (Ins:Mat:Mat:Del:[]) = [Del, Del, Mat, Ins, Ins]
+        tx (Mat:Mat:Mat:Del:[]) = [Mat, Ins, Mat, Del, Del]
+        tx (Del:Mat:Mat:Mat:[]) = [Del, Del, Mat, Ins, Mat]
+        tx (Mat:Mat:Mat:Ins:[]) = [Mat, Del, Mat, Ins, Ins]
+        tx (Ins:Mat:Mat:Mat:[]) = [Ins, Ins, Mat, Del, Mat]
+        
