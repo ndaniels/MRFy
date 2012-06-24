@@ -4,6 +4,7 @@ module Perturb
        )
 where
   
+import Control.Monad
 import Control.Applicative
 import Data.List
 import Data.Maybe
@@ -29,12 +30,11 @@ isPlan7Prop (Plan7 states) = isPlan7 states
 instance Arbitrary Plan7 where
   shrink (Plan7 states) = map Plan7 $ filter isPlan7 $ shrink states
   arbitrary = fmap Plan7 $ sized $ \n ->
-    do len <- choose (0, n)
-       first <- elements [Mat, Ins, Del]
-       procededBy len first
-    where procededBy 0 _ = return []
+                join $ procededBy <$> choose (0,n) <*> elements goodStates
+    where goodStates = [Mat, Ins, Del]
+          procededBy 0 _ = return []
           procededBy n state = do
-            next <- elements $ filter (canFollow state) $ [Mat, Ins, Del]
+            next <- elements $ filter (canFollow state) goodStates
             rest <- procededBy (pred n) next
             return $ next : rest
 
