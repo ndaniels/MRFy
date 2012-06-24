@@ -243,10 +243,13 @@ newtype Plan7 = Plan7 SSeq deriving Show
 instance Arbitrary Plan7 where
   shrink (Plan7 states) = map Plan7 $ filter isPlan7 $ shrink states
   arbitrary = fmap Plan7 $ sized $ \n ->
-                take <$> choose (0,n) <*> procededBy (const True)
-    where procededBy ok = do
+                take <$> choose (0,n) <*> states (const True)
+    where -- | Calling @states p@ generates an infinite Plan7 sequence of
+          -- states where the first state satisfies @p@.
+          states :: (State -> Bool) -> Gen [State]
+          states ok = do
             next <- elements $ filter ok [Mat, Ins, Del]
-            rest <- procededBy (canFollow next)
+            rest <- states (canFollow next)
             return $ next : rest
 
 
