@@ -2,15 +2,20 @@ module Perturb
        ( allMovers, decayMovers
        , withStates
        , perturbProps, isPlan7Prop
+       , oneAllMoversPerturb
+       , oneDecayMoversPerturb
+       , oneLocalPerturb
        )
 where
   
-import Control.Monad
 import Control.Applicative
+import Control.Monad
 import Data.List
 import Data.Maybe
 -- import qualified Data.Set.TernarySet as Set -- cabal troubles
 import qualified Data.Set as Set
+import qualified Data.Vector as V
+import qualified Data.Vector.Unboxed as U
 import Test.QuickCheck
 
 import HMMProps
@@ -262,7 +267,7 @@ rightMoversPermutesProp (Plan7 ss) = all match (rightMoversStates ss)
   where match ss' = sort ss' == sort ss -- big hammer
 
 optimal :: (SSeq -> [SSeq]) -> HMM -> QuerySequence -> Bool
-optimal f model query = all (score >) $ map (scoreHMM model query) $ f states
+optimal f model query = all (score <) $ map (scoreHMM model query) $ f states
   where (states, score) = (unScored v, scoreOf v)
         v = viterbi (:) (False, False) query model
 
@@ -295,3 +300,72 @@ perturbProps = [ ("diagonal", property diagonalProp)
                , ("distinct-movers-decay",
                   property $ distinctPerturbations allMovers decayMovers)
                ]
+
+-----------------------------------------------------------------------------------
+-- TESTS ON REAL DATA
+
+-- I'm not sure how to grab a witness. :-/
+oneAllMoversPerturb :: (a, HMM, [QuerySequence]) -> String
+oneAllMoversPerturb (_, model, queries) = 
+  if all pass queries then
+    "all-perturb-8 PASSED"
+  else
+    "all-perturb-8 FAILED"
+  where pass query = optimal (withStates allMovers) model query
+
+oneDecayMoversPerturb :: (a, HMM, [QuerySequence]) -> String
+oneDecayMoversPerturb (_, model, queries) = 
+  if all pass queries then
+    "decay-perturb-8 PASSED"
+  else
+    "decay-perturb-8 FAILED"
+  where pass query = optimal (withStates decayMovers) model query
+
+-- This is still borked. Need to figure out how to remove [Double]
+-- and have it generate all possible *linear* permutations.
+-- But what if we just ran it a bunch of times with different random
+-- seeds?
+oneLocalPerturb :: (a, HMM, [QuerySequence]) -> [Double] -> [String]
+oneLocalPerturb (_, model, queries) rands = map string queries
+  where string query =
+          "Original [HMMState]: (" ++ 
+            show (U.length query) ++ " residues; " ++
+            show (V.length model) ++ " nodes)" ++ "\n" ++ show states ++ "\n\n" ++
+          "Globally perturbed [HMMState]: (" ++
+            show (residueCount states') ++ " residues; " ++
+            show (nodeCount states') ++ " nodes)" ++ "\n" ++ show states' ++ "\n\n" ++
+          "Same? " ++ (if states == states' then "YES" else "NO") ++ "\n"
+          where states = unScored $ viterbi (:) (False, False) query model
+                states' = viterbiLocalPerturb rands states
+
+        viterbiLocalPerturb :: [Double] -> [HMMState] -> [HMMState]
+        viterbiLocalPerturb rands states = vlp rands states
+        
+        vlp :: [Double] -> [HMMState] -> [HMMState]
+        vlp (r:rs) (Mat:Mat:Mat:Mat:ss) =
+          if r <= 0.5 then
+            vlp' rs ss [Mat, Mat, Mat, Mat] [Mat, Ins, Mat, Del, Mat]
+          else
+            vlp' rs ss [Mat, Mat, Mat, Mat] [Mat, Del, Mat, Ins, Mat]
+        vlp rs (Ins:Mat:Mat:Del:ss) = vlp' rs ss [Ins, Mat, Mat, Del]
+                                                 [Ins, Ins, Mat, Del, Del]
+        vlp rs (Del:Mat:Mat:Ins:ss) = vlp' rs ss [Del, Mat, Mat, Ins]
+                                                 [Del, Del, Mat, Ins, Ins]
+        vlp rs (Mat:Mat:Mat:Del:ss) = vlp' rs ss [Mat, Mat, Mat, Del]
+                                                 [Mat, Ins, Mat, Del, Del]
+        vlp rs (Del:Mat:Mat:Mat:ss) = vlp' rs ss [Del, Mat, Mat, Mat]
+                                                 [Del, Del, Mat, Ins, Mat]
+        vlp rs (Mat:Mat:Mat:Ins:ss) = vlp' rs ss [Mat, Mat, Mat, Ins]
+                                                 [Mat, Del, Mat, Ins, Ins]
+        vlp rs (Ins:Mat:Mat:Mat:ss) = vlp' rs ss [Ins, Mat, Mat, Mat]
+                                                 [Ins, Ins, Mat, Del, Mat]
+        vlp rs (s:ss) = s : (vlp rs ss)
+        vlp _ [] = []
+        
+        vlp' :: [Double] -> [HMMState] -> [HMMState] -> [HMMState] -> [HMMState]
+        vlp' (r:rs) states original transformed =
+          if r <= 0.5 then
+            (head original) : (vlp rs $ (tail original) ++ states)
+          else
+            transformed ++ (vlp rs states)
+

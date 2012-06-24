@@ -81,12 +81,28 @@ runCommand (TestHMM "micro8-strings") =
   do test <- loadTestData $ Files "testing/micro8.hmm+" "testing/micro8.fasta" "/dev/null"
      mapM_ putStrLn $ oneTestResults test
 
-runCommand (TestHMM "viterbi-local-perturb-8") =
+runCommand (TestHMM "all-perturb-8") =
+  do test <- loadTestData $ Files "testing/8.hmm+" "testing/8.fasta" "/dev/null"
+     putStrLn $ oneAllMoversPerturb test
+
+runCommand (TestHMM "all-perturb-micro8") =
+  do test <- loadTestData $ Files "testing/micro8.hmm+" "testing/micro8.fasta" "/dev/null"
+     putStrLn $ oneAllMoversPerturb test
+
+runCommand (TestHMM "decay-perturb-8") =
+  do test <- loadTestData $ Files "testing/8.hmm+" "testing/8.fasta" "/dev/null"
+     putStrLn $ oneDecayMoversPerturb test
+
+runCommand (TestHMM "decay-perturb-micro8") =
+  do test <- loadTestData $ Files "testing/micro8.hmm+" "testing/micro8.fasta" "/dev/null"
+     putStrLn $ oneDecayMoversPerturb test
+
+runCommand (TestHMM "local-perturb-8") =
   do test <- loadTestData $ Files "testing/8.hmm+" "testing/8.fasta" "/dev/null"
      rng <- getStdGen
      mapM_ putStrLn $ oneLocalPerturb test $ randoms rng
 
-runCommand (TestHMM "viterbi-local-perturb-micro8") =
+runCommand (TestHMM "local-perturb-micro8") =
   do test <- loadTestData $ Files "testing/micro8.hmm+" "testing/micro8.fasta" "/dev/null"
      rng <- getStdGen
      mapM_ putStrLn $ oneLocalPerturb test $ randoms rng
