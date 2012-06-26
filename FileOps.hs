@@ -141,6 +141,9 @@ runCommand (TestHMM "isEnumLaw") =
 runCommand (TestHMM "randomLaw") =
   quickCheck randomLaw
 
+runCommand (TestHMM "viterbi-awesome") =
+  quickCheck viterbiIsAwesome
+
 runCommand (TestHMM "all-perturb") =
   mapM_ run $ perturbProps
     where run (s, p) = do { putStrLn ("Testing " ++ s); quickCheck p }

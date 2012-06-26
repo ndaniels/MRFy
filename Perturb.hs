@@ -5,6 +5,7 @@ module Perturb
        , oneAllMoversPerturb
        , oneDecayMoversPerturb
        , oneLocalPerturb
+       , viterbiIsAwesome
        )
 where
   
@@ -300,7 +301,12 @@ viterbiIsAwesome :: HMM -> QuerySequence -> Bool
 viterbiIsAwesome model query = all (vscore <=) possibleScores
   where vscore = scoreOf $ viterbi (:) (False, False) query model
         possibleScores = (parMap rseq) (scoreHMM model query) $ allp7 (M n r)
-        (n, r) = (V.length model, U.length query)
+
+        -- If the state sequence starts with an insertion, that insert
+        -- comes from node 0. *Otherwise*, node 0 is not represented in
+        -- the state sequence. This is difficult to represent here; perhaps
+        -- it should go in the generator? How?
+        (n, r) = (V.length model - 1, U.length query)
 
 -----------------------------------------------------------------------------------
 -- TESTS ON REAL DATA
