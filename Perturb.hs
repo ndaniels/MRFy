@@ -10,8 +10,11 @@ where
   
 import Control.Applicative
 import Control.Monad
+import Control.Parallel.Strategies
+import Data.Ix
 import Data.List
 import Data.Maybe
+import qualified Data.MemoCombinators as Memo
 -- import qualified Data.Set.TernarySet as Set -- cabal troubles
 import qualified Data.Set as Set
 import qualified Data.Vector as V
@@ -300,7 +303,61 @@ perturbProps = [ ("diagonal", property diagonalProp)
                   property $ preservesInvariants $ withStates decayMovers)
                , ("distinct-movers-decay",
                   property $ distinctPerturbations allMovers decayMovers)
+               , ("good-metrics",
+                  property $ goodMetrics)
+               , ("viterbi-awesome",
+                  property $ viterbiIsAwesome)
                ]
+
+-----------------------------------------------------------------------------------
+-- GENERATING ALL PLAN7 SEQUENCES FOR A GIVEN METRIC
+
+data Metrics = M { nNodes :: Int, nResidues :: Int }
+  deriving (Eq, Ord, Ix, Show)
+
+instance Arbitrary Metrics where
+  arbitrary = do
+    nCnt <- choose (0, 8)
+    rCnt <- choose (0, 8)
+    return $ M nCnt rCnt
+
+minus :: Metrics -> State -> Metrics
+minus (M nCnt rCnt) Mat = M (pred nCnt) (pred rCnt)
+minus (M nCnt rCnt) Ins = M nCnt (pred rCnt)
+minus (M nCnt rCnt) Del = M (pred nCnt) rCnt
+
+nonnegative :: Metrics -> Bool
+nonnegative (M nCnt rCnt) = nCnt >= 0 && rCnt >= 0
+
+allp7 :: Metrics -> [SSeq]
+allp7 metrics = nub $ [ ss | s <- [Mat, Ins, Del], ss <- allp7' metrics s ]
+  where
+    -- allp7start generates all sequences of states with the given metrics,
+    -- provided that if the sequence is not empty, it begins with the
+    -- given state.
+    allp7' :: Metrics -> State -> [SSeq]
+    allp7' (M 0 0) _ = return []
+    allp7' metrics s
+      | nonnegative (metrics `minus` s) =
+        [ s : ss | follow <- filter (canFollow s) [Mat, Ins, Del]
+                 , ss <- allp7memo (metrics `minus` s) follow ]
+      | otherwise = fail "You can't use that state here."
+
+    allp7memo :: Metrics -> State -> [SSeq]
+    allp7memo =
+      Memo.memo2 (Memo.arrayRange (M 0 0, metrics))
+                 (Memo.arrayRange (Mat, Del))
+                 allp7'
+
+goodMetrics :: Metrics -> Bool
+goodMetrics m@(M nCnt rCnt) = all ok $ allp7 m
+  where ok ss = nodeCount ss == succ nCnt && residueCount ss == rCnt
+
+viterbiIsAwesome :: HMM -> QuerySequence -> Bool
+viterbiIsAwesome model query = all (vscore <=) possibleScores
+  where vscore = scoreOf $ viterbi (:) (False, False) query model
+        possibleScores = (parMap rseq) (scoreHMM model query) $ allp7 (M n r)
+        (n, r) = (V.length model, U.length query)
 
 -----------------------------------------------------------------------------------
 -- TESTS ON REAL DATA

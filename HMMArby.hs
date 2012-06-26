@@ -32,16 +32,16 @@ verifySearchGuess hmm (b:bs) (g:gs) = range && noClash
 
 
 instance Arbitrary (V.Vector Int) where
-{-
-  arbitrary = do
-    let aas = choose (0, 20) :: Gen Int
-    seq <- listOf aas :: Gen [Int]
-    return $ V.fromList seq
--}
   arbitrary = fmap V.fromList arbitrary
+
+instance Arbitrary (U.Vector Int) where
+  arbitrary = fmap U.fromList arbitrary
 
 prob :: Gen Double
 prob = choose (0.0, 1.0)
+
+instance Arbitrary (V.Vector HMMNode) where
+  arbitrary = fmap V.fromList arbitrary
 
 instance Arbitrary HMMNode where
   arbitrary = do
