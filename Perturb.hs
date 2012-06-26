@@ -248,78 +248,10 @@ diagonalsCount (Positive n') (Positive m') =
           n = min m' 300
  
 -----------------------------------------------------------------------------------
--- TESTINB PERTURBATIONS AND RELATED CODE
-
-
-newtype Plan7 = Plan7 SSeq deriving Show
-
-instance Arbitrary Plan7 where
-  shrink (Plan7 states) = map Plan7 $ filter isPlan7 $ shrink states
-  arbitrary = fmap Plan7 $ sized $ \n ->
-                take <$> choose (0,n) <*> states (const True)
-    where -- | Calling @states p@ generates an infinite Plan7 sequence of
-          -- states where the first state satisfies @p@.
-          states :: (State -> Bool) -> Gen [State]
-          states ok = do
-            next <- elements $ filter ok [Mat, Ins, Del]
-            rest <- states (canFollow next)
-            return $ next : rest
-
-
-
-rightMoversPermutesProp (Plan7 ss) = all match (rightMoversStates ss)
-  where match ss' = sort ss' == sort ss -- big hammer
-
-optimal :: (SSeq -> [SSeq]) -> HMM -> QuerySequence -> Bool
-optimal f model query = all (score <) $ map (scoreHMM model query) $ f states
-  where (states, score) = (unScored v, scoreOf v)
-        v = viterbi (:) (False, False) query model
-
--- | Predicate @<==>@ judges the equivalence of two Plan7 sequences.
--- N.B. It does not guarantee both lists are Plan7, just that
--- they both agree on whether they are Plan7.
-
-(<==>) :: SSeq -> SSeq -> Bool
-ss <==> ss' = agree nodeCount && agree residueCount && agree isPlan7
-  where agree f = f ss == f ss'
-
-preservesInvariants f (Plan7 ss) = all (<==> ss) $ take 100000 $ f ss
-
-isPlan7Prop (Plan7 states) = isPlan7 states
-
-distinctPerturbations p1 p2 (Plan7 ss) =
-  disjoint (Set.fromList $ concat $ p1 bs) (Set.fromList $ concat $ p2 bs)
-  where bs = blockify ss
-        disjoint s s' = Set.null $ s `Set.intersection` s'
-
-perturbProps :: [(String, Property)]
-perturbProps = [ ("diagonal", property diagonalProp)
-               , ("diagonalCount", property diagonalsCount)
-               , ("plan7gen", property isPlan7Prop)
-               , ("rightMoversPermutes", property rightMoversPermutesProp)
-               , ("allMoversInvariant",
-                  property $ preservesInvariants $ withStates allMovers)
-               , ("decayMoversInvariant",
-                  property $ preservesInvariants $ withStates decayMovers)
-               , ("distinct-movers-decay",
-                  property $ distinctPerturbations allMovers decayMovers)
-               , ("good-metrics",
-                  property $ goodMetrics)
-               , ("viterbi-awesome",
-                  property $ viterbiIsAwesome)
-               ]
-
------------------------------------------------------------------------------------
 -- GENERATING ALL PLAN7 SEQUENCES FOR A GIVEN METRIC
 
 data Metrics = M { nNodes :: Int, nResidues :: Int }
   deriving (Eq, Ord, Ix, Show)
-
-instance Arbitrary Metrics where
-  arbitrary = do
-    nCnt <- choose (0, 8)
-    rCnt <- choose (0, 8)
-    return $ M nCnt rCnt
 
 minus :: Metrics -> State -> Metrics
 minus (M nCnt rCnt) Mat = M (pred nCnt) (pred rCnt)
@@ -329,25 +261,33 @@ minus (M nCnt rCnt) Del = M (pred nCnt) rCnt
 nonnegative :: Metrics -> Bool
 nonnegative (M nCnt rCnt) = nCnt >= 0 && rCnt >= 0
 
+instance Arbitrary Metrics where
+  arbitrary = M <$> choose (0, 8) <*> choose (0, 8)
+  shrink (M n r) = map (uncurry M) $ shrink (n, r)
+
+
 allp7 :: Metrics -> [SSeq]
-allp7 metrics = nub $ [ ss | s <- [Mat, Ins, Del], ss <- allp7' metrics s ]
+allp7 metrics = allp7' metrics Mat -- any state can follow Mat
   where
-    -- allp7start generates all sequences of states with the given metrics,
-    -- provided that if the sequence is not empty, it begins with the
-    -- given state.
+    -- @allp7' metrics s@ generates all sequences of states with the
+    -- given metrics, provided that if the sequence is not empty, it
+    -- begins with a state that can follow s.
     allp7' :: Metrics -> State -> [SSeq]
     allp7' (M 0 0) _ = return []
-    allp7' metrics s
-      | nonnegative (metrics `minus` s) =
-        [ s : ss | follow <- filter (canFollow s) [Mat, Ins, Del]
-                 , ss <- allp7memo (metrics `minus` s) follow ]
-      | otherwise = fail "You can't use that state here."
+    allp7' metrics prev =
+        [ s : ss | s <- filter (canFollow prev) [Mat, Ins, Del]
+                 , nonnegative (metrics `minus` s)
+                 , ss <- allp7memo (metrics `minus` s) s ]
 
     allp7memo :: Metrics -> State -> [SSeq]
     allp7memo =
       Memo.memo2 (Memo.arrayRange (M 0 0, metrics))
                  (Memo.arrayRange (Mat, Del))
                  allp7'
+
+noP7Dups :: Metrics -> Bool
+noP7Dups ms = length (nub ss) == length ss
+  where ss = allp7 ms
 
 goodMetrics :: Metrics -> Bool
 goodMetrics m@(M nCnt rCnt) = all ok $ allp7 m
@@ -410,3 +350,65 @@ oneLocalPerturb (_, model, queries) =
         tx (Mat:Mat:Mat:Ins:[]) = [Mat, Del, Mat, Ins, Ins]
         tx (Ins:Mat:Mat:Mat:[]) = [Ins, Ins, Mat, Del, Mat]
         
+
+-----------------------------------------------------------------------------------
+-- TESTINB PERTURBATIONS AND RELATED CODE
+
+
+newtype Plan7 = Plan7 SSeq deriving Show
+
+instance Arbitrary Plan7 where
+  shrink (Plan7 states) = map Plan7 $ filter isPlan7 $ shrink states
+  arbitrary = fmap Plan7 $ sized $ \n ->
+                take <$> choose (0,n) <*> states (const True)
+    where -- | Calling @states p@ generates an infinite Plan7 sequence of
+          -- states where the first state satisfies @p@.
+          states :: (State -> Bool) -> Gen [State]
+          states ok = do
+            next <- elements $ filter ok [Mat, Ins, Del]
+            rest <- states (canFollow next)
+            return $ next : rest
+
+
+
+rightMoversPermutesProp (Plan7 ss) = all match (rightMoversStates ss)
+  where match ss' = sort ss' == sort ss -- big hammer
+
+optimal :: (SSeq -> [SSeq]) -> HMM -> QuerySequence -> Bool
+optimal f model query = all (score <) $ map (scoreHMM model query) $ f states
+  where (states, score) = (unScored v, scoreOf v)
+        v = viterbi (:) (False, False) query model
+
+-- | Predicate @<==>@ judges the equivalence of two Plan7 sequences.
+-- N.B. It does not guarantee both lists are Plan7, just that
+-- they both agree on whether they are Plan7.
+
+(<==>) :: SSeq -> SSeq -> Bool
+ss <==> ss' = agree nodeCount && agree residueCount && agree isPlan7
+  where agree f = f ss == f ss'
+
+preservesInvariants f (Plan7 ss) = all (<==> ss) $ take 100000 $ f ss
+
+isPlan7Prop (Plan7 states) = isPlan7 states
+
+distinctPerturbations p1 p2 (Plan7 ss) =
+  disjoint (Set.fromList $ concat $ p1 bs) (Set.fromList $ concat $ p2 bs)
+  where bs = blockify ss
+        disjoint s s' = Set.null $ s `Set.intersection` s'
+
+perturbProps :: [(String, Property)]
+perturbProps = [ ("diagonal", property diagonalProp)
+               , ("diagonalCount", property diagonalsCount)
+               , ("good-metrics", property goodMetrics)
+               , ("nop7dups", property noP7Dups)
+               , ("plan7gen", property isPlan7Prop)
+               , ("rightMoversPermutes", property rightMoversPermutesProp)
+               , ("allMoversInvariant",
+                  property $ preservesInvariants $ withStates allMovers)
+               , ("decayMoversInvariant",
+                  property $ preservesInvariants $ withStates decayMovers)
+               , ("distinct-movers-decay",
+                  property $ distinctPerturbations allMovers decayMovers)
+               , ("viterbi-awesome", property viterbiIsAwesome)
+               ]
+
