@@ -269,9 +269,12 @@ instance Arbitrary Metrics where
 allp7 :: Metrics -> [SSeq]
 allp7 metrics = allp7' metrics Mat -- any state can follow Mat
   where
-    -- @allp7' metrics s@ generates all sequences of states with the
+    -- @allp7' metrics prev@ generates all sequences of states with the
     -- given metrics, provided that if the sequence is not empty, it
-    -- begins with a state that can follow s.
+    -- begins with a state that can follow @prev@.  For the first state
+    -- @prev@ is @Mat@, which is blatantly horrible, but it works because
+    -- any state can follow @Mat@.  We'd prefer to use a predicate, but
+    -- that makes memoziation ugly.  
     allp7' :: Metrics -> State -> [SSeq]
     allp7' (M 0 0) _ = return []
     allp7' metrics prev =
