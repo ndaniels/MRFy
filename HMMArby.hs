@@ -43,6 +43,8 @@ prob = choose (0.0, 1.0)
 instance Arbitrary (V.Vector HMMNode) where
   arbitrary = fmap V.fromList arbitrary
 
+-- Make node numbers valid. I think that should be
+-- done in `Arbitrary (V.Vector HMMNode)`.
 instance Arbitrary HMMNode where
   arbitrary = do
     (rMatEmi, rInsEmi) <- fmap unzip $ listOf1 (liftM2 (,) prob prob)
@@ -59,6 +61,7 @@ instance Arbitrary TransitionProbabilities where
     ((p1, p2, p3, p4), (p5, p6, p7, p8, p9)) <- arbitrary   
     return $ TransitionProbabilities p1 p2 p3 p4 p5 p6 p7 p8 p9
 
+-- Fix this so that only legal transitions are allowed.
 instance Arbitrary TransitionProbability where
   arbitrary = do
     rLogProb <- arbitrary :: Gen Score
