@@ -18,17 +18,36 @@ type EmissionProbabilities = U.Vector Score
 type InsertEmissions = EmissionProbabilities
 
 type HMM = V.Vector HMMNode
+type Vector a = U.Vector a
 
-data HMMNode = 
-     HMMNode { nodeNum :: !Int
-             , matchEmissions :: !EmissionProbabilities
-             , insertionEmissions :: !InsertEmissions
-             , transitions :: !StateTransitions
+type TProbs = TransitionProbabilities
+-- @ start hmmnode.tex
+type EProbs = Vector Score
+data HMMNode = HMMNode { matEmissions :: !EProbs
+                       , insEmissions :: !EProbs
+                       , transitions  :: !TProbs
+-- @ end hmmnode.tex
+                       , nodeNum :: !Int
+-- @ start hmmnode.tex
+                       }
+-- @ end hmmnode.tex
+             deriving (Show)
+
+matchEmissions = matEmissions
+insertionEmissions = insEmissions
+
+data HMMNodex = 
+     HMMNodeOld { nodeNumZ :: !Int
+             , matchEmissionsZ :: !EmissionProbabilities
+             , insertionEmissionsZ :: !InsertEmissions
+             , transitionsZ :: !StateTransitions
              }
              deriving (Show)
 
-data StateLabel = Mat | Ins | Del
-                | Beg | End | BMat
+-- @ start statelabel.tex
+data StateLabel = Mat | Ins | Del | Beg | End
+-- @ end statelabel.tex
+                | BMat  -- keeping secrets from our readers...
                 deriving (Show, Ord, Eq, Enum, Ix)
 
 data TransitionProbabilities = 

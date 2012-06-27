@@ -156,7 +156,8 @@ transHeader = optSpaces *> string "m->m     m->i     m->d     i->m     i->i     
 -- nodenum, matchEmissions
 -- insertionEmissions
 -- transitions
-hmmNodeGroup = HMMNode <$> hmmNodeNum <*> hmmMatchEmissions <*> hmmInsertionEmissions <*> hmmTransitions
+hmmNodeGroup = HMMNode <$> hmmMatchEmissions <*> hmmInsertionEmissions <*>
+                           hmmTransitions<*> hmmNodeNum
 
 -- this is SOMETHING to an Int. 
 hmmNodeNum = optSpaces *> (try (const 0 <$> string "COMPO") <|> p_int) <* optSpaces 

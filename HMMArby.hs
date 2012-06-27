@@ -67,9 +67,9 @@ instance Arbitrary HMMNode where
     rInsEmi <- sequence $ take (length aminoList) $ repeat prob
     rTrans <- arbitrary :: Gen TransitionProbabilities
     return HMMNode { nodeNum = 0
-                   , matchEmissions     = toScoreVec rMatEmi
-                   , insertionEmissions = toScoreVec rInsEmi
-                   , transitions = rTrans
+                   , matEmissions = toScoreVec rMatEmi
+                   , insEmissions = toScoreVec rInsEmi
+                   , transitions  = rTrans
                    }
     where toScoreVec = U.fromList . map toScore
 
