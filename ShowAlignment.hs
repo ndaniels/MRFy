@@ -60,7 +60,7 @@ showAlignment hmm betas query path len alpha =
                                         else
                                           (ind + 1, mi, mp)
   
-        showA :: String -> StatePath -> Int -> HMMState 
+        showA :: String -> StatePath -> Int -> StateLabel 
                  -> String -> String -> String -- correspond to the three lines
                  -> (String, String, String)
         showA (q:qs) [] _ _ _ _ _ = error ("No more states but we still have " ++ (show (q:qs)) ++ " query sequence left")

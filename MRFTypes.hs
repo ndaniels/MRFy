@@ -27,7 +27,7 @@ data HMMNode =
              }
              deriving (Show)
 
-data HMMState = Mat | Ins | Del
+data StateLabel = Mat | Ins | Del
                 | Beg | End | BMat
                 deriving (Show, Ord, Eq, Enum, Ix)
 
@@ -51,11 +51,11 @@ mkTransProbs t0 t1 t2 t3 t4 t5 t6 = TransitionProbabilities t0 t1 t2 t3 t4 t5 t6
 
 data TransitionProbability = 
      TransitionProbability { logProbability :: !Score
-                           , fromState :: !HMMState
-                           , toState :: !HMMState
+                           , fromState :: !StateLabel
+                           , toState :: !StateLabel
                            } deriving (Show)
 
-mkTransProb :: HMMState -> HMMState -> Score -> TransitionProbability
+mkTransProb :: StateLabel -> StateLabel -> Score -> TransitionProbability
 mkTransProb f t s = TransitionProbability s f t
 
 type StateTransitions = TransitionProbabilities

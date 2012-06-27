@@ -29,7 +29,7 @@ import Score
 
 type QuerySequence = Vector Int
 
-type StatePath = [ HMMState ]
+type StatePath = [ StateLabel ]
 
 type ScorePathCons a = a -> [a] -> [a]
 
@@ -48,7 +48,7 @@ type TProbs = TransitionProbabilities
 -- hasStart and hasEnd are (for now) for model-relative local alignment.
 -- when we want to consider sequence-relative local alignment, we
 -- will also need to consider better of seqLocal vs. modLocal
-viterbi :: ScorePathCons HMMState -> (Bool, Bool) ->
+viterbi :: ScorePathCons StateLabel -> (Bool, Bool) ->
            QuerySequence -> HMM -> Scored StatePath
 viterbi pathCons (hasStart, hasEnd) query hmm =
   if numNodes == 0 then
@@ -74,18 +74,18 @@ viterbi pathCons (hasStart, hasEnd) query hmm =
 
         res i = query ! i
         
-        extend :: HMMState -> Scored StatePath -> Scored StatePath
+        extend :: StateLabel -> Scored StatePath -> Scored StatePath
         extend s = fmap (pathCons s)
         
-        aScore :: HMMState -> HMMState -> Int -> Score
+        aScore :: StateLabel -> StateLabel -> Int -> Score
         aScore = transScore hmm
         
-        eScore :: HMMState -> Int -> Int -> Score
+        eScore :: StateLabel -> Int -> Int -> Score
         eScore = emissionScore hmm query
         
         disallowed = Scored [] negLogZero -- outcome of zero likelihood
         
-        vee' :: HMMState -> Int -> Int -> Scored [HMMState]
+        vee' :: StateLabel -> Int -> Int -> Scored [StateLabel]
         
         -- 1  0 Mat
         -- 0  0 Ins
@@ -155,21 +155,21 @@ viterbi pathCons (hasStart, hasEnd) query hmm =
 
 -- TODO seqLocal: consider the case where we consume obs, not state, for beg & end.
 
-emissionScoreNode :: HMMNode -> Int -> HMMState -> Score
+emissionScoreNode :: HMMNode -> Int -> StateLabel -> Score
 emissionScoreNode n q state = 
     case state of
       Mat -> (matchEmissions     n) ! q 
       Ins -> (insertionEmissions n) ! q 
       _   -> error ("State " ++ (show state) ++ "cannot emit")
 
-emissionScore :: HMM -> QuerySequence -> HMMState -> Int -> Int -> Score
+emissionScore :: HMM -> QuerySequence -> StateLabel -> Int -> Int -> Score
 emissionScore hmm qs state j i = emissionScoreNode (hmm V.! j) (qs ! i) state
 
 transScoreNode n from to =
   logProbability $ edge from to (transitions n)
  where
         -- @ start edge.tex -8
-        edge :: HMMState -> HMMState -> (TProbs -> TProb)
+        edge :: StateLabel -> StateLabel -> (TProbs -> TProb)
         -- @ end edge.tex
         edge Mat Mat = m_m
         edge Mat Ins = m_i
@@ -183,6 +183,6 @@ transScoreNode n from to =
         edge f   t   = error $ "HMM edge " ++ show f ++ " -> " ++ show t ++
                                " is not allowed in the Plan7 architecture"
 
-transScore :: HMM -> HMMState -> HMMState -> Int -> Score
+transScore :: HMM -> StateLabel -> StateLabel -> Int -> Score
 transScore hmm from to nodenum = transScoreNode (hmm V.! nodenum) from to
 

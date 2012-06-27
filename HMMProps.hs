@@ -28,19 +28,19 @@ hmmProps = [ ("ubProp", property ubProp)
 -- | Predicate tells whether a sequence of states
 -- is a legitimate path through a Plan7 Hidden Markov Model
 -- (does not include restrictions on @Beg@ and @End@)
-isPlan7 :: [HMMState] -> Bool
+isPlan7 :: [StateLabel] -> Bool
 isPlan7 = ok
   where ok (Del:Ins:_) = False
         ok (Ins:Del:_) = False
         ok (_:states)  = ok states
         ok []  = True
         
-blockIsPlan7 :: [Block HMMState] -> Bool
+blockIsPlan7 :: [Block StateLabel] -> Bool
 blockIsPlan7 = isPlan7 . map state
 
 
 -- | Counting residues and plan7 nodes
-residueCount, nodeCount :: [HMMState] -> Int
+residueCount, nodeCount :: [StateLabel] -> Int
 residueCount = sum . map count
   where count Mat = 1
         count Ins = 1
@@ -59,7 +59,7 @@ nodeCount xss@(x:xs)
           count _    = 0
         
 -- | Admissible solution to a problem
--- admissibleSolution :: HMMModel -> QuerySquence -> [HMMState] -> Bool
+-- admissibleSolution :: HMMModel -> QuerySquence -> [StateLabel] -> Bool
 admissibleSolution model query states =
   residueCount states == U.length query &&
   nodeCount states == V.length model &&
@@ -114,22 +114,22 @@ mergeBlocks (b1 : b2 : bs)
 mergeBlocks (b : bs) = b : mergeBlocks bs
 mergeBlocks [] = []
 
-ubProp :: [HMMState] -> Bool
+ubProp :: [StateLabel] -> Bool
 ubProp ss = (unblockify . blockify) ss == ss
-buProp :: [Block HMMState] -> Bool
+buProp :: [Block StateLabel] -> Bool
 buProp bs = (blockify . unblockify) bs == mergeBlocks bs
 
-blockNoMergeProp :: [HMMState] -> Bool
+blockNoMergeProp :: [StateLabel] -> Bool
 blockNoMergeProp ss = mergeBlocks blocks == blocks
   where blocks = blockify ss
         
-mergeMergeProp :: [Block HMMState] -> Bool
+mergeMergeProp :: [Block StateLabel] -> Bool
 mergeMergeProp bs = mergeBlocks bs == (mergeBlocks . mergeBlocks) bs
 
 
 
 
-scoreHMM :: HMM -> QuerySequence -> [HMMState] -> Score
+scoreHMM :: HMM -> QuerySequence -> [StateLabel] -> Score
 scoreHMM nss qss hss = scoreHMM' (reverse $ V.toList nss) 
                                  (reverse $ U.toList qss)
                                  (reverse hss)

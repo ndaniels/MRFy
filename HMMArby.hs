@@ -107,8 +107,8 @@ instance Arbitrary Score where
     return $ if f == 0.0 then negLogZero
              else Score $ - log f
 
-instance Arbitrary HMMState where
-  -- Test this with sample (arbitrary :: Gen HMMState)
+instance Arbitrary StateLabel where
+  -- Test this with sample (arbitrary :: Gen StateLabel)
   arbitrary = elements [Mat, Ins, Del, Beg, End, BMat] 
 
 -- | Map a probability to a score
