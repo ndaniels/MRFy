@@ -49,11 +49,14 @@ residueCount = sum . map count
 -- The final node of the HMM is never considered
 -- in the state path, because it's a transition
 -- to the non-emitting end state
-nodeCount = succ . sum . map count
-  where count Mat = 1
-        count Del = 1
-        count Ins = 0
-        count _   = 0
+nodeCount xss@(x:xs)
+    | x == Ins  = 1 + nodeCount' xss
+    | otherwise =     nodeCount' xss
+    where nodeCount' = succ . sum . map count
+          count Mat  = 1
+          count Del  = 1
+          count Ins  = 0
+          count _    = 0
         
 -- | Admissible solution to a problem
 -- admissibleSolution :: HMMModel -> QuerySquence -> [HMMState] -> Bool
