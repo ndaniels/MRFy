@@ -44,10 +44,10 @@ loadTestData files =
      mrf <- parseMRF $ hmmPlusF files
      return (hmmHeader $ checkMRF mrf, hmm $ checkMRF mrf, map (translateQuery . toStr . seqdata) querySeqs)
      
-translateQuery :: String -> V.Vector Int
+translateQuery :: String -> QuerySequence
 translateQuery = V.fromList . map lookup
   where lookup k = case V.elemIndex k Constants.amino of
-                        Just i -> i
+                        Just i -> AA i
                         Nothing -> error "Residue not found in alphabet"
 
 runCommand :: Commanded -> IO ()

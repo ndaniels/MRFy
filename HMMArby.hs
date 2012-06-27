@@ -34,6 +34,16 @@ verifySearchGuess hmm (b:bs) (g:gs) = range && noClash
 instance Arbitrary (V.Vector Int) where
   arbitrary = fmap V.fromList arbitrary
 
+instance Arbitrary (V.Vector AA) where
+  arbitrary = fmap V.fromList arbitrary
+
+instance Arbitrary QuerySequence where
+  arbitrary = fmap U.fromList arbitrary
+
+
+instance Arbitrary AA where
+  arbitrary = arbitraryBoundedIntegral
+
 -- Generating query sequences must generate lists of integers
 -- in the range [0, number of amino acids in alphabet).
 instance Arbitrary (U.Vector Int) where

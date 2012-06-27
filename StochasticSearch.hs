@@ -85,7 +85,7 @@ alignable q bs = bLen < qLen
         qLen = U.length q
 
 
-vfoldr3 :: (BetaResidue -> HMMNode -> Int -> Score -> Score) -> Score -> [BetaResidue] -> HMM -> QuerySequence -> Score
+vfoldr3 :: (BetaResidue -> HMMNode -> AA -> Score -> Score) -> Score -> [BetaResidue] -> HMM -> QuerySequence -> Score
 -- vfoldr3 :: (a -> b -> c -> d -> d) -> d -> [a] -> Vector b -> Vector c -> d 
 vfoldr3 _ init [] _ _ = init
 vfoldr3 f init (r:rs) hmm query = f r (n V.! 0) (q U.! 0) $ vfoldr3 f init rs ns qs
@@ -134,7 +134,7 @@ score hmm query betas ps =
 -- invariant: length residues == length hmmSlice == length querySlice
 betaScore :: QuerySequence -> Placement -> [BetaResidue] -> HMM -> QuerySequence -> Score
 betaScore query guesses = vfoldr3 betaScore' negLogOne
-  where betaScore' :: BetaResidue -> HMMNode -> Int -> Score -> Score
+  where betaScore' :: BetaResidue -> HMMNode -> AA -> Score -> Score
         betaScore' r n q s = s + Score (betaCoeff * unScore betaTableScore) + Score ((1 - betaCoeff) * unScore viterbiScore)
           where viterbiScore = transScoreNode n Mat Mat + emissionScoreNode n q Mat
                 -- also, not blindly m_m
@@ -146,10 +146,11 @@ betaScore query guesses = vfoldr3 betaScore' negLogOne
                 betaTableScore = foldr tableLookup negLogOne $ pairs r
                 tableLookup pair score = score + lookupScore
                   where lookupScore = case expose pair of
-                                           Buried -> betaBuried V.! partnerInd U.! q
-                                           Exposed -> betaExposed V.! partnerInd U.! q
+                                           Buried -> bLookup betaBuried partnerInd q
+                                           Exposed -> bLookup betaExposed partnerInd q
                         partnerInd = query U.! partnerBeta
                         partnerBeta = (guesses !! (pairStrandSerial pair)) + (residueInd pair)
+                        bLookup table (AA i) (AA j) = table V.! i U.! j
 
 -- invariant: length betas == length guesses
 sliceQuery :: QuerySequence -> [BetaStrand] -> Placement -> Int -> [QuerySequence] -> [QuerySequence]

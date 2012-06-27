@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE BangPatterns, GeneralizedNewtypeDeriving #-}
 module Viterbi
        ( QuerySequence
        , StatePath
@@ -18,16 +18,20 @@ import Debug.Trace (trace)
 -- import Debug.Trace.LocationTH (check) 
 import qualified Data.MemoCombinators as Memo
 import qualified Data.List as DL
+import Data.Ix
+import Data.Vector.Generic.Base
+import Data.Vector.Generic.Mutable
+
 
 import Beta
 import HMMPlus
-import Data.Vector.Unboxed hiding (minimum, (++), map)
+import Data.Vector.Unboxed as U hiding (minimum, (++), map)
 import qualified Data.Vector as V hiding (minimum, (++), map)
 import Constants
 import MRFTypes
 import Score
 
-type QuerySequence = Vector Int
+type QuerySequence = U.Vector AA
 
 type StatePath = [ StateLabel ]
 
@@ -70,7 +74,7 @@ viterbi pathCons (hasStart, hasEnd) query hmm =
         bestEnd = vee' End (numNodes - 1) (seqlen - 1)
 
         numNodes = V.length $ hmm
-        seqlen = Data.Vector.Unboxed.length query
+        seqlen = U.length query
 
         res i = query ! i
         
@@ -155,15 +159,15 @@ viterbi pathCons (hasStart, hasEnd) query hmm =
 
 -- TODO seqLocal: consider the case where we consume obs, not state, for beg & end.
 
-emissionScoreNode :: HMMNode -> Int -> StateLabel -> Score
+emissionScoreNode :: HMMNode -> AA -> StateLabel -> Score
 emissionScoreNode n q state = 
     case state of
-      Mat -> (matchEmissions     n) ! q 
-      Ins -> (insertionEmissions n) ! q 
+      Mat -> (matchEmissions     n) /!/ q 
+      Ins -> (insertionEmissions n) /!/ q 
       _   -> error ("State " ++ (show state) ++ "cannot emit")
 
 emissionScore :: HMM -> QuerySequence -> StateLabel -> Int -> Int -> Score
-emissionScore hmm qs state j i = emissionScoreNode (hmm V.! j) (qs ! i) state
+emissionScore hmm qs state j i = emissionScoreNode (hmm V.! j) (qs U.! i) state
 
 transScoreNode n from to =
   logProbability $ edge from to (transitions n)
