@@ -49,6 +49,7 @@ residueCount = sum . map count
 -- The final node of the HMM is never considered
 -- in the state path, because it's a transition
 -- to the non-emitting end state
+nodeCount [] = 0
 nodeCount xss@(x:xs)
     | x == Ins  = 1 + nodeCount' xss
     | otherwise =     nodeCount' xss
