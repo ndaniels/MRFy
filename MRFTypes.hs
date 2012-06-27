@@ -1,6 +1,18 @@
 {-# LANGUAGE BangPatterns #-}
 
 module MRFTypes
+  ( MRF(..), HMM(..), HMMHeader(..), HMMNode(..), StateLabel(..)
+  , matchEmissions, insertionEmissions  
+  , StrandPair(..)
+  , Helix(..)
+  , Exposure(..), mkExposure
+  , Direction(..), mkDirection
+  , BetaStrand(..), BetaPosition, BetaResidue(..), BetaPair(..)
+  , TransitionProbability(..), TransitionProbabilities(..)
+  , mkTransProb, mkTransProbs
+  , mkScore
+  , showBetas
+  )
 where
 
 import Data.Function
