@@ -28,7 +28,7 @@ newtype AA = AA Int
   
 instance Bounded AA where
      minBound = AA 0
-     maxBound = AA 20
+     maxBound = AA ((U.length amino) - 1)
 
 -- aaProb table (AA i) = table U.! i
 
