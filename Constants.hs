@@ -32,7 +32,7 @@ instance Bounded AA where
 
 -- aaProb table (AA i) = table U.! i
 
--- (/!/) :: QuerySequence -> AA -> Scored a
+(/!/) :: Unbox a => U.Vector a -> AA -> a
 
 infix /!/
 x /!/ (AA i) = x U.! i
