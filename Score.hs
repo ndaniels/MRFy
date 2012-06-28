@@ -11,7 +11,9 @@ import Data.Vector.Generic.Base
 import Data.Vector.Generic.Mutable
 import qualified Data.Vector.Unboxed as U
 
+-- @ start score.tex
 newtype Score = Score Double
+-- @ end score.tex
   deriving (Eq, Ord, Vector U.Vector, MVector U.MVector, U.Unbox)
  -- ^ A "score" is the negated logarithm of a probability
                 
