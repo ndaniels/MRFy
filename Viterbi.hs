@@ -64,11 +64,10 @@ viterbi pathCons (hasStart, hasEnd) query hmm =
   -- trace (show state DL.++ " " DL.++ show node DL.++ " " DL.++ show obs) $
   where 
         -- @ start memo.tex -8
-        vee'' =
-          Memo.memo3 (Memo.arrayRange (Mat, End)) 
-                     (Memo.arrayRange (0, numNodes))
-                     (Memo.arrayRange (-1, seqlen)) 
-                     vee'
+        vee'' = Memo.memo3 (Memo.arrayRange (Mat, End)) 
+                           (Memo.arrayRange (0, numNodes))
+                           (Memo.arrayRange (-1, seqlen)) 
+                           vee'
         -- @ end memo.tex
 
         bestEnd = vee' End (numNodes - 1) (seqlen - 1)
