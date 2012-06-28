@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 module HMMArby where
 
+import Control.Applicative
 import Control.Monad
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
@@ -84,30 +85,12 @@ instance Arbitrary HMMNode where
     where toScoreVec = U.fromList . map toScore
 
 instance Arbitrary TProbs where
-  arbitrary = do
-    ((p1, p2, p3, p4), (p5, p6, p7, p8, p9)) <- arbitrary   
-    return $ TProbs {
-      m_m = p1 { fromState = Mat, toState = Mat},
-      m_i = p2 { fromState = Mat, toState = Ins},
-      m_d = p3 { fromState = Mat, toState = Del},
-      i_m = p4 { fromState = Ins, toState = Mat},
-      i_i = p5 { fromState = Ins, toState = Ins},
-      d_m = p6 { fromState = Del, toState = Mat},
-      d_d = p7 { fromState = Del, toState = Del},
-      b_m = p8 { fromState = Beg, toState = Mat},
-      m_e = p9 { fromState = Mat, toState = End} }
+  arbitrary = TProbs <$> p <*> p <*> p <*> p <*> p <*> p <*> p <*> p <*> p
+   where p = arbitrary   
 
 -- Fix this so that only legal transitions are allowed.
 instance Arbitrary TProb where
-  arbitrary = do
-    rLogProb <- arbitrary :: Gen Score
-    -- fromState and toState should *not* be randomly generated
-    -- here. Their values can only be known by the
-    -- TProbs generator.
-    return $ TProb { logProbability = rLogProb
-                   , fromState = Mat
-                   , toState = Mat
-                   }
+  arbitrary = TProb <$> arbitrary
 
 instance Arbitrary Score where
   arbitrary = do
