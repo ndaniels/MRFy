@@ -16,6 +16,7 @@ module LazySearchModel
 
 where
   
+import Control.Applicative
 import Control.Monad.LazyRandom
 import Control.Monad
 import Data.Function
@@ -189,20 +190,19 @@ instance Ord (History a) where
 -------------------------------------------------------V
 -- @ start everygen.tex
 everyPt :: RandomGen r
-        => SearchGen pt r -> Age -> Scored pt
-        -> Rand r [Aged (Utility (Scored pt))]
-everyPt sg age startPt = do
+        => SearchGen pt r -> CCost -> Scored pt
+        -> Rand r [CCosted (Utility (Scored pt))]
+everyPt sg cost startPt = do
   successors <- mapM (nextPt sg) (repeat startPt)
-  tagged <- zipWithM agedUtility successors [succ age..]
-  let (useless, Aged (Useful newPt) newAge : _) =
-                        span (isUseless . unAged) tagged
-  nextPts <- everyPt sg newAge newPt
-  return $ Aged (Useful startPt) age : useless ++ nextPts
-
-  where agedUtility pt age =
-           utility sg move >>= \u -> return $ Aged u age
-         where move = Move { older = startPt, younger = pt
-                           , youngerAge = age }
+  tagged <- zipWithM costedUtility successors [succ cost..]
+  let (useless, CCosted (Useful newPt) newCost : _) =
+                      span (isUseless . unCCosted) tagged
+  ((CCosted (Useful startPt) cost : useless) ++) <$>
+                                  everyPt sg newCost newPt
+ where costedUtility pt cost =
+         utility sg move >>= \u -> return $ CCosted u cost
+        where move = Move { older = startPt, younger = pt
+                          , youngerCCost = cost }
 -- @ end everygen.tex
 
   
