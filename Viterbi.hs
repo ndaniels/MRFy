@@ -46,9 +46,6 @@ consPath x xs = x:xs
 consNoPath :: ScorePathCons a
 consNoPath _ _ = []
 
-type TProb = TransitionProbability
-type TProbs = TransitionProbabilities
-
 -- hasStart and hasEnd are (for now) for model-relative local alignment.
 -- when we want to consider sequence-relative local alignment, we
 -- will also need to consider better of seqLocal vs. modLocal

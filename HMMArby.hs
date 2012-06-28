@@ -75,7 +75,7 @@ instance Arbitrary HMMNode where
     -- (rMatEmi, rInsEmi) <- fmap unzip $ listOf1 (liftM2 (,) prob prob) 
     rMatEmi <- sequence $ take (length aminoList) $ repeat prob
     rInsEmi <- sequence $ take (length aminoList) $ repeat prob
-    rTrans <- arbitrary :: Gen TransitionProbabilities
+    rTrans <- arbitrary :: Gen TProbs
     return HMMNode { nodeNum = 0
                    , matEmissions = toScoreVec rMatEmi
                    , insEmissions = toScoreVec rInsEmi
@@ -83,12 +83,12 @@ instance Arbitrary HMMNode where
                    }
     where toScoreVec = U.fromList . map toScore
 
-instance Arbitrary TransitionProbabilities where
+instance Arbitrary TProbs where
   arbitrary = do
     ((p1, p2, p3, p4), (p5, p6, p7, p8, p9)) <- arbitrary   
-    -- The from/to states in TransitionProbability must correspond
-    -- to their place in TransitionProbabilities.
-    return $ TransitionProbabilities
+    -- The from/to states in TProb must correspond
+    -- to their place in TProbs.
+    return $ TProbs
       p1 { fromState = Mat, toState = Mat}
       p2 { fromState = Mat, toState = Ins}
       p3 { fromState = Mat, toState = Del}
@@ -100,16 +100,16 @@ instance Arbitrary TransitionProbabilities where
       p9 { fromState = Mat, toState = End}
 
 -- Fix this so that only legal transitions are allowed.
-instance Arbitrary TransitionProbability where
+instance Arbitrary TProb where
   arbitrary = do
     rLogProb <- arbitrary :: Gen Score
     -- fromState and toState should *not* be randomly generated
     -- here. Their values can only be known by the
-    -- TransitionProbabilities generator.
-    return $ TransitionProbability { logProbability = rLogProb
-                                   , fromState = Mat
-                                   , toState = Mat
-                                   }
+    -- TProbs generator.
+    return $ TProb { logProbability = rLogProb
+                   , fromState = Mat
+                   , toState = Mat
+                   }
 
 instance Arbitrary Score where
   arbitrary = do

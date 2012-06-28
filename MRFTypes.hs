@@ -8,7 +8,7 @@ module MRFTypes
   , Exposure(..), mkExposure
   , Direction(..), mkDirection
   , BetaStrand(..), BetaPosition, BetaResidue(..), BetaPair(..)
-  , TransitionProbability(..), TransitionProbabilities(..)
+  , TProb(..), TProbs(..)
   , mkTransProb, mkTransProbs
   , mkScore
   , showBetas
@@ -32,7 +32,6 @@ type InsertEmissions = EmissionProbabilities
 type HMM = V.Vector HMMNode
 type Vector a = U.Vector a
 
-type TProbs = TransitionProbabilities
 -- @ start hmmnode.tex
 type EProbs = Vector Score
 data HMMNode = HMMNode { nodeNum :: Int
@@ -54,34 +53,34 @@ data StateLabel = Mat | Ins | Del | Beg | End
                 | BMat  -- keeping secrets from our readers...
                 deriving (Show, Ord, Eq, Enum, Ix)
 
-data TransitionProbabilities = 
-     TransitionProbabilities { m_m :: TransitionProbability
-                             , m_i :: TransitionProbability
-                             , m_d :: TransitionProbability
-                             , i_m :: TransitionProbability
-                             , i_i :: TransitionProbability
-                             , d_m :: TransitionProbability
-                             , d_d :: TransitionProbability
-                             , b_m :: TransitionProbability
-                             , m_e :: TransitionProbability
-                             }
-                             deriving (Show)
+data TProbs = 
+     TProbs { m_m :: TProb
+            , m_i :: TProb
+            , m_d :: TProb
+            , i_m :: TProb
+            , i_i :: TProb
+            , d_m :: TProb
+            , d_d :: TProb
+            , b_m :: TProb
+            , m_e :: TProb
+            }
+            deriving (Show)
 
--- mkTransProbs :: [Score] -> TransitionProbabilities
-mkTransProbs t0 t1 t2 t3 t4 t5 t6 = TransitionProbabilities t0 t1 t2 t3 t4 t5 t6
-                                                            (mkTransProb Beg Mat negLogZero)
-                                                            (mkTransProb Mat End negLogZero)
+-- mkTransProbs :: [Score] -> TProbs
+mkTransProbs t0 t1 t2 t3 t4 t5 t6 = TProbs t0 t1 t2 t3 t4 t5 t6
+                                           (mkTransProb Beg Mat negLogZero)
+                                           (mkTransProb Mat End negLogZero)
 
-data TransitionProbability = 
-     TransitionProbability { logProbability :: !Score
-                           , fromState :: !StateLabel
-                           , toState :: !StateLabel
-                           } deriving (Show)
+data TProb = 
+     TProb { logProbability :: Score
+           , fromState :: StateLabel
+           , toState :: StateLabel
+           } deriving (Show)
 
-mkTransProb :: StateLabel -> StateLabel -> Score -> TransitionProbability
-mkTransProb f t s = TransitionProbability s f t
+mkTransProb :: StateLabel -> StateLabel -> Score -> TProb
+mkTransProb f t s = TProb s f t
 
-type StateTransitions = TransitionProbabilities
+type StateTransitions = TProbs
 
 mkScore :: String -> Score
 mkScore "*" = negLogZero
