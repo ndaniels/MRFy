@@ -48,14 +48,6 @@ data HMMNode = HMMNode { nodeNum :: Int
 matchEmissions = matEmissions
 insertionEmissions = insEmissions
 
-data HMMNodex = 
-     HMMNodeOld { nodeNumZ :: !Int
-             , matchEmissionsZ :: !EmissionProbabilities
-             , insertionEmissionsZ :: !InsertEmissions
-             , transitionsZ :: !StateTransitions
-             }
-             deriving (Show)
-
 -- @ start statelabel.tex
 data StateLabel = Mat | Ins | Del | Beg | End
 -- @ end statelabel.tex
