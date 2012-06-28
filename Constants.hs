@@ -21,7 +21,9 @@ betaCoeff = 0.5
 -- amino = fromList aminoS :: Alphabet 
 -- nucleotide = fromList nucleotideS 
 
+-- @ start aa.tex
 newtype AA = AA Int
+-- @ end aa.tex
   deriving (Show, Eq, Num, Ord, Ix, Integral, Enum, Real
            , Data.Vector.Generic.Base.Vector U.Vector
            , Data.Vector.Generic.Mutable.MVector U.MVector, U.Unbox)
