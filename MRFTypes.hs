@@ -35,10 +35,10 @@ type Vector a = U.Vector a
 type TProbs = TransitionProbabilities
 -- @ start hmmnode.tex
 type EProbs = Vector Score
-data HMMNode = HMMNode { nodeNum :: !Int
-                       , matEmissions :: !EProbs
-                       , insEmissions :: !EProbs
-                       , transitions  :: !TProbs
+data HMMNode = HMMNode { nodeNum :: Int
+                       , matEmissions :: EProbs
+                       , insEmissions :: EProbs
+                       , transitions  :: TProbs
 -- @ end hmmnode.tex
 -- @ start hmmnode.tex
                        }
