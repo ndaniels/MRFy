@@ -72,7 +72,7 @@ mkTransProbs t0 t1 t2 t3 t4 t5 t6 = TProbs t0 t1 t2 t3 t4 t5 t6
                                            (mkTransProb Mat End negLogZero)
 
 -- @ start tprob.tex
-data TProb = TProb { logProbability :: Score }
+newtype TProb = TProb { logProbability :: Score }
 -- @ end tprob.tex
            deriving (Show)
 
