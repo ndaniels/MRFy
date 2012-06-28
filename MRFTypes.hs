@@ -55,15 +55,15 @@ data StateLabel = Mat | Ins | Del | Beg | End
                 deriving (Show, Ord, Eq, Enum, Ix)
 
 data TransitionProbabilities = 
-     TransitionProbabilities { m_m :: !TransitionProbability
-                             , m_i :: !TransitionProbability
-                             , m_d :: !TransitionProbability
-                             , i_m :: !TransitionProbability
-                             , i_i :: !TransitionProbability
-                             , d_m :: !TransitionProbability
-                             , d_d :: !TransitionProbability
-                             , b_m :: !TransitionProbability
-                             , m_e :: !TransitionProbability
+     TransitionProbabilities { m_m :: TransitionProbability
+                             , m_i :: TransitionProbability
+                             , m_d :: TransitionProbability
+                             , i_m :: TransitionProbability
+                             , i_i :: TransitionProbability
+                             , d_m :: TransitionProbability
+                             , d_d :: TransitionProbability
+                             , b_m :: TransitionProbability
+                             , m_e :: TransitionProbability
                              }
                              deriving (Show)
 
