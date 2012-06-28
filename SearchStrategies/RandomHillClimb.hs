@@ -18,7 +18,7 @@ nss hmm searchP query betas scorer = fullSearchStrategy
   (fmap scorer $ initialize hmm searchP query betas)
   (mutate searchP query betas scorer)
   scoreUtility
-  (takeByAgeGap (acceptableAgeGap searchP))
+  (takeByCCostGap (acceptableCCostGap searchP))
   id
 
 initialize :: RandomGen r => HMM -> SearchParameters -> QuerySequence

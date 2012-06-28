@@ -39,34 +39,34 @@ tickProp (Positive n') (Positive t) =
 takeNGenerations :: Int -> [AUS a] -> History a
 takeNGenerations n = take emptyHistory
   where take (!older) (gen : younger) =
-          if showMe (age < n) then
+          if showMe (ccost < n) then
             take (gen `extendUsefulHistory` older) younger
           else
             older
-          where age = ageOf gen
-                showMe = if isTick age 10 n then
-                           trace (show age ++ " generations complete")
+          where ccost = ccostOf gen
+                showMe = if isTick ccost 10 n then
+                           trace (show ccost ++ " generations complete")
                          else
                            id
 
--- | @takeByAgeGap p pops@ accumulates from @pops@
+-- | @takeByCCostGap p pops@ accumulates from @pops@
 -- as long as @p older younger@ is @True@, where
 -- @older@ is the age of most recent *accepted* population
 -- and @younger@ is the age of the *current* population
-takeByAgeGap :: (Age -> Age -> Bool) -> [AUS a] -> History a
-takeByAgeGap continue = take emptyHistory
+takeByCCostGap :: (CCost -> CCost -> Bool) -> [AUS a] -> History a
+takeByCCostGap continue = take emptyHistory
   where take (older @ (History (pop : _))) (gen : younger) 
-          | not (continue (ageOf pop) (ageOf gen)) = older
+          | not (continue (ccostOf pop) (ccostOf gen)) = older
         take (!older) (gen : younger) = take (gen `extendUsefulHistory` older) younger
 
 
 
 
--- | @acceptableAgeGap searchP@ returns a function that tells if
+-- | @acceptableCCostGap searchP@ returns a function that tells if
 -- an age gap is acceptable according to the search parameters.
 -- If no maximum gap is specified, then *every* gap is acceptable.
-acceptableAgeGap :: SearchParameters -> Age -> Age -> Bool
-acceptableAgeGap searchP a age = maybe True (age - a <=) (convergenceAge searchP)
+acceptableCCostGap :: SearchParameters -> CCost -> CCost -> Bool
+acceptableCCostGap searchP a age = maybe True (age - a <=) (convergenceAge searchP)
                                  && age < generations searchP
 
 

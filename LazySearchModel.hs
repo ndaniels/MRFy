@@ -1,8 +1,8 @@
 {-# LANGUAGE ScopedTypeVariables, BangPatterns, MultiParamTypeClasses, RankNTypes, NamedFieldPuns, ExistentialQuantification #-}
 {-# OPTIONS_GHC -Wall -fno-warn-name-shadowing #-}
 module LazySearchModel
-       ( Age
-       , Aged(..), unAged, ageOf
+       ( CCost
+       , CCosted(..), unCCosted, ccostOf
        , History(..), unHistory, hcons, emptyHistory, historySolution
                     , extendUsefulHistory
        , scoreUtility
@@ -32,18 +32,18 @@ successor states using random numbers.  A new state may be "useful" or
 "useless".  A useful state becomes the starting point for a new
 search; a useless state is eventually discarded.
 
-Both useful and useless states have *ages*; the age of a state is the
-number of states (both useful and useless) that have preceded it in
-the search.
+Both useful and useless states have *cumulative costs*; the cumulative
+cost of a state is the number of states (both useful and useless) that
+have preceded it in the search.
 
 Every state is assigned a *score*; the utility of a state is solely a
-function of its age and score.
+function of its cumulative cost and score.
 
 -}
 
 -------------- Type definitions for central concepts ----------
 -- @ start strategy.tex
-type Age  = Int -- number of generations explored
+type CCost  = Int -- cumulative cost of reaching this point
 -- @ end strategy.tex
 
 -- @ start utility.tex
@@ -54,23 +54,23 @@ data Utility a = Useful a | Useless
 -- whether a younger state is useless.  The decision
 -- uses the score of the most recent useful state
 -- (aka the @older@ state) as well as the score and
--- age of the state under scrutiny (the @younger@ state).
+-- cumulative cost of the state under scrutiny (the @younger@ state).
 -- @ start move.tex
-data Move pt = Move { older      :: Scored pt
-                    , younger    :: Scored pt
-                    , youngerAge :: Age }
+data Move pt = Move { older        :: Scored pt
+                    , younger      :: Scored pt
+                    , youngerCCost :: CCost }
 -- @ end move.tex
 
 -- | Many internal decisions are made based on age,
 -- so we provide a way to tag any value with its age.
 -- @ start aged.tex
-data Aged a = Aged a Age
+data CCosted a = CCosted a CCost
 -- @ end aged.tex
   deriving (Show, Eq, Ord)
-unAged :: Aged a -> a
-unAged (Aged a _) = a
-ageOf :: Aged a -> Age
-ageOf (Aged _ age) = age
+unCCosted :: CCosted a -> a
+unCCosted (CCosted a _) = a
+ccostOf :: CCosted a -> CCost
+ccostOf (CCosted _ age) = age
 
 
 
@@ -112,22 +112,19 @@ data SearchGen pt r =
  -- strategies, we want to retain information about *all* useful
  -- states.  That is the role of @History@.  The list is always
  -- finite, and the youngest solution is at the beginning.
- --
- -- XXX this whole 'Age' thing is bogus.  Younger values have *larger* Ages!
- -- We need a short word meaning 'birthday' or 'date of manufacture'.
  
 -- @ start history.tex
-newtype History placement = History [Aged (Scored placement)]
+newtype History placement = History [CCosted (Scored placement)]
 -- @ end history.tex
   deriving (Show, Eq)
-unHistory :: History a -> [Aged (Scored a)]
+unHistory :: History a -> [CCosted (Scored a)]
 unHistory (History a) = a
 
 -- | A stop function converts an infinite sequence of states into a
 -- history.  It requires as a precondition that the input be infinite
 -- and that the first state be useful.
 -- @ start stop.tex
-type SearchStop a = [Aged (Utility (Scored a))] -> History a
+type SearchStop a = [CCosted (Utility (Scored a))] -> History a
 -- @ end stop.tex
 
 
@@ -150,27 +147,27 @@ searchStrategy g0 n u s = SS (SG g0 n u) s
 instance Functor History where
   fmap f = History . (fmap . fmap . fmap) f . unHistory
 
--- data History placement = History [Aged (Scored placement)]
+-- data History placement = History [CCosted (Scored placement)]
 
 
 
-hcons :: Aged (Scored placement) -> History placement -> History placement
+hcons :: CCosted (Scored placement) -> History placement -> History placement
 hcons a (History as) = History (a:as)
 emptyHistory :: History a
 emptyHistory = History []
 historySolution :: History a -> Scored a
-historySolution (History (asp : _)) = unAged asp
+historySolution (History (asp : _)) = unCCosted asp
 historySolution _ = error "solution from empty history"
 
 extendUsefulHistory :: AUS a -> History a -> History a
-extendUsefulHistory (Aged Useless _) h = h
-extendUsefulHistory (Aged (Useful a) age) h = Aged a age `hcons` h
+extendUsefulHistory (CCosted Useless _) h = h
+extendUsefulHistory (CCosted (Useful a) ccost) h = CCosted a ccost `hcons` h
 
-type AUS a = Aged (Utility (Scored a))
+type AUS a = CCosted (Utility (Scored a))
 
 
-instance Functor Aged where
-  fmap f (Aged a age) = Aged (f a) age
+instance Functor CCosted where
+  fmap f (CCosted a ccost) = CCosted (f a) ccost
 
 
 scoreUtility :: RandomGen gen => Move a -> Rand gen (Utility (Scored a))
@@ -186,7 +183,7 @@ isUseless Useless    = True
 isUseless (Useful _) = False
 
 instance Ord (History a) where
-  compare = compare `on` map unAged . unHistory
+  compare = compare `on` map unCCosted . unHistory
     -- ^ Histories are compared by the score of the youngest element.
 
 -------------------------------------------------------V
@@ -238,7 +235,7 @@ fullSearchStrategy g0 n u s b = FSS (SG g0 n u) s b
 
 
 
--- TODO keep a Scored (Age, Placement) to support Simulated Annealing
+-- TODO keep a Scored (CCost, Placement) to support Simulated Annealing
 -- otherwise, need an out of band "best ever" updated at every step
 -- this is also necessary to prevent SimAn from thinking it's improving
 -- when in fact it isn't.
