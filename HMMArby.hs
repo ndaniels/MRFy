@@ -88,16 +88,16 @@ instance Arbitrary TransitionProbabilities where
     ((p1, p2, p3, p4), (p5, p6, p7, p8, p9)) <- arbitrary   
     -- The from/to states in TransitionProbability must correspond
     -- to their place in TransitionProbabilities.
-    return $ TransitionProbabilities
-      p1 { fromState = Mat, toState = Mat}
-      p2 { fromState = Mat, toState = Ins}
-      p3 { fromState = Mat, toState = Del}
-      p4 { fromState = Ins, toState = Mat}
-      p5 { fromState = Ins, toState = Ins}
-      p6 { fromState = Del, toState = Mat}
-      p7 { fromState = Del, toState = Del}
-      p8 { fromState = Beg, toState = Mat}
-      p9 { fromState = Mat, toState = End}
+    return $ TransitionProbabilities {
+      m_m = p1 { fromState = Mat, toState = Mat},
+      m_i = p2 { fromState = Mat, toState = Ins},
+      m_d = p3 { fromState = Mat, toState = Del},
+      i_m = p4 { fromState = Ins, toState = Mat},
+      i_i = p5 { fromState = Ins, toState = Ins},
+      d_m = p6 { fromState = Del, toState = Mat},
+      d_d = p7 { fromState = Del, toState = Del},
+      b_m = p8 { fromState = Beg, toState = Mat},
+      m_e = p9 { fromState = Mat, toState = End} }
 
 -- Fix this so that only legal transitions are allowed.
 instance Arbitrary TransitionProbability where
