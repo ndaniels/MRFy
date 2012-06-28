@@ -133,9 +133,10 @@ viterbi pathCons (hasStart, hasEnd) query hmm =
         -- consume an observation AND a node
         --------------------------------------------------------
         -- @ start viterbi.tex -8
-        vee' Mat j i = extend Mat
-                      (eScore Mat j i /+/ minimum (map from [Mat, Ins, Del]))
-         where from prev = aScore prev Mat (j-1) /+/ vee'' prev (j-1) (i-1)
+        vee' Mat j i = extend Mat $
+           eScore Mat j i /+/ minimum (map avSum [Mat, Ins, Del])
+         where avSum prev =
+                 aScore prev Mat (j-1) /+/ vee'' prev (j-1) (i-1)
         -- @ end viterbi.tex
 
         -- consume an observation but not a node
