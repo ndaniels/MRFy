@@ -141,6 +141,12 @@ runCommand (TestHMM "isEnumLaw") =
 runCommand (TestHMM "randomLaw") =
   quickCheck randomLaw
 
+runCommand (TestHMM "consistent-scoring") =
+  quickCheck consistentScoring
+
+runCommand (TestHMM "scoreable-metrics") =
+  quickCheck scoreableMetrics
+
 runCommand (TestHMM "viterbi-awesome") =
   quickCheck viterbiIsAwesome
 

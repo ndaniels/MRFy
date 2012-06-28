@@ -31,27 +31,13 @@ verifySearchGuess hmm (b:bs) (g:gs) = range && noClash
                     [] -> True
                     (g':gs') -> g' > g + len b
 
-
-instance Arbitrary (V.Vector Int) where
-  arbitrary = fmap V.fromList arbitrary
-
-instance Arbitrary (V.Vector AA) where
-  arbitrary = fmap V.fromList arbitrary
-
 instance Arbitrary QuerySequence where
-  arbitrary = fmap U.fromList arbitrary
-
+  arbitrary = do
+    qs <- arbitrary
+    return $ U.fromList $ take (min (length qs) 12) qs
 
 instance Arbitrary AA where
   arbitrary = arbitraryBoundedIntegral
-
--- Generating query sequences must generate lists of integers
--- in the range [0, number of amino acids in alphabet).
-instance Arbitrary (U.Vector Int) where
-  arbitrary = do
-    let aas = choose (0, pred $ length aminoList) :: Gen Int
-    seq <- listOf aas :: Gen [Int]
-    return $ U.fromList seq
 
 prob :: Gen Double
 prob = choose (0.0, 1.0)
@@ -62,7 +48,7 @@ instance Arbitrary (V.Vector HMMNode) where
     -- that we get a list of HMMNodes with at least length 2.
     -- Is there a better way to do this? (Preferably without
     -- setting a maximum.)
-    randLen <- choose (2, 100)
+    randLen <- choose (2, 12)
     nodes <- vectorOf randLen arbitrary :: Gen [HMMNode]
     return $ V.fromList $ map annotate $ zip [0..] nodes
 

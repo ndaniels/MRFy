@@ -143,8 +143,8 @@ scoreHMM nss qss hss = scoreHMM' (reverse $ V.toList nss)
   where
     scoreHMM' [] [] []         _       = Score 0.0 -- begin
     scoreHMM' (n:[]) [] []     t       = aScore n Mat t
-    scoreHMM' (n:[]) (q:[]) (Mat:[]) _ = error "node 0 Mat does not emit"
-    scoreHMM' (n:[]) (q:[]) (Del:[]) _ = error "node 0 Del forbidden"
+    scoreHMM' (n:[]) (q:[]) (Mat:[]) _ = negLogZero
+    scoreHMM' (n:[]) (q:[]) (Del:[]) _ = negLogZero
     scoreHMM' (n:[]) (q:[]) (Ins:[]) _ = eScore n q Ins +
                                          aScore n Mat Ins
     -- -- TODO check all these base cases vs Viterbi

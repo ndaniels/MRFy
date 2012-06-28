@@ -5,6 +5,8 @@ module Perturb
        , oneAllMoversPerturb
        , oneDecayMoversPerturb
        , oneLocalPerturb
+       , consistentScoring
+       , scoreableMetrics
        , viterbiIsAwesome
        )
 where
@@ -259,6 +261,10 @@ minus (M nCnt rCnt) Mat = M (pred nCnt) (pred rCnt)
 minus (M nCnt rCnt) Ins = M nCnt (pred rCnt)
 minus (M nCnt rCnt) Del = M (pred nCnt) rCnt
 
+minusBeginningIns :: Metrics -> State -> Metrics
+minusBeginningIns (M nCnt rCnt) Ins = M (pred nCnt) (pred rCnt)
+minusBeginningIns metrics state = metrics `minus` state
+
 nonnegative :: Metrics -> Bool
 nonnegative (M nCnt rCnt) = nCnt >= 0 && rCnt >= 0
 
@@ -268,7 +274,7 @@ instance Arbitrary Metrics where
 
 
 allp7 :: Metrics -> [SSeq]
-allp7 metrics = allp7' metrics Mat -- any state can follow Mat
+allp7 metrics = allp7' metrics Mat minusBeginningIns -- any state can follow Mat
   where
     -- @allp7' metrics prev@ generates all sequences of states with the
     -- given metrics, provided that if the sequence is not empty, it
@@ -276,14 +282,14 @@ allp7 metrics = allp7' metrics Mat -- any state can follow Mat
     -- @prev@ is @Mat@, which is blatantly horrible, but it works because
     -- any state can follow @Mat@.  We'd prefer to use a predicate, but
     -- that makes memoziation ugly.  
-    allp7' :: Metrics -> State -> [SSeq]
-    allp7' (M 0 0) _ = return []
-    allp7' metrics prev =
+    allp7' :: Metrics -> State -> (Metrics -> State -> Metrics) -> [SSeq]
+    allp7' (M 0 0) _ _ = return []
+    allp7' metrics prev nextMinus =
         [ s : ss | s <- filter (canFollow prev) [Mat, Ins, Del]
-                 , nonnegative (metrics `minus` s)
-                 , ss <- allp7memo (metrics `minus` s) s ]
+                 , nonnegative (metrics `nextMinus` s)
+                 , ss <- allp7memo (metrics `nextMinus` s) s minus ]
 
-    allp7memo :: Metrics -> State -> [SSeq]
+    allp7memo :: Metrics -> State -> (Metrics -> State -> Metrics) -> [SSeq]
     allp7memo =
       Memo.memo2 (Memo.arrayRange (M 0 0, metrics))
                  (Memo.arrayRange (Mat, Del))
@@ -293,20 +299,42 @@ noP7Dups :: Metrics -> Bool
 noP7Dups ms = length (nub ss) == length ss
   where ss = allp7 ms
 
+consistentScoring :: HMM -> QuerySequence -> Bool
+consistentScoring model query = 
+  trace ("\n\nViterbi: " ++ (show $ scoreOf vscored) ++ 
+         "\nViterbi SSeq: " ++ (show $ unScored vscored) ++
+         "\n\nHMM Score: " ++ (show hmmScore)) $
+  scoreOf vscored == hmmScore
+  where vscored = viterbi (:) (False, False) query model
+        hmmScore = scoreHMM model query (unScored vscored)
+
 goodMetrics :: Metrics -> Bool
 goodMetrics m@(M nCnt rCnt) = all ok $ allp7 m
-  where ok ss = nodeCount ss == succ nCnt && residueCount ss == rCnt
+  where ok ss = nodeCount ss == nCnt && residueCount ss == rCnt
+
+scoreableMetrics :: HMM -> QuerySequence -> Bool
+scoreableMetrics model query = all id $ (parMap rseq) goodScore $ allp7 metrics
+  where goodScore ss =
+          let score = (scoreHMM model query ss)
+           in score >= 0 || score <= 0 -- it's good to be bad
+        metrics = M (V.length model) (U.length query)
 
 viterbiIsAwesome :: HMM -> QuerySequence -> Bool
-viterbiIsAwesome model query = all (vscore <=) possibleScores
-  where vscore = scoreOf $ viterbi (:) (False, False) query model
-        possibleScores = (parMap rseq) (scoreHMM model query) $ allp7 (M n r)
+viterbiIsAwesome model query = 
+  trace ("\n\nViterbi: " ++ (show $ scoreOf vscored) ++ 
+         "\nViterbi SSeq: " ++ (show $ unScored vscored) ++
+         "\n\nPlan7 Gen scores: " ++ (show possibleScores) ++
+         "\nPlan7 Gen SSeqs: " ++ (show allStates)) $
+    all ((scoreOf vscored) <=) possibleScores
+  where vscored = viterbi (:) (False, False) query model
+        possibleScores = (parMap rseq) (scoreHMM model query) allStates
+        allStates = allp7 $ M n r
 
         -- If the state sequence starts with an insertion, that insert
         -- comes from node 0. *Otherwise*, node 0 is not represented in
         -- the state sequence. This is difficult to represent here; perhaps
         -- it should go in the generator? How?
-        (n, r) = (V.length model - 1, U.length query)
+        (n, r) = (V.length model, U.length query)
 
 -----------------------------------------------------------------------------------
 -- TESTS ON REAL DATA
@@ -418,6 +446,6 @@ perturbProps = [ ("diagonal", property diagonalProp)
                   property $ preservesInvariants $ withStates decayMovers)
                , ("distinct-movers-decay",
                   property $ distinctPerturbations allMovers decayMovers)
--- BROKEN XXX TODO , ("viterbi-awesome", property viterbiIsAwesome)
+               , ("viterbi-awesome", property viterbiIsAwesome)
                ]
 
