@@ -53,7 +53,7 @@ nodeCount [] = 0
 nodeCount xss@(x:xs)
     | x == Ins  = 1 + nodeCount' xss
     | otherwise =     nodeCount' xss
-    where nodeCount' = succ . sum . map count
+    where nodeCount' = sum . map count
           count Mat  = 1
           count Del  = 1
           count Ins  = 0
