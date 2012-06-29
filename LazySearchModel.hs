@@ -125,7 +125,8 @@ unHistory (History a) = a
 -- history.  It requires as a precondition that the input be infinite
 -- and that the first state be useful.
 -- @ start stop.tex
-type SearchStop a = [CCosted (Utility (Scored a))] -> History a
+type SearchStop pt =
+       [CCosted (Utility (Scored pt))] -> History pt
 -- @ end stop.tex
 
 
@@ -197,7 +198,7 @@ everyPt sg cost startPt = do
   tagged <- zipWithM costedUtility successors [succ cost..]
   let (useless, CCosted (Useful newPt) newCost : _) =
                       span (isUseless . unCCosted) tagged
-  ((CCosted (Useful startPt) cost : useless) ++) <$>
+  (++) (CCosted (Useful startPt) cost : useless) <$>
                                   everyPt sg newCost newPt
  where costedUtility pt cost =
          utility sg move >>= \u -> return $ CCosted u cost
@@ -208,10 +209,10 @@ everyPt sg cost startPt = do
   
 --------------------------------------------------------
 -- @ start search.tex
-search :: RandomGen r
-       => SearchStrategy pt r -> Rand r (History pt)
-search (SS strat test) =
-  fmap test . everyPt strat 0 =<< pt0 strat
+search :: RandomGen r => SearchGen pt r -> SearchStop pt
+       -> Rand r (History pt)
+search strat test =
+  return . test =<< everyPt strat 0 =<< pt0 strat
 -- @ end search.tex
 
 data FullSearchStrategy placement r =
