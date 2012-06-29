@@ -7,6 +7,7 @@ import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
 import System.Random
 import Test.QuickCheck
+import Test.QuickCheck.Arbitrary
 import Test.QuickCheck.Gen
 -- import Data.List 
 
@@ -32,6 +33,7 @@ verifySearchGuess hmm (b:bs) (g:gs) = range && noClash
                     (g':gs') -> g' > g + len b
 
 instance Arbitrary QuerySequence where
+  shrink = (map U.fromList) . (shrink . U.toList)
   arbitrary = do
     qs <- arbitrary
     return $ U.fromList $ take (min (length qs) 12) qs
@@ -43,6 +45,7 @@ prob :: Gen Double
 prob = choose (0.0, 1.0)
 
 instance Arbitrary (V.Vector HMMNode) where
+  shrink = (map V.fromList) . (shrink . V.toList)
   arbitrary = do
     -- A random length is used here to essentially guarantee
     -- that we get a list of HMMNodes with at least length 2.
