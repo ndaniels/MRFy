@@ -85,7 +85,7 @@ oneTestResults (_, model, queries) = concatMap (string model) queries
               show (nodeCount states)
             , "Solution " ++ (if isPlan7 states then "respects" else "violates") ++
               " Plan7 invariant"
-            , "Score is " ++ show (scoreHMM model query states)
+            , "Score should be 86.69144; it is " ++ show (scoreHMM model query states)
             ]
               where states = unScored $ viterbi (:) HasNoEnd query model
 
