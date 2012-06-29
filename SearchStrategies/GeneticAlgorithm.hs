@@ -2,7 +2,6 @@
 module SearchStrategies.GeneticAlgorithm where
 
 import Control.Monad.LazyRandom
-import Control.Parallel.Strategies
 
 import Data.List
 
@@ -52,7 +51,7 @@ mutate searchP query betas scorer (Scored placements _) = fmap wrapBestScore fit
                        $ take (getSearchParm searchP populationSize)
                        $ sort
                        $ placements ++ progeny gen
-        progeny gen = (parMap rseq) scorer
+        progeny gen = map scorer
                       $ map (\gs -> mutateChild 0 0 gen gs gs)
                       $ getPairings
                       $ map unScored placements

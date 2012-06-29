@@ -13,7 +13,6 @@ where
   
 import Control.Applicative
 import Control.Monad
-import Control.Parallel.Strategies
 import Data.Ix
 import Data.List
 import Data.Maybe
@@ -313,7 +312,7 @@ goodMetrics m@(M nCnt rCnt) = all ok $ allp7 m
   where ok ss = nodeCount ss == nCnt && residueCount ss == rCnt
 
 scoreableMetrics :: HMM -> QuerySequence -> Bool
-scoreableMetrics model query = all id $ (parMap rseq) goodScore $ allp7 metrics
+scoreableMetrics model query = all id $ map goodScore $ allp7 metrics
   where goodScore ss =
           let score = (scoreHMM model query ss)
            in score >= 0 || score <= 0 -- it's good to be bad
@@ -327,7 +326,7 @@ viterbiIsAwesome model query =
          "\nPlan7 Gen SSeqs: " ++ (show allStates)) $
     all ((scoreOf vscored) <=) possibleScores
   where vscored = viterbi (:) HasNoEnd query model
-        possibleScores = (parMap rseq) (scoreHMM model query) allStates
+        possibleScores = map (scoreHMM model query) allStates
         allStates = allp7 $ M n r
 
         -- If the state sequence starts with an insertion, that insert

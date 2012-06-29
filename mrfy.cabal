@@ -42,7 +42,6 @@ Executable mrfy
                  bio >= 0.5,
                  containers >= 0.4,
                  directory >= 1.1,
-                 parallel >= 3.2,
                  process >= 1.0,
                  random >= 1.0,
                  filepath >= 1.2,

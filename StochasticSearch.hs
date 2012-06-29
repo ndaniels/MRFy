@@ -2,8 +2,6 @@
 {-# LANGUAGE BangPatterns, ExistentialQuantification, RankNTypes #-}
 module StochasticSearch where
 
-import Control.Parallel.Strategies
-
 import Data.Maybe
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
@@ -113,7 +111,7 @@ statePath hmm query betas ps = foldr (++) [] $ map viterbiOrBeta $ DL.zip4 hmmAl
 score :: HMM -> QuerySequence -> [BetaStrand] -> Scorer Placement
 score hmm query betas ps =
   Scored ps (foldr (+) negLogOne
-  $ (parMap rseq) viterbiOrBeta
+  $ map viterbiOrBeta
   $ DL.zip4 hmmAlignTypes (map traceid miniHMMs) miniQueries
   $ dupeElements [0..])
   where viterbiOrBeta :: (BetaOrViterbi, HMM, QuerySequence, Int) -> Score

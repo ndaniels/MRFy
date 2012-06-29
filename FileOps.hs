@@ -6,7 +6,6 @@ module FileOps
 where
   
 import Control.Monad.LazyRandom
-import Control.Parallel.Strategies
 import ParRandom
 
 import Data.Array
@@ -199,7 +198,7 @@ outputAlignment hmm betas ps querySeq =
 popSearch :: [QuerySequence -> History Placement]
           -> QuerySequence
           -> History Placement
-popSearch searches q = minimum $ (parMap rseq) (\s -> s q) searches
+popSearch searches q = minimum $ map (\s -> s q) searches
 
 noSearch = CCosted (Scored [] negLogZero) 0 `hcons` emptyHistory
 
