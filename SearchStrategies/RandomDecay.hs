@@ -59,7 +59,7 @@ nss _hmm searchP query betas scorer = fullSearchStrategy
   where popSize = getSearchParm searchP populationSize
         nGens   = generations searchP
         logDecay = - log (fromIntegral popSize) / fromIntegral nGens
-        nextPlacement = flip (RHC.randomizePlacement' betas) (V.length query)
+        nextPlacement = flip (RHC.randomizePlacement betas) (V.length query)
 
 
 nextPop :: RandomGen r => (Placement -> Rand r Placement) -> Scorer Placement -> Double
