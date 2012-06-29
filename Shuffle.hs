@@ -1,8 +1,11 @@
-module Shuffle where
+module Shuffle
+       ( shuffle, shuffle' )
+where
 
 import System.Random
 import Data.Array.ST
 import Control.Monad
+import Control.Monad.LazyRandom
 import Control.Monad.ST
 import Data.STRef
  
@@ -31,3 +34,17 @@ shuffle gen xs = runST (do
     newArray :: Int -> [a] -> ST s (STArray s Int a)
     newArray n xs =  newListArray (1,n) xs
 
+shuffle' :: RandomGen r => [a] -> Rand r [a]
+shuffle' xs =
+  do swaps <- forM [1..n] $ \i -> do { j <- getRandomR (i, n); return (i, j) }
+     return $ runST $
+         do ar <- newArray n xs
+            mapM (swap ar) swaps
+  where n = length xs
+        newArray :: Int -> [a] -> ST s (STArray s Int a)
+        newArray n xs =  newListArray (1,n) xs
+
+        swap ar (i, j) = do vi <- readArray ar i
+                            vj <- readArray ar j
+                            writeArray ar j vi
+                            return vj

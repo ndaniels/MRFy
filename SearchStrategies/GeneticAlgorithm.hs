@@ -45,15 +45,14 @@ mutate :: SearchParameters
        -> Scorer Placement
        -> Scored Population
        -> Rand StdGen (Scored Population)
-mutate searchP query betas scorer (Scored placements _) = wrapBestScore <$> fittest
-  where fittest = do gen <- getSplit
-                     ( fst
-                       . shuffle gen
-                       . take (getSearchParm searchP populationSize)
-                       . sort
-                       . (placements ++)
-                       ) <$> progeny
-        progeny = parRandom $ map (\gs -> scorer <$>
+mutate searchP query betas scorer (Scored placements _) =
+   return . wrapBestScore
+   =<< shuffle'
+   =<< return . take (getSearchParm searchP populationSize)
+              . sort
+              . (placements ++)
+   =<< progeny
+  where progeny = parRandom $ map (\gs -> scorer <$>
                                           randomizePlacement betas gs (V.length query))
                             $ getPairings
                             $ map unScored placements
