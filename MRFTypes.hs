@@ -1,7 +1,8 @@
 {-# LANGUAGE BangPatterns #-}
+{-# OPTIONS_GHC -Wall -fno-warn-name-shadowing #-}
 
 module MRFTypes
-  ( MRF(..), HMM(..), HMMHeader(..), HMMNode(..), StateLabel(..)
+  ( MRF(..), HMM, HMMHeader(..), HMMNode(..), StateLabel(..)
   , matchEmissions, insertionEmissions  
   , StrandPair(..)
   , Helix(..)
@@ -17,17 +18,11 @@ where
 
 import Data.Function
 import Data.Ix
+import Data.List -- (intercalate)
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
-import Data.List (sort, find, elemIndex, intercalate)
-import qualified Data.Maybe as M
-import qualified Data.Set as Set
-
 
 import Score
-
-type EmissionProbabilities = U.Vector Score
-type InsertEmissions = EmissionProbabilities
 
 type HMM = V.Vector HMMNode
 type Vector a = U.Vector a
@@ -44,6 +39,7 @@ data HMMNode = HMMNode { nodeNum :: Int
 -- @ end hmmnode.tex
              deriving (Show)
 
+matchEmissions, insertionEmissions :: HMMNode -> EProbs
 matchEmissions = matEmissions
 insertionEmissions = insEmissions
 
@@ -78,9 +74,7 @@ mkTransProbs t0 t1 t2 t3 t4 t5 t6 =
   where nlz = TProb negLogZero
 
 mkTransProb :: StateLabel -> StateLabel -> Score -> TProb
-mkTransProb f t s = TProb s
-
-type StateTransitions = TProbs
+mkTransProb _from _to s = TProb s
 
 mkScore :: String -> Score
 mkScore "*" = negLogZero
@@ -132,6 +126,7 @@ mkDirection :: String -> Direction
 mkDirection s
           | s == "1"  = Parallel
           | s == "-1" = Antiparallel
+          | otherwise = error "Bogus direction string"
 
 type BetaPosition = Int
 
@@ -153,6 +148,7 @@ data BetaPair = BetaPair { pairPosition :: BetaPosition
                          , residueInd :: Int
                          }
 
+showBetas :: [BetaStrand] -> [Char]
 showBetas betas = intercalate "\n" $ map show $ betas
 
 instance Show BetaStrand where
