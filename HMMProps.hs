@@ -69,7 +69,7 @@ admissibleSolution model query states =
 
 viterbiAdmissible :: HMM -> QuerySequence -> Bool
 viterbiAdmissible model query = admissibleSolution model query soln
-  where soln = unScored $ viterbi (:) (False, False) query model
+  where soln = unScored $ viterbi (:) HasNoEnd query model
 
 oneTestAdmissible :: (a, HMM, [QuerySequence]) -> Bool
 oneTestAdmissible (_, model, queries) = 
@@ -86,7 +86,7 @@ oneTestResults (_, model, queries) = concatMap (string model) queries
               " Plan7 invariant"
             , "Score is " ++ show (scoreHMM model query states)
             ]
-              where states = unScored $ viterbi (:) (False, False) query model
+              where states = unScored $ viterbi (:) HasNoEnd query model
 
 data Block a = Block { state :: a, number :: Int }
   -- ^ invariant, number > 0

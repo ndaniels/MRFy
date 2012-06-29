@@ -1,7 +1,9 @@
 {-# LANGUAGE BangPatterns, GeneralizedNewtypeDeriving #-}
+{-# OPTIONS_GHC -Wall -fno-warn-name-shadowing #-}
 module Viterbi
        ( QuerySequence
        , StatePath
+       , LeftBoundary(..), RightBoundary(..)
        , viterbi
        , transScore
        , transScoreNode
@@ -46,17 +48,21 @@ consPath x xs = x:xs
 consNoPath :: ScorePathCons a
 consNoPath _ _ = []
 
--- hasStart and hasEnd are (for now) for model-relative local alignment.
+-- | model-relative local alignment.
 -- when we want to consider sequence-relative local alignment, we
 -- will also need to consider better of seqLocal vs. modLocal
-viterbi :: ScorePathCons StateLabel -> (Bool, Bool) ->
+
+data LeftBoundary  = HasStart | HasNoStart
+data RightBoundary = HasEnd | HasNoEnd
+
+viterbi :: ScorePathCons StateLabel -> RightBoundary ->
            QuerySequence -> HMM -> Scored StatePath
-viterbi pathCons (hasStart, hasEnd) query hmm =
+viterbi pathCons right query hmm =
   if numNodes == 0 then
     Scored [] negLogOne
   else
     minimum $ [vee'' s (numNodes - 1) (seqlen - 1) | s <- [Mat, Ins, Del]] ++ 
-              if hasEnd then [bestEnd] else []
+              case right of { HasEnd -> [bestEnd]; HasNoEnd -> [] }
 
   -- trace (show state DL.++ " " DL.++ show node DL.++ " " DL.++ show obs) $
   where 

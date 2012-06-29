@@ -101,7 +101,7 @@ statePath hmm query betas ps = foldr (++) [] $ map viterbiOrBeta $ DL.zip4 hmmAl
   where viterbiOrBeta :: (BetaOrViterbi, HMM, QuerySequence, Int) -> StatePath
         viterbiOrBeta (Beta,   _ns, _qs, i) = take (len (betas !! i)) $ repeat BMat
         viterbiOrBeta (Viterbi, ns, qs, _i) =
-          unScored $ viterbi consPath (False, False) qs ns
+          unScored $ viterbi consPath HasNoEnd qs ns
 
         -- traceid hmm = trace (show (V.map nodeNum hmm)) $ id hmm 
         -- traceid = (trace (show guesses)) id 
@@ -122,7 +122,7 @@ score hmm query betas ps =
         -- so we can use the last node of a Viterbi segment to inform the transition
         -- to Match for the Beta score.
         viterbiOrBeta (Beta, ns, qs, i) = betaScore query ps (residues (betas !! i)) ns qs
-        viterbiOrBeta (Viterbi, ns, qs, _) = scoreOf $ viterbi consNoPath (False, False) qs ns
+        viterbiOrBeta (Viterbi, ns, qs, _) = scoreOf $ viterbi consNoPath HasNoEnd qs ns
 
         -- traceid hmm = trace (show (V.map nodeNum hmm)) $ id hmm 
         traceid = id

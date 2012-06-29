@@ -305,7 +305,7 @@ consistentScoring model query =
          "\nViterbi SSeq: " ++ (show $ unScored vscored) ++
          "\n\nHMM Score: " ++ (show hmmScore)) $
   scoreOf vscored == hmmScore
-  where vscored = viterbi (:) (False, False) query model
+  where vscored = viterbi (:) HasNoEnd query model
         hmmScore = scoreHMM model query (unScored vscored)
 
 goodMetrics :: Metrics -> Bool
@@ -326,7 +326,7 @@ viterbiIsAwesome model query =
          "\n\nPlan7 Gen scores: " ++ (show possibleScores) ++
          "\nPlan7 Gen SSeqs: " ++ (show allStates)) $
     all ((scoreOf vscored) <=) possibleScores
-  where vscored = viterbi (:) (False, False) query model
+  where vscored = viterbi (:) HasNoEnd query model
         possibleScores = (parMap rseq) (scoreHMM model query) allStates
         allStates = allp7 $ M n r
 
@@ -365,7 +365,7 @@ oneLocalPerturb (_, model, queries) =
   else
     "local-perturb FAILED"
   where pass query = all (states <==>) $ viterbiLocalPerturb states
-          where states = unScored $ viterbi (:) (False, False) query model
+          where states = unScored $ viterbi (:) HasNoEnd query model
 
         viterbiLocalPerturb :: [StateLabel] -> [[StateLabel]]
         viterbiLocalPerturb states = trace (show $ head perturbs) perturbs
@@ -414,7 +414,7 @@ rightMoversPermutesProp (Plan7 ss) = all match (rightMoversStates ss)
 optimal :: (SSeq -> [SSeq]) -> HMM -> QuerySequence -> Bool
 optimal f model query = all (score <) $ map (scoreHMM model query) $ f states
   where (states, score) = (unScored v, scoreOf v)
-        v = viterbi (:) (False, False) query model
+        v = viterbi (:) HasNoEnd query model
 
 -- | Predicate @<==>@ judges the equivalence of two Plan7 sequences.
 -- N.B. It does not guarantee both lists are Plan7, just that
