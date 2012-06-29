@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wall -fno-warn-name-shadowing #-}
 module Shuffle
        ( shuffle, shuffle' )
 where
