@@ -16,17 +16,8 @@ module Viterbi
        )
 where
 
-import Debug.Trace (trace)
--- import Debug.Trace.LocationTH (check) 
 import qualified Data.MemoCombinators as Memo
-import qualified Data.List as DL
-import Data.Ix
-import Data.Vector.Generic.Base
-import Data.Vector.Generic.Mutable
 
-
-import Beta
-import HMMPlus
 import Data.Vector.Unboxed as U hiding (minimum, (++), map)
 import qualified Data.Vector as V hiding (minimum, (++), map)
 import Constants
@@ -38,9 +29,6 @@ type QuerySequence = U.Vector AA
 type StatePath = [ StateLabel ]
 
 type ScorePathCons a = a -> [a] -> [a]
-
-unscore :: Scored a -> (Score, a)
-unscore (Scored a x) = (x, a)
 
 consPath :: ScorePathCons a
 consPath x xs = x:xs
@@ -78,10 +66,8 @@ viterbi pathCons right query hmm =
         numNodes = V.length $ hmm
         seqlen = U.length query
 
-        res i = query ! i
-        
         extend :: StateLabel -> Scored StatePath -> Scored StatePath
-        extend s = fmap (pathCons s)
+        extend = fmap . pathCons
         
         aScore :: StateLabel -> StateLabel -> Int -> Score
         aScore = transScore hmm
@@ -118,12 +104,12 @@ viterbi pathCons right query hmm =
         vee' Del 0 (-1) = disallowed
 
         -- node 0 but not zeroth observation
-        vee' Mat 0 i = disallowed
+        vee' Mat 0 _ = disallowed
         vee' Ins 0 i = extend Ins $     -- possible self-insert cycle
                        (aScore Ins Ins 0 + eScore Ins 0 i) /+/ vee'' Ins 0 (i-1)
 
-        vee' Del 0 i = disallowed
-        vee' End 0 i = Scored [Mat] (aScore Mat End 0)
+        vee' Del 0 _ = disallowed
+        vee' End 0 _ = Scored [Mat] (aScore Mat End 0)
 
         -- node 1 and no more observations (came from begin)
         vee' Mat 1 (-1) = disallowed
@@ -131,19 +117,21 @@ viterbi pathCons right query hmm =
         vee' Del 1 (-1) = Scored [Del] (aScore Mat Del 0) -- came from begin
 
         -- not node 1 yet, but not more observations (came from delete)
-        vee' Mat j (-1) = disallowed
-        vee' Ins j (-1) = disallowed
+        vee' Mat _ (-1) = disallowed
+        vee' Ins _ (-1) = disallowed
         vee' Del j (-1) = extend Del $
                           aScore Del Del (j - 1) /+/ vee'' Del (j - 1) (-1)
 
         -- consume an observation AND a node
         --------------------------------------------------------
         -- @ start viterbi.tex -8
-        vee' Mat j i = extend Mat $
+        vee' Mat j i = fmap (Mat `cons`) $
            eScore Mat j i /+/ minimum (map avSum [Mat, Ins, Del])
          where avSum prev =
                  aScore prev Mat (j-1) /+/ vee'' prev (j-1) (i-1)
         -- @ end viterbi.tex
+               cons = pathCons
+        -- avoids having to explain 'extend' in the paper
 
         -- consume an observation but not a node
         vee' Ins j i = extend Ins
@@ -160,6 +148,9 @@ viterbi pathCons right query hmm =
                from prev =                          vee'' prev (j-1) i
                         -- for local to QUERY we would do j, i-1.
 
+        vee' Beg _ _  = error "Viterbi called on Beg state" 
+        vee' BMat _ _  = error "Viterbi called on BMat state" 
+
 -- TODO seqLocal: consider the case where we consume obs, not state, for beg & end.
 
 emissionScoreNode :: HMMNode -> AA -> StateLabel -> Score
@@ -172,6 +163,7 @@ emissionScoreNode n q state =
 emissionScore :: HMM -> QuerySequence -> StateLabel -> Int -> Int -> Score
 emissionScore hmm qs state j i = emissionScoreNode (hmm V.! j) (qs U.! i) state
 
+transScoreNode :: HMMNode -> StateLabel -> StateLabel -> Score
 transScoreNode n from to =
   logProbability $ edge from to (transitions n)
  where
