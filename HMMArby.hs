@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleInstances, TypeSynonymInstances #-}
 module HMMArby where
 
 import Control.Applicative
