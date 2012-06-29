@@ -433,12 +433,15 @@ distinctPerturbations p1 p2 (Plan7 ss) =
   where bs = blockify ss
         disjoint s s' = Set.null $ s `Set.intersection` s'
 
+shrinkPred p = fmap (all p . shrink) arbitrary
+
 perturbProps :: [(String, Property)]
 perturbProps = [ ("diagonal", property diagonalProp)
                , ("diagonalCount", property diagonalsCount)
                , ("good-metrics", property goodMetrics)
                , ("nop7dups", property noP7Dups)
                , ("plan7gen", property isPlan7Prop)
+               , ("plan7gen-shrink", property $ shrinkPred $ isPlan7Prop)
                , ("rightMoversPermutes", property rightMoversPermutesProp)
                , ("allMoversInvariant",
                   property $ preservesInvariants $ withStates allMovers)
