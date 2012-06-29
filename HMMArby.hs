@@ -71,7 +71,7 @@ instance Arbitrary HMMNode where
     where toScoreVec = U.fromList . map toScore
 
 instance Arbitrary TProbs where
-  arbitrary = TProbs <$> p <*> p <*> p <*> p <*> p <*> p <*> p <*> p <*> p
+  arbitrary = mkTransProbs <$> p <*> p <*> p <*> p <*> p <*> p <*> p
    where p = arbitrary   
 
 -- Fix this so that only legal transitions are allowed.

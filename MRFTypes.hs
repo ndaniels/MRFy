@@ -8,7 +8,7 @@ module MRFTypes
   , Exposure(..), mkExposure
   , Direction(..), mkDirection
   , BetaStrand(..), BetaPosition, BetaResidue(..), BetaPair(..)
-  , TProb(..), TProbs(..)
+  , TProb(..), TProbs, m_m, m_i, m_d, i_m, i_i, d_m, d_d, b_m, m_e
   , mkTransProb, mkTransProbs
   , mkScore
   , showBetas
@@ -53,28 +53,29 @@ data StateLabel = Mat | Ins | Del | Beg | End
                 | BMat  -- keeping secrets from our readers...
                 deriving (Show, Ord, Eq, Enum, Ix)
 
--- @ start tprobs.tex
+-- @ start tprob-tprobs.tex
+newtype TProb = TProb { logProbability :: Score }
+-- @ end tprob-tprobs.tex
+           deriving (Show)
+
+-- @ start tprob-tprobs.tex
 data TProbs = TProbs
   { m_m :: TProb, m_i :: TProb, m_d :: TProb
   , i_m :: TProb, i_i :: TProb
-  , d_m :: TProb, d_d :: TProb
--- @ end tprobs.tex
+-- @ end tprob-tprobs.tex
+  ---GROSS HACKERY (these are in the middle to prevent a bad page break in the paper)
   , b_m :: TProb -- XXX aren't these just taking up space in the cache lines?
   , m_e :: TProb
--- @ start tprobs.tex
-  }
--- @ end tprobs.tex
+-- @ start tprob-tprobs.tex
+  , d_m :: TProb, d_d :: TProb }
+-- @ end tprob-tprobs.tex
             deriving (Show)
 
--- mkTransProbs :: [Score] -> TProbs
-mkTransProbs t0 t1 t2 t3 t4 t5 t6 = TProbs t0 t1 t2 t3 t4 t5 t6
-                                           (mkTransProb Beg Mat negLogZero)
-                                           (mkTransProb Mat End negLogZero)
-
--- @ start tprob.tex
-newtype TProb = TProb { logProbability :: Score }
--- @ end tprob.tex
-           deriving (Show)
+-- | Don't ask. Probably something foul to do with HMMER
+mkTransProbs :: TProb -> TProb -> TProb -> TProb -> TProb -> TProb -> TProb -> TProbs
+mkTransProbs t0 t1 t2 t3 t4 t5 t6 =
+  TProbs t0 t1 t2 t3 t4 nlz nlz t5 t6 -- gross, gross, gross
+  where nlz = TProb negLogZero
 
 mkTransProb :: StateLabel -> StateLabel -> Score -> TProb
 mkTransProb f t s = TProb s
