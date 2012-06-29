@@ -21,6 +21,7 @@ hmmProps = [ ("ubProp", property ubProp)
            , ("buProp", property buProp)
            , ("blockNoMergeProp", property blockNoMergeProp)
            , ("mergeMergeProp", property mergeMergeProp)
+           , ("Viterbi admissible", property viterbiAdmissible)
            ]
 
 
