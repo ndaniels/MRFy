@@ -21,6 +21,7 @@ import Data.Ix
 import Data.List -- (intercalate)
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
+import Text.Printf
 
 import Score
 
@@ -37,7 +38,16 @@ data HMMNode = HMMNode { nodeNum :: Int
 -- @ start hmmnode.tex
                        }
 -- @ end hmmnode.tex
-             deriving (Show)
+instance Show HMMNode where
+  show node =  "(#" ++ show (nodeNum node) ++ ": " ++ showTx (transitions node)
+            ++ "; " ++ showEmit "M" (matEmissions node)
+            ++ "; " ++ showEmit "I" (insEmissions node)
+            ++ ")"
+
+showEmit :: String -> EProbs -> String
+showEmit pfx table = intercalate ", " $ zipWith p (U.toList table) [0..]
+  where p score aa = pfx ++ show aa ++ "=" ++ sprintf "%.2f" score
+        p :: Score -> Int -> String
 
 matchEmissions, insertionEmissions :: HMMNode -> EProbs
 matchEmissions = matEmissions
@@ -67,11 +77,29 @@ data TProbs = TProbs
 -- @ end tprob-tprobs.tex
             deriving (Show)
 
+data TxLabel = TL String String (TProbs -> TProb)
+showTx :: TProbs -> String
+showTx t = intercalate ", " $ map tx [ TL "M" "M" m_m
+                                     , TL "M" "I" m_i
+                                     , TL "M" "D" m_d
+                                     , TL "D" "M" d_m
+                                     , TL "D" "D" d_d
+                                     , TL "I" "M" i_m
+                                     , TL "I" "I" i_i
+                                     , TL "B" "M" b_m
+                                     , TL "M" "E" m_e
+                                     ]
+  where tx (TL from to f) = from ++ "-" ++ tprintf "%.2f" (f t) ++ "->" ++ to
+        tprintf fmt = sprintf fmt . logProbability
+
 -- | Don't ask. Probably something foul to do with HMMER
 mkTransProbs :: TProb -> TProb -> TProb -> TProb -> TProb -> TProb -> TProb -> TProbs
 mkTransProbs t0 t1 t2 t3 t4 t5 t6 =
   TProbs t0 t1 t2 t3 t4 nlz nlz t5 t6 -- gross, gross, gross
   where nlz = TProb negLogZero
+        
+sprintf :: PrintfType t => String -> Score -> t
+sprintf fmt (Score s) = printf fmt s
 
 mkTransProb :: StateLabel -> StateLabel -> Score -> TProb
 mkTransProb _from _to s = TProb s
