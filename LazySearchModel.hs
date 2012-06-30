@@ -225,7 +225,9 @@ fullSearch :: RandomGen r => FullSearchStrategy a r -> Rand r (History a)
 fullSearch (FSS gen stop best) = fmap (fmap best . stop) . everyPt gen 0 =<< pt0 gen
 -- @ end fullsearch.tex        
 
-
+-- Note from NMD: Should we perhaps write type declarations
+-- for the conceptual components of fullSearchStrategy?
+-- for example, (placement -> answer)?
 fullSearchStrategy :: (Rand gen (Scored placement))
                    -> (Scored placement -> Rand gen (Scored placement))
                    -> (forall a . Move a -> Rand gen (Utility (Scored a)))
