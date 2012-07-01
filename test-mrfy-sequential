@@ -1,0 +1,4 @@
+#!/bin/sh
+
+time ./mrfy --gens 1000 --multipop 10 --converge 1000 testing/8.hmm+ testing/8.fasta
+
