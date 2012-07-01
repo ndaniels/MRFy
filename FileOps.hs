@@ -163,7 +163,7 @@ runCommand (TestHMM t) =
 runCommand (AlignmentSearch searchParams
                 (files @ Files { hmmPlusF = hmmPlusFile, outputF = outFile })) = do
   (header, hmm, queries) <- loadTestData files
-  rgn <- getStdGen
+  let rgn = mkStdGen 1
   -- secPred <- getSecondary $ fastaF files
   finish (betas header) hmm queries (randoms rgn)
       where finish bs hmm queries seeds =
