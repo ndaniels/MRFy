@@ -24,6 +24,7 @@ import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
 import Debug.Trace (trace)
 import Test.QuickCheck
+import Test.QuickCheck.Property
 
 import HMMProps
 import MRFTypes
@@ -299,14 +300,18 @@ noP7Dups :: Metrics -> Bool
 noP7Dups ms = length (nub ss) == length ss
   where ss = allp7 ms
 
-consistentScoring :: HMM -> QuerySequence -> Bool
-consistentScoring model query = 
-  trace ("\n\nViterbi: " ++ (show $ scoreOf vscored) ++ 
-         "\nViterbi SSeq: " ++ (show $ unScored vscored) ++
-         "\n\nHMM Score: " ++ (show hmmScore)) $
+consistentScoring :: HMM -> QuerySequence -> Property
+consistentScoring model query = printTestCase msg $
   scoreOf vscored == hmmScore
   where vscored = viterbi (:) HasNoEnd query model
         hmmScore = scoreHMM model query (unScored vscored)
+        msg = unlines [ "Viterbi score " ++ show (scoreOf vscored)
+                      , "Viterbi solution " ++ showSS (unScored vscored)
+                      , "HMM score " ++ show hmmScore
+                      ]
+
+showSS :: SSeq -> String
+showSS = map (head . show)
 
 goodMetrics :: Metrics -> Bool
 goodMetrics m@(M nCnt rCnt) = all ok $ allp7 m
@@ -321,14 +326,15 @@ scoreableMetrics model query = all id $ (parMap rseq) goodScore $ allp7 metrics
 
 viterbiIsAwesome :: HMM -> QuerySequence -> Bool
 viterbiIsAwesome model query = 
-  trace ("\n\nViterbi: " ++ (show $ scoreOf vscored) ++ 
-         "\nViterbi SSeq: " ++ (show $ unScored vscored) ++
-         "\n\nPlan7 Gen scores: " ++ (show possibleScores) ++
-         "\nPlan7 Gen SSeqs: " ++ (show allStates)) $
     all ((scoreOf vscored) <=) possibleScores
   where vscored = viterbi (:) HasNoEnd query model
         possibleScores = (parMap rseq) (scoreHMM model query) allStates
         allStates = allp7 $ M n r
+        _message =  ("\n\nViterbi: " ++ (show $ scoreOf vscored) ++ 
+         "\nViterbi SSeq: " ++ (show $ unScored vscored) ++
+         "\n\nPlan7 Gen scores: " ++ (show possibleScores) ++
+         "\nPlan7 Gen SSeqs: " ++ (show allStates))
+
 
         -- If the state sequence starts with an insertion, that insert
         -- comes from node 0. *Otherwise*, node 0 is not represented in
