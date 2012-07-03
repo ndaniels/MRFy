@@ -53,9 +53,10 @@ translateQuery = V.fromList . map lookup
 runCommand :: Commanded -> IO ()
 runCommand (TestHMM "mini") =
   do test <- loadTestData $ Files "testing/mini8.hmm+" "testing/mini8.fasta" "/dev/null"
-     let ok = oneTestAdmissible test
+     res <- quickCheckResult (oneTestAdmissible test)
      putStrLn $ "Function viterbiAdmissible " ++
-                (if ok then "passes" else "DOES NOT PASS") ++ " one test"
+                (case res of { Success {} -> "passes"; _ -> "DOES NOT PASS" }) ++
+                " test mini8"
 
 runCommand (TestHMM "mini-strings") =
   do test <- loadTestData $ Files "testing/mini8.hmm+" "testing/mini8.fasta" "/dev/null"
@@ -63,9 +64,10 @@ runCommand (TestHMM "mini-strings") =
 
 runCommand (TestHMM "8") =
   do test <- loadTestData $ Files "testing/8.hmm+" "testing/8.fasta" "/dev/null"
-     let ok = oneTestAdmissible test
+     res <- quickCheckResult (oneTestAdmissible test)
      putStrLn $ "Function viterbiAdmissible " ++
-                (if ok then "passes" else "DOES NOT PASS") ++ " one test"
+                (case res of { Success {} -> "passes"; _ -> "DOES NOT PASS" }) ++
+                " test 8"
 
 runCommand (TestHMM "8-strings") =
   do test <- loadTestData $ Files "testing/8.hmm+" "testing/8.fasta" "/dev/null"
@@ -73,9 +75,10 @@ runCommand (TestHMM "8-strings") =
 
 runCommand (TestHMM "micro8") =
   do test <- loadTestData $ Files "testing/micro8.hmm+" "testing/micro8.fasta" "/dev/null"
-     let ok = oneTestAdmissible test
+     res <- quickCheckResult (oneTestAdmissible test)
      putStrLn $ "Function viterbiAdmissible " ++
-                (if ok then "passes" else "DOES NOT PASS") ++ " one test"
+                (case res of { Success {} -> "passes"; _ -> "DOES NOT PASS" }) ++
+                " test micro8"
 
 runCommand (TestHMM "micro8-strings") =
   do test <- loadTestData $ Files "testing/micro8.hmm+" "testing/micro8.fasta" "/dev/null"

@@ -68,13 +68,15 @@ admissibleSolution model query states =
   isPlan7 states
 
 
-viterbiAdmissible :: HMM -> QuerySequence -> Bool
-viterbiAdmissible model query = admissibleSolution model query soln
+viterbiAdmissible :: HMM -> QuerySequence -> Property
+viterbiAdmissible model query = printTestCase msg $
+                                admissibleSolution model query soln
   where soln = unScored $ viterbi (:) HasNoEnd query model
+        msg = "Inadmissible solution: " ++ show soln
 
-oneTestAdmissible :: (a, HMM, [QuerySequence]) -> Bool
+oneTestAdmissible :: (a, HMM, [QuerySequence]) -> Property
 oneTestAdmissible (_, model, queries) = 
-   all (viterbiAdmissible model) queries
+   conjoin $ map (viterbiAdmissible model) queries
            
 oneTestResults ::  (a, HMM, [QuerySequence]) -> [String]
 oneTestResults (_, model, queries) = concatMap (string model) queries
