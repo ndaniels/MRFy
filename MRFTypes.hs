@@ -39,7 +39,7 @@ data HMMNode = HMMNode { nodeNum :: Int
                        }
 -- @ end hmmnode.tex
 instance Show HMMNode where
-  show node =  "(#" ++ show (nodeNum node) ++ ": " ++ showTx (transitions node)
+  show node =  "\n(#" ++ show (nodeNum node) ++ ": " ++ showTx (transitions node)
             ++ "; " ++ showEmit "M" (matEmissions node)
             ++ "; " ++ showEmit "I" (insEmissions node)
             ++ ")"

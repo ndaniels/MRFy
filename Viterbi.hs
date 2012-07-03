@@ -49,11 +49,15 @@ viterbi pathCons right query hmm =
   if numNodes == 0 then
     Scored [] negLogOne
   else
-    minimum $ [vee'' s (numNodes - 1) (seqlen - 1) | s <- [Mat, Ins, Del]] ++ 
+    minimum $ [transN s $ 
+              vee'' s (numNodes - 1) (seqlen - 1) | s <- [Mat, Ins, Del]] ++ 
               case right of { HasEnd -> [bestEnd]; HasNoEnd -> [] }
 
   -- trace (show state DL.++ " " DL.++ show node DL.++ " " DL.++ show obs) $
   where 
+        transN :: StateLabel -> Scored StatePath -> Scored StatePath
+        transN state sp = Scored (Prelude.reverse $ unScored sp)
+                                 ((aScore state Mat (numNodes - 1)) + (scoreOf sp))
         -- @ start memo.tex -8
         vee'' = Memo.memo3 (Memo.arrayRange (Mat, End)) 
                            (Memo.arrayRange (0, numNodes))

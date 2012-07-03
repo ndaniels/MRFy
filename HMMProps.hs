@@ -148,12 +148,9 @@ scoreHMM nss qss hss = scoreHMM' (reverse $ V.toList nss)
     scoreHMM' (n:[]) [] []     t       = aScore n Mat t
     scoreHMM' (n:[]) (q:[]) (Mat:[]) _ = negLogZero
     scoreHMM' (n:[]) (q:[]) (Del:[]) _ = negLogZero
-    scoreHMM' (n:[]) (q:[]) (Ins:[]) _ = eScore n q Ins +
-                                         aScore n Mat Ins
-    -- -- TODO check all these base cases vs Viterbi
-    -- scoreHMM' (n:[]) (q:[]) (Ins:[]) = eScore n q Ins +
-    --                                    aScore n (head hs) Ins  +
-    --                                    scoreHMM' (n:ns) (q:qs) hs
+    scoreHMM' (n:[]) (q:[]) (Ins:[]) t = eScore n q Ins +
+                                         aScore n Ins t +
+                                         scoreHMM' [n] [] [] Ins
     scoreHMM' (n:ns) qs (Del:hs) t     = aScore n Del t + 
                                          scoreHMM' ns qs hs Del
     scoreHMM' (n:ns) (q:qs) (Mat:hs) t = eScore n q Mat +
