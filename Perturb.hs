@@ -300,9 +300,13 @@ noP7Dups :: Metrics -> Bool
 noP7Dups ms = length (nub ss) == length ss
   where ss = allp7 ms
 
+approxEq :: Score -> Score -> Bool
+approxEq (Score x) (Score x') = abs (x - x') < epsilon
+   where epsilon = 0.0000001
+
 consistentScoring :: HMM -> QuerySequence -> Property
 consistentScoring model query = printTestCase msg $
-  scoreOf vscored == hmmScore
+  scoreOf vscored `approxEq` hmmScore
   where vscored = viterbi (:) HasNoEnd query model
         hmmScore = scoreHMM model query (unScored vscored)
         msg = unlines [ "Viterbi score " ++ show (scoreOf vscored)
