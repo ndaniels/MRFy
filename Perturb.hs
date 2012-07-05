@@ -8,6 +8,7 @@ module Perturb
        , consistentScoring
        , scoreableMetrics
        , viterbiIsAwesome
+       , approxEq
        )
 where
   
