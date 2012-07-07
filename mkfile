@@ -40,5 +40,8 @@ test:V: $TGT
 fast-test:V: $TGT
 	./$prereq -test mini-strings
 
+test-sandwich:V: $TGT
+	./$TGT testing/sandwich.hmm+ testing/sandwich.fasta
+
 # note: to build profile: ghc --make Main.hs -O3 -rtsopts -o $TGT
 # then, ghc --make Main.hs -O3 -prof -auto-all -caf-all -rtsopts -osuf p_o -o $TGT

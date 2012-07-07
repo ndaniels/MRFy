@@ -6,7 +6,7 @@ module MRFTypes
   , matchEmissions, insertionEmissions  
   , StrandPair(..)
   , Helix(..)
-  , Exposure(..), mkExposure
+  , Exposure(..), mkExposure, unElist
   , Direction(..), mkDirection
   , BetaStrand(..), BetaPosition, BetaResidue(..), BetaPair(..)
   , TProb(..), TProbs, m_m, m_i, m_d, i_m, i_i, d_m, d_d, b_m, m_e
@@ -16,11 +16,13 @@ module MRFTypes
   )
 where
 
+import Control.Applicative
 import Data.Function
 import Data.Ix
 import Data.List -- (intercalate)
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
+import Test.QuickCheck
 import Text.Printf
 
 import Score
@@ -116,6 +118,13 @@ data StrandPair = StrandPair { firstStart  :: Int
                              }
                              deriving (Show)
 
+instance Arbitrary StrandPair where
+  arbitrary = StrandPair <$> first <*> second <*> len <*> d <*> e
+    where (d, e) = (arbitrary, arbitrary)
+          (first, second) = (choose (1, max), choose (1, max))
+          len = choose (1, max)
+          max = 1000
+
 data Helix = Helix { startRes :: Int
                    , helixLength :: Int
                    }
@@ -134,11 +143,21 @@ data HMMHeader = HMMHeader { betas       :: [BetaStrand] -- TODO add alphas (sst
 data MRF = MRF { hmmHeader :: HMMHeader, hmm :: HMM }
                deriving (Show)
 
-type ExposureList = [ Exposure ]
+newtype ExposureList = EList [ Exposure ] deriving Show
+
+unElist :: ExposureList -> [Exposure]
+unElist (EList exposures) = exposures
+
+instance Arbitrary ExposureList where
+  arbitrary = fmap EList $ listOf (arbitrary :: Gen Exposure)
+    
 
 data Exposure = Buried -- 'i'
               | Exposed -- 'o'
               deriving (Show)
+
+instance Arbitrary Exposure where
+  arbitrary = elements [Buried, Exposed]
 
 mkExposure :: Char -> Exposure
 mkExposure c
@@ -149,6 +168,9 @@ mkExposure c
 data Direction = Parallel     -- "1"
                | Antiparallel -- "-1"
                deriving (Show)
+
+instance Arbitrary Direction where
+  arbitrary = elements [Parallel, Antiparallel]
 
 mkDirection :: String -> Direction
 mkDirection s
