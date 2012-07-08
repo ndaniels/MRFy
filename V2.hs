@@ -57,30 +57,28 @@ costTree bnode = ct Mat -- damn lie, leaves off the end transition
   where ct stateRight [] [] = FromBegin (btransition bnode stateRight)
         ct stateRight [] aas = insertAll stateRight aas
         ct stateRight nodes [] = deleteAll stateRight nodes
-        ct stateRight (node:nodes) (aa:aas) =
+        ct stateRight nodes@(node:ntail) aas@(aa:aatail) =
           StepFrom [ Scored (state, t) score
                    | state <- [Mat .. Del], canFollow state stateRight
-                   , let t = ct' state (stepNodes state nodes)
-                                       (stepAAs state aas)
+                   , let t = next state nodes ntail aas aatail
                    , let score = transition node state stateRight +
                                  emission node state aa
                    ]
-        stepNodes Mat = tail
-        stepNodes Del = tail
-        stepNodes Ins = id
+        next s@Mat _ ntail _   aatail = ct' s ntail aatail
+        next s@Del _ ntail aas _      = ct' s ntail aas
+        next s@Ins nodes _ _   aatail = ct' s nodes aatail
 
-        stepAAs Mat = tail
-        stepAAs Ins = tail
-        stepAAs Del = id
-
-        insertAll Del _ = error "this can't happen"
+        insertAll Del _ = error "this can't happen" -- XXX wrong, needs inf cost
         insertAll stateRight [] = ct stateRight [] []
         insertAll Mat aas = begin_i_m bnode `addHead` insertAll Ins aas
         insertAll Ins (aa:aas) =
           StepFrom [Scored (Ins, insertAll Ins aas)
                     (begin_i_i bnode + begin_emissions_i bnode ! aa)]
 
-        deleteAll = error "similar to insertAll"
+        deleteAll Ins _ = error "this can't happen" -- XXX wrong, needs inf cost
+        deleteAll stateRight [] = ct stateRight [] []
+        deleteAll stateRight (node:nodes) = 
+          StepFrom [Scored (Del, deleteAll Del nodes) (transition node Del stateRight)]
 
         ct' = ct -- memoize here (will require length parms)
 
