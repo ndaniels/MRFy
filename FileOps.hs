@@ -37,6 +37,7 @@ import SearchStrategy (tickProp)
 import ShowAlignment
 import StochasticSearch
 import Viterbi
+import V2 (Tree(..), costTree)
 
 loadTestData :: Files -> IO (HMMHeader, HMM, [QuerySequence])
 loadTestData files =
