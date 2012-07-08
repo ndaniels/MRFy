@@ -25,7 +25,7 @@ import Debug.Trace (trace)
 -- | @isTick N t k@ is a clock that ticks @t@ times as 
 -- @k@ ranges over the interval [1..N].  It's used for
 -- emitting diagnostic output at regular intervals of a search
-isTick denom numIntervals num =
+isTick denom numIntervals num = denom > 0 &&
   num * numIntervals `div` denom > (num - 1) * numIntervals `div` denom
 
 tickProp (Positive n') (Positive t) =

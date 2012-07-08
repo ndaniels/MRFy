@@ -117,7 +117,8 @@ addPairings strands = map (map (\n -> foldl annotate n strands)) strands
 mkBetaResidues :: [StrandPair] -> [[BetaResidue]]
 mkBetaResidues [] = []
 mkBetaResidues (sp:sps) = residues1 : residues2 : mkBetaResidues sps
-  where (residues1, residues2) = mkResidues (zip3 (exposure sp) [s1..] secondIndexing) [] []
+  where (residues1, residues2) =
+          mkResidues (zip3 (unElist $ exposure sp) [s1..] secondIndexing) [] []
 
         secondIndexing = case parallel sp of Parallel -> [s2..]
                                              Antiparallel -> [s2, s2-1..]

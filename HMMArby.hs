@@ -45,7 +45,7 @@ prob :: Gen Double
 prob = choose (0.0, 1.0)
 
 instance Arbitrary (V.Vector HMMNode) where
-  shrink = (map V.fromList) . (shrink . V.toList)
+  shrink = (map V.fromList) . filter (\xs -> length xs >= 2) . (shrink . V.toList)
   arbitrary = do
     -- A random length is used here to essentially guarantee
     -- that we get a list of HMMNodes with at least length 2.
