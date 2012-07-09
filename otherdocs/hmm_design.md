@@ -51,3 +51,34 @@ corresponding to the non-beta-strand parts of the model, and a list of
 beta-strand scoring tables (for evaluating the HMM component of the
 MRF score for the beta strands).
 
+Also as of July 9, 2012, MRFy only performs _global_ alignments, which means
+that every node of the model, and every residue of the query sequence, are
+forced into correspondence. We wish to implement a _local_ alignment. In the
+HMMER/Plan7 model, additional edges are placed between node 0's non-emitting
+_match_ state (which is really _begin_) and every other node's _match_ state.
+These are _begin-to-match_ transitions, and provide a means to short-cut
+part of the model. Similarly, every node's _match_ state gains an edge to
+the non-existent _end_ node; these are _match-to-end_ transitions. The
+probabilities assigned to these edges are _not_ well documented, and thus
+far we have attempted to reverse-engineer them.
+
+Just as _begin-to-match_ and _match-to-end_ transitions make the _model_
+local (called 'glocal' in the HMMER documentation), we also need to
+be able to make the query sequence local. This is achieved by adding
+two additional states, called _C_ (the C-terminal unaligned sequence
+state) and _N_ (the N-terminal unaligned sequence state). This
+terminology comes from the fact that an amino acid sequence has a direction,
+determined by its C-terminal (as in carbon) and N-terminal (as in nitrogen)
+ends. The _N_ state lives just before node 0, and has a self-edge as well
+as an edge to node 0's _match_ state. Similarly, the _C_ state lives just
+after the non-existent _end_ node. Both _N_ and _C_ have self-edges and
+emit residues according to a background distribution.
+
+In MRFy, we wish for the placement of beta strands to occur before any
+consideration is paid to these local properties; in other words, only
+the left-most HMM segment will consider left-side locality (_begin-to-match_
+and the _N_ state), and only the right-most HMM segment will consider
+right-side locality (_match-to-end_ and the _C_ state). Intermediate
+HMMs, which are bounded on both sides by beta strands, are subject to
+_global_ alignment only.
+
