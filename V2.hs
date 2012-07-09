@@ -5,7 +5,7 @@ module V2
        , HMMNode(..), BeginNode(..)
        , costTree, canFollow
        , aCostTree
-       , hoCost, inlinedTree, scoreOnly, scoredPath
+       , hoViterbi, inlinedTree, scoreOnly, scoredPath
        )
 where
 
@@ -162,25 +162,27 @@ aCostTree bnode nodes aas = ct Mat (NI $ mvlength nodes) (RI $ mvlength aas)
 
 inlinedTree :: (MVector NIndex nodes, MVector RIndex residues)
             => BeginNode -> nodes NIndex HMMNode -> residues RIndex AA -> Tree
-inlinedTree = hoCost FromBegin StepFrom
+inlinedTree = hoViterbi FromBegin StepFrom
 
 scoreOnly :: (MVector NIndex nodes, MVector RIndex residues)
             => BeginNode -> nodes NIndex HMMNode -> residues RIndex AA -> Score
-scoreOnly = hoCost id (minimum . map plus)
+scoreOnly = hoViterbi id (minimum . map plus)
   where plus (Scored (_, score) score') = score + score'
 
 scoredPath :: (MVector NIndex nodes, MVector RIndex residues)
             => BeginNode -> nodes NIndex HMMNode -> residues RIndex AA
             -> Scored [StateLabel]
-scoredPath = hoCost (Scored []) (minimum . map cons)
+scoredPath = hoViterbi (Scored []) (minimum . map cons)
   where cons (Scored (label, Scored path score) score') =
           Scored (label : path) (score + score')
 
-hoCost :: (MVector NIndex nodes, MVector RIndex residues)
+-- | Higher-order implementation of the Viterbi algorithm, which can
+-- be specialized to produce various outputs.
+hoViterbi :: (MVector NIndex nodes, MVector RIndex residues)
          => (Score -> a) -- ^ reaction to initial transition
          -> ([Scored (StateLabel, a)] -> a) -- ^ make node from children  
          -> BeginNode -> nodes NIndex HMMNode -> residues RIndex AA -> a
-hoCost leaf internal bnode nodes aas = ct Mat (NI $ mvlength nodes) (RI $ mvlength aas)
+hoViterbi leaf internal bnode nodes aas = ct Mat (NI $ mvlength nodes) (RI $ mvlength aas)
   where ct stateRight (NI 0) (RI 0) = leaf (btransition bnode stateRight)
         ct stateRight (NI 0) ri     = insertAll stateRight ri
         ct stateRight ni (RI 0)     = deleteAll stateRight ni
