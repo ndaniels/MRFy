@@ -138,7 +138,8 @@ p_int = decimal
 p_direction = liftA mkDirection (optSpaces *> dir <* optSpaces <?> "direction")
             where dir = oneStringOf [ "1", "-1" ]
 
-p_exposure = liftA (map mkExposure) (optSpaces *> many1 (oneOf "io") <* optSpaces <?> "exposure")
+p_exposure = EList <$> liftA (map mkExposure) 
+                       (optSpaces *> many1 (oneOf "io") <* optSpaces <?> "exposure")
 
 
 
