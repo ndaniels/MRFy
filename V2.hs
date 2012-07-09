@@ -5,6 +5,7 @@ module V2
        , HMMNode(..), BeginNode(..)
        , costTree, canFollow
        , aCostTree
+       , hoCost, inlinedTree, scoreOnly, scoredPath
        )
 where
 
@@ -157,3 +158,67 @@ aCostTree bnode nodes aas = ct Mat (NI $ mvlength nodes) (RI $ mvlength aas)
                          (Memo.arrayRange (RI 0, RI $ pred $ mvlength aas))
                          ct
           -- N.B. could go with unsafe ranges here
+
+
+inlinedTree :: (MVector NIndex nodes, MVector RIndex residues)
+            => BeginNode -> nodes NIndex HMMNode -> residues RIndex AA -> Tree
+inlinedTree = hoCost FromBegin StepFrom
+
+scoreOnly :: (MVector NIndex nodes, MVector RIndex residues)
+            => BeginNode -> nodes NIndex HMMNode -> residues RIndex AA -> Score
+scoreOnly = hoCost id (minimum . map plus)
+  where plus (Scored (_, score) score') = score + score'
+
+scoredPath :: (MVector NIndex nodes, MVector RIndex residues)
+            => BeginNode -> nodes NIndex HMMNode -> residues RIndex AA
+            -> Scored [StateLabel]
+scoredPath = hoCost (Scored []) (minimum . map cons)
+  where cons (Scored (label, Scored path score) score') =
+          Scored (label : path) (score + score')
+
+hoCost :: (MVector NIndex nodes, MVector RIndex residues)
+         => (Score -> a) -- ^ reaction to initial transition
+         -> ([Scored (StateLabel, a)] -> a) -- ^ make node from children  
+         -> BeginNode -> nodes NIndex HMMNode -> residues RIndex AA -> a
+hoCost leaf internal bnode nodes aas = ct Mat (NI $ mvlength nodes) (RI $ mvlength aas)
+  where ct stateRight (NI 0) (RI 0) = leaf (btransition bnode stateRight)
+        ct stateRight (NI 0) ri     = insertAll stateRight ri
+        ct stateRight ni (RI 0)     = deleteAll stateRight ni
+        ct stateRight ni ri =
+          internal [ Scored (state, a) score
+                   | state <- preceders ! stateRight -- memoize!
+                   , let a = next state ni ri
+                   , let score = transition node state stateRight +
+                                 emission node state aa
+                   ]
+          where node = nodes `at` pred ni
+                aa = aas `at` pred ri
+
+        next s@Mat ni ri = ct' s (pred ni) (pred ri)
+        next s@Del ni ri = ct' s (pred ni) ri
+        next s@Ins ni ri = ct' s ni        (pred ri)
+
+        insertAll stateRight (RI 0) = ct stateRight (NI 0) (RI 0)
+        insertAll stateRight ri = 
+          internal [ Scored (stateRight, insertAll Ins (pred ri)) score ]
+          where aa = aas `at` pred ri
+                score = bitransition bnode stateRight + begin_emissions_i bnode ! aa
+        deleteAll Ins _ = error "this can't happen" -- XXX wrong, needs inf cost
+        deleteAll stateRight (NI 0) = ct stateRight (NI 0) (RI 0)
+        deleteAll stateRight ni = 
+          internal [ Scored (Del, deleteAll Del (pred ni)) score ]
+            where node = nodes `at` pred ni
+                  score = transition node Del stateRight
+
+        ct' = Memo.memo3 (Memo.arrayRange (minBound, maxBound))
+                         (Memo.arrayRange (NI 0, NI $ pred $ mvlength nodes))
+                         (Memo.arrayRange (RI 0, RI $ pred $ mvlength aas))
+                         ct
+          -- N.B. could go with unsafe ranges here
+
+-- | Cost of transitions from the Ins state in the initial node
+-- (which also contains the Beg state)
+bitransition :: BeginNode -> StateLabel -> Score
+bitransition bnode Mat = begin_i_m bnode
+bitransition bnode Ins = begin_i_i bnode
+bitransition _     Del = negLogZero
