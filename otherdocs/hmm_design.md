@@ -82,3 +82,10 @@ right-side locality (_match-to-end_ and the _C_ state). Intermediate
 HMMs, which are bounded on both sides by beta strands, are subject to
 _global_ alignment only.
 
+According to the HMMER documentation, the _N-N_ and _C-C_ transition
+probabilities are "nearly" 1.0, while the emission probabilities
+are the background probabilities given in the "COMPO" line of the HMM
+file. Also according to the HMMER documentation, the _begin-to-match_
+probabilities are all 0.5/(M-1) for a model with M nodes. No justificaation
+is given.
+
