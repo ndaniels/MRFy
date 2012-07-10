@@ -100,7 +100,7 @@ end
 
 counter = 0
 allRunArgs = []
-puts "Generating runs..."
+STDERR.puts "Generating runs..."
 search_algorithms.each_pair do |alg, params|
     # we want the cartesian product
     # allParams will be a list of lists of argument terms
@@ -126,7 +126,7 @@ search_algorithms.each_pair do |alg, params|
     end
 end
 # puts allRunArgs.inspect
-puts "#{counter} runs generated"
+STDERR.puts "#{counter} runs generated"
 
 def analyze(file)
     # should return score and age
@@ -191,7 +191,7 @@ allRunArgs.each do |argList|
     completed += 1
 
     if completed % 100 == 0
-        puts "#{completed} of #{allRunArgs.length} done"
+       STDERR.puts "#{completed} of #{allRunArgs.length} done"
     end
     # now compute the statistics for results
     # mean, median, min, max, stddev score. Show age of gen for min and median.
