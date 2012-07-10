@@ -175,7 +175,7 @@ runCommand (AlignmentSearch searchParams
               if outFile == "stdout" then
                   mapM_ putStrLn output
               else
-                  mapM_ (writeFile outFile) $ intersperse "\n" output
+                  writeFile outFile (concat $ intersperse "\n" output)
               where popSize  = multiStartPopSize searchParams
                     searches = take popSize $ map trySearch seeds
                     trySearch r q = if alignable q bs then searchQ else noSearch
