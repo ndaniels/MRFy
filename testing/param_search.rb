@@ -4,7 +4,7 @@ require 'statsample'
 # collect time, score, & num generations run
 
 # Run each test 10 times; collect mean, median, min, max, stddev score. Show age of gen for min and median.
-numRuns = 4
+numRuns = 10
 # For each fasta/hmm+ combination, sort results by min score, descending.
 
 @input_prefix = ARGV[0] || "testing"
@@ -13,29 +13,31 @@ numRuns = 4
 
 @mrfy_path = ARGV[2] || "mrfy"
 
+@base_name = ARGV[3] || "8"
+
 constArgs = " +RTS -N12"
 
-io_pairs = [
-    ["8.hmm+", "8.fasta"], # positive
+io_pairs = {
+    "8" => ["8.hmm+", "8.fasta"], # positive
     # ["7.hmm+", "7.fasta"], # positive
     # ["6.hmm+", "6.fasta"], # positive
-    ["barwin.hmm+", "barwin.fasta"], # positive
-    # ["sandwich.hmm+", "sandwich.fasta"] # positive
+    "barwin" => ["barwin.hmm+", "barwin.fasta"], # positive
+    "sandwich" => ["sandwich.hmm+", "sandwich.fasta"] # positive
     # ["8.hmm+", "double_thermo.fasta"], # negative
     # ["51182_smurf-lite.hmm+", "thermotoga_Q9X0A3.fasta"], # negative
     # ["7.hmm+", "8.fasta"], # negative
     # ["7.hmm+", "6.fasta"], # negative
     # ["6.hmm+", "7.fasta"], # negative
     # ["barwin.hmm+", "8.fasta"], # negative
-]
+}
 
 convergences = [100, 200, 1_000]
 # convergences = [20]
 
 ga_parameters = {
-    :popsize => [10, 100],
+    :popsize => [10, 100, 1000, 10_000],
     :gens => [10, 20, 50, 100, 500],
-    :converge => convergences
+    :converge => [5, 10, 20, 50, 100]
 }
 
 # debug
@@ -48,15 +50,9 @@ ga_parameters = {
 
 # need to cut this down a LOT
 sa_parameters = {
-    :multipop => [1, 2, 5, 10, 100],
+    # :multipop => [1, 2, 5, 10, 100],
     :multipop => [10],
     :gens => [100, 500, 1_000, 10_000],
-    # :gens => [1_000, 5_000],
-    # :gens => [100],
-    :inittemp => [1_000],
-    :coolfact => [0.99999],
-    :boltz => [1.0e-10],
-    
     :inittemp => [10, 100, 1_000, 10_000, 100_000],
     :coolfact => [0.75, 0.9, 0.99, 0.999, 0.99999],
     :boltz => [1.0e-40, 1.38e-23, 1.0e-10, 1.0e-5, 1.0e-2, 1.0e-1],
@@ -114,19 +110,19 @@ search_algorithms.each_pair do |alg, params|
     allArgs = allParams[0].product(*allParams[1..-1])
     allArgs.each do |argsForRun|
         # now, multiply by files needed
-        io_pairs.each do |iop|
-            fileSpecificArgs = argsForRun.dup
-            # add the algorithm argument
-            fileSpecificArgs << argify(alg, "")
-            runDescriptor = fileSpecificArgs.dup + iop
-            inFiles = iop.map{|f| File.join(@input_prefix, f)}
-            fileSpecificArgs += inFiles
-            outFileName = mkOutFileName(fileSpecificArgs)
-            outFile = File.join(@output_prefix, outFileName)
-            # fileSpecificArgs << outFile
-            allRunArgs << [fileSpecificArgs.join(" "), runDescriptor, outFile]
-            counter += 1
-        end
+        # io_pairs.each do |iop|
+        iop = io_pairs[base_name]
+        fileSpecificArgs = argsForRun.dup
+        # add the algorithm argument
+        fileSpecificArgs << argify(alg, "")
+        runDescriptor = fileSpecificArgs.dup + iop
+        inFiles = iop.map{|f| File.join(@input_prefix, f)}
+        fileSpecificArgs += inFiles
+        outFileName = mkOutFileName(fileSpecificArgs)
+        outFile = File.join(@output_prefix, outFileName)
+        # fileSpecificArgs << outFile
+        allRunArgs << [fileSpecificArgs.join(" "), runDescriptor, outFile]
+        counter += 1
     end
 end
 # puts allRunArgs.inspect

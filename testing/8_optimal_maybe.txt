@@ -1,0 +1,138 @@
+Score: 2099.0958424147802
+
+fe----dls--ellik-ildln------svdekskvkvdstk-----n-dlsvs-dg---
+ |    |||  BBBBB BBBBB      BB||||||||||||     | BBBB| ||   
+-KDPANWVMTGRDYNAQNYSEMTDINKENVKQLRPAWSFSTGVLHGHEGTPLVVGDRMFI
+
+---------rfilvef--qvksda---sidiid----------lakrqliteiikisnea
+         |BBBBBB  |BB|BB   BBBBBB          ||||BB|||    ||||
+HTPFPNTTFALDLNEPGKILWQNKPKQNPTARTVACCDVVNRGLAYWPGDDQ----VKPL
+
+lvevsk-----------dkvlvgas-------------vrndiavkde-----ksleskr
+BBBB||           ||BBBBB|             |||BBBBB||     |||||BB
+IFRTQLDGHIVAMDAETGETRWIMENSDIKVGSTLTIAPYVIKDLVLVGSSGAELGVRGY
+
+ivftrgtwk--ivegrg------------salias--gevdllavasked-liefsf---
+|||||  ||  ||BBB|            ||BBB|  ||||BBBBBBBB| BBBBBB   
+VTAYD--VKSGEMRWRAFATGPDEELLLAEDFNAPNPHYGQKNLGLETWEGDAWKIGGGT
+
+-----------ktvrvp-----ppae---------tvkvfvvnaksitnltstaiqa---
+           BBBBBB     ||||         BBBBBBBB||  ||||BBBB||   
+NWGWYAYDPEVDLFYYGSGNPAPWNETMRPGDNKWTMAIWGREAT--TGEAKFAYQKTPH
+
+---dhflndvtwseq------------kllslaarr------ssivdvldrderdlsv--
+   |BBB|BBBB|||            |BBBBBBBB      BBBBBBBBB||BBB||  
+DEWDYAGVNVMMLSEQEDKQGQMRKLLTHPDRNGIVYTLDRTNGDLISADKMDDTVNWVK
+
+------adkvds------------d-wv--rkrpn-gedaftvdgk--vfskiis----k
+      BBBBB|            | ||  ||||| |||BB|||||  BBBBBBB    |
+EVQLDTGLPVRDPEFGTRMDHKARDICPSAMGYHNQGHDSYDPERKVFMLGINHICMDWE
+
+lgsiklfq----aikgevaelteefsvigie-----ala-sdllfvitadrsvkaidlkd
+|BBBBBBB    ||||||BB||||||||BB|     BB| ||BBBBBB  |BBBBBB|||
+PFMLPYRAGQFFVGATLTMYPGPKGDRGNASGLGQIKAYDAISGEMKW--EKMERFSVWG
+
+ldk--ltvlkl--------------kvvsqpfsnrakevalrvgg-----------g---
+|||  BBB|||              ||BBBBB|||||BBBBBB||           |   
+GTMATAGGLTFYATLDGFIKARDSDTGDLLWKFKLPSGVIGHPMTYKHDGRQYVAIMYGV
+
+sllvvvssktlkg---------------------kavl----------------------
+|BBBBBB    BB                     |BB|                      
+GGWPGVG----LVFDLADPTAGLGSVGAFKRLQEFTQMGGGVMVFSLDGESPYSDPNVGE
+
+------e
+      |
+YAPGEPT
+
+
+Score: 2093.7084576951793
+
+fe---dlsellik---------ildln--------sv-dekskvkvdstkndlsvs-dg-
+ |   |||BBBBB         BBBBB        BB ||||||       BBBB| ||
+-KDPANWVMTGRDYNAQNYSEMTDINKENVKQLRPAWSFSTGVL-------HGHEGTPLV
+
+------------rfilvef-q-----vk-sda----sidiidl---akrqliteiikisn
+            |BBBBBB |     BB |BB    BBBBBB|   |||BB|||      
+VGDRMFIHTPFPNTTFALDLNEPGKILWQNKPKQNPTARTVACCDVVNRGLAYW------
+
+ealvevsk------dkvlvgas----------------------------vrndiavkde
+ |BBBB||      ||BBBBB|                            |||BBBBB |
+-PGDDQVKPLIFRTQLDGHIVAMDAETGETRWIMENSDIKVGSTLTIAPYVIKDLVLV-G
+
+ksleskrivftrgtwkivegrg---------------------salias------gevdl
+|||||BB|  ||  | ||BBB|                     ||BBB|      ||||B
+SSGAELGV--RG--Y-VTAYDVKSGEMRWRAFATGPDEELLLAEDFNAPNPHYGQKNLGL
+
+lavasked----liefsf--------ktvrvp----ppae------------------tv
+BBBBBBB|    BBBBBB        BBBBBB    ||||                  BB
+ETWEGDAWKIGGGTNWGWYAYDPEVDLFYYGSGNPAPWNETMRPGDNKWTMAIWGREATT
+
+kvfvvnaksitnltstaiqadhflndvtws-eqkllslaarr-------ssivdvldrde
+BBBBBB||   |||BBBB  |BBB|BBBB| |||BBBBBBBB       BBBBBBBBB||
+GEAKFAYQ---KTPHDEW--DYAGVNVMMLSEQEDKQGQMRKLLTHPDRNGIVYTLDRTN
+
+--rdlsvadkvds----------------------------d-wv--rkrpn-gedaftv
+  BBB||BBBBB|                            | ||  ||||| |||BB||
+GDLISADKMDDTVNWVKEVQLDTGLPVRDPEFGTRMDHKARDICPSAMGYHNQGHDSYDP
+
+dgkvfskiisk-------------lgsiklfqaikgevaelt------------eefsvi
+|||BBBBBBB|             |BBBBBBB|||   BB||            ||||||
+ERKVFMLGINHICMDWEPFMLPYRAGQFFVGATLT---MYPGPKGDRGNASGLGQIKAYD
+
+gi--eala-sdllfvit-----------------adrsvkaidlkdl--------dkltv
+BB  |BB| ||BBBBBB                 |||BBBBBB||||        ||BBB
+AISGEMKWEKMERFSVWGGTMATAGGLTFYATLDGFIKARDSDTGDLLWKFKLPSGVIGH
+
+lkl--kvvsqpfsn-rak-------evalrvgg----------gsllvvvssktlkg---
+|||  ||BBBBB|| |||       BBBBBB||          ||BBBBBB    BB
+PMTYKHDGRQYVAIMYGVGGWPGVGLVFDLADPTAGLGSVGAFKRLQEFTQ----MGGGV
+
+-kavle-------------------
+ |BB||
+MVFSLDGESPYSDPNVGEYAPGEPT
+
+Score: 2091.18188591291
+
+fe----dls---ellik----ildln-sv-dekskvkvdstk--------ndlsvsdg--
+ |    |||   BBBBB    BBBBB BB ||||||||||||        |BBBB|||  
+-KDPANWVMTGRDYNAQNYSEMTDINKENVKQLRPAWSFSTGVLHGHEGTPLVVGDRMFI
+
+------rfilvef---qvksda-sidiidlakr------------------qliteiiki
+      |BBBBBB   |BB|BB BBBBBB||||                  BB|||||||
+HTPFPNTTFALDLNEPGKILWQNKPKQNPTARTVACCDVVNRGLAYWPGDDQVKPLIFRT
+
+sne-alvevsk----dk-vlvgas-------------------vrndiavk---------
+||| |BBBB||    || BBBBB|                   |||BBBBB         
+QLDGHIVAMDAETGETRWIMENSDIKVGSTLTIAPYVIKDLVLVGSSGAELGVRGYVTAY
+
+deksles-krivftrgtwkivegrg----salias--gevdllavasked------lief
+||||||| BB|||||   |||BBB|    ||BBB|  ||||BBBBBBBB|      BBBB
+DVKSGEMRWRAFATG---PDEELLLAEDFNAPNPHYGQKNLGLETWEGDAWKIGGGTNWG
+
+sfktvrvppp-----------ae------------tvkvfvvnaksitnltstaiqadhf
+BBBBBBBB||           ||            BBBBBBBB       |BBBB|||BB
+WYAYDPEVDLFYYGSGNPAPWNETMRPGDNKWTMAIWGREATT-------GEAKFAYQKT
+
+ln---------dvtwseq--------kllslaarrssivdvldrde--------------
+B|         BBBB|||        |BBBBBBBBBBBBBBBBB||              
+PHDEWDYAGVNVMMLSEQEDKQGQMRKLLTHPDRNGIVYTLDRTNGDLISADKMDDTVNW
+
+--rdlsv--adkvds-----------d-wv--rkrpngedaftvd--gkvfskiisk---
+  BBB||  BBBBB|           | ||  |||| |||BB|||  ||BBBBBBB|   
+VKEVQLDTGLPVRDPEFGTRMDHKARDICPSAMGYH-NQGHDSYDPERKVFMLGINHICM
+
+------------lgsiklfqaikgevaelt------eefsvigieala---sd-------
+            |BBBBBBB      BB||      ||||||BB|BB|   ||       
+DWEPFMLPYRAGQFFVGATL------TMYPGPKGDRGNASGLGQIKAYDAISGEMKWEKM
+
+llfvit---------------adrsvkaidlkdldkltvlkl---------------kvv
+BBBBBB               |||BBBBBB||||||BBB|||               ||B
+ERFSVWGGTMATAGGLTFYATLDGFIKARDSDTGDLLWKFKLPSGVIGHPMTYKHDGRQY
+
+sqpfsn-rakevalrvggg---sllvvvssktlkgk--avle------------------
+BBBB|| |||BBBBBB|||   |BBBBBB   |BB|  BB||                  
+VAIMYGVGGWPGVGLVFDLADPTAGLGSV---GAFKRLQEFTQMGGGVMVFSLDGESPYS
+
+-------------
+             
+DPNVGEYAPGEPT
