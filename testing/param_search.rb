@@ -111,7 +111,7 @@ search_algorithms.each_pair do |alg, params|
     allArgs.each do |argsForRun|
         # now, multiply by files needed
         # io_pairs.each do |iop|
-        iop = io_pairs[base_name]
+        iop = io_pairs[@base_name]
         fileSpecificArgs = argsForRun.dup
         # add the algorithm argument
         fileSpecificArgs << argify(alg, "")
