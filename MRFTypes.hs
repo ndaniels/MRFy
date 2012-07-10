@@ -6,8 +6,7 @@ module MRFTypes
   , matchEmissions, insertionEmissions  
   , StrandPair(..)
   , Helix(..)
-  , Exposure(..), mkExposure, unElist
-  , ExposureList(..)
+  , Exposure(..), mkExposure
   , Direction(..), mkDirection
   , BetaStrand(..), BetaPosition, BetaResidue(..), BetaPair(..)
   , TProb(..), TProbs, m_m, m_i, m_d, i_m, i_i, d_m, d_d, b_m, m_e
@@ -124,7 +123,7 @@ instance Arbitrary StrandPair where
     where (d, e) = (arbitrary, arbitrary)
           (first, second) = (choose (1, max), choose (1, max))
           len = choose (1, max)
-          max = 1000
+          max = 100
 
 data Helix = Helix { startRes :: Int
                    , helixLength :: Int
@@ -144,13 +143,14 @@ data HMMHeader = HMMHeader { betas       :: [BetaStrand] -- TODO add alphas (sst
 data MRF = MRF { hmmHeader :: HMMHeader, hmm :: HMM }
                deriving (Show)
 
-newtype ExposureList = EList [ Exposure ] deriving Show
-
-unElist :: ExposureList -> [Exposure]
-unElist (EList exposures) = exposures
-
-instance Arbitrary ExposureList where
-  arbitrary = fmap EList $ listOf (arbitrary :: Gen Exposure)
+type ExposureList = [Exposure]
+-- newtype ExposureList = EList [ Exposure ] deriving Show 
+--  
+-- unElist :: ExposureList -> [Exposure] 
+-- unElist (EList exposures) = exposures 
+--  
+-- instance Arbitrary ExposureList where 
+  -- arbitrary = fmap EList $ listOf (arbitrary :: Gen Exposure) 
     
 
 data Exposure = Buried -- 'i'

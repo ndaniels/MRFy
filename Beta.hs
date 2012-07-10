@@ -36,29 +36,33 @@ import MRFTypes
 
 
 getBetaStrands :: [StrandPair] -> [BetaStrand]
-getBetaStrands ss = addIndexInfo 
-                   $ mkBetaStrands 
-                   $ mergeStrands
-                   $ addPairings 
-                   $ mkBetaResidues ss
+getBetaStrands = addIndexInfo 
+                 . mkBetaStrands 
+                 . mergeStrands
+                 . addPairings 
+                 . mkBetaResidues
 
 -- Decorates the *pairs* with index information so that
 -- Beta scoring is efficient later on.
 addIndexInfo :: [BetaStrand] -> [BetaStrand]
-addIndexInfo betas = addIndexInfo' betas
-  where addIndexInfo' [] = []
-        addIndexInfo' (b:bs) = b' : addIndexInfo' bs
-          where b' = b { residues = map addToResidue $ residues b }
+addIndexInfo betas = map addIndexInfo' betas
+  where addIndexInfo' b = b { residues = map addToResidue $ residues b }
 
         addToResidue :: BetaResidue -> BetaResidue
         addToResidue r = r { pairs = map (addToPair betas) $ pairs r }
-          where addToPair [] _ = error "could not find beta position in list of beta strands"
-                addToPair (b:bs) p = 
-                  case find (\r' -> pairPosition p == resPosition r') $ residues b of
-                    Just r' -> p { pairStrandSerial = resStrandSerial r'
-                                 , residueInd = maybe (error "whoa there") id $ elemIndex r' $ residues b
-                                 }
-                    Nothing -> addToPair bs p
+
+        addToPair :: [BetaStrand] -> BetaPair -> BetaPair
+        addToPair [] _ = 
+           error "could not find beta position in list of beta strands"
+        addToPair (b:bs) p = 
+           case find (\r' -> pairPosition p == resPosition r') $ residues b of
+             Just r' ->
+               p { pairStrandSerial = resStrandSerial r'
+                 , residueInd = maybe (error "unreachable") id
+                                $ elemIndex r'
+                                $ residues b
+                 }
+             Nothing -> addToPair bs p
 
 -- Creates the BetaStrand structures and adds serial
 -- information to each residue.
@@ -102,7 +106,7 @@ mergeStrands (s:ss) = s' : (mergeStrands $ filter (emptyIntersection s') ss)
 -- haven't been made yet. Effectively, a strand is a list
 -- of beta nodes.
 addPairings :: [[BetaResidue]] -> [[BetaResidue]]
-addPairings strands = map (map (\n -> foldl annotate n strands)) strands
+addPairings strands = sort $ map (map (\n -> foldl annotate n strands)) strands
   where -- Find one or zero equivalent nodes in a beta strand
         -- and add any additional pairs found to 'r'
         annotate :: BetaResidue -> [BetaResidue] -> BetaResidue
@@ -118,7 +122,7 @@ mkBetaResidues :: [StrandPair] -> [[BetaResidue]]
 mkBetaResidues [] = []
 mkBetaResidues (sp:sps) = residues1 : residues2 : mkBetaResidues sps
   where (residues1, residues2) =
-          mkResidues (zip3 (unElist $ exposure sp) [s1..] secondIndexing) [] []
+          mkResidues (zip3 (exposure sp) [s1..] secondIndexing) [] []
 
         secondIndexing = case parallel sp of Parallel -> [s2..]
                                              Antiparallel -> [s2, s2-1..]
