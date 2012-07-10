@@ -160,63 +160,64 @@ aCostTree bnode nodes aas = ct Mat (NI $ mvlength nodes) (RI $ mvlength aas)
           -- N.B. could go with unsafe ranges here
 
 
+
 inlinedTree :: (MVector NIndex nodes, MVector RIndex residues)
             => BeginNode -> nodes NIndex HMMNode -> residues RIndex AA -> Tree
-inlinedTree = hoViterbi FromBegin StepFrom
+inlinedTree = hoViterbi FromBegin (\s l t -> Scored (l, t) s) StepFrom
 
 scoreOnly :: (MVector NIndex nodes, MVector RIndex residues)
             => BeginNode -> nodes NIndex HMMNode -> residues RIndex AA -> Score
-scoreOnly = hoViterbi id (minimum . map plus)
-  where plus (Scored (_, score) score') = score + score'
+scoreOnly = hoViterbi id (\s _ s' -> s + s') minimum
 
 scoredPath :: (MVector NIndex nodes, MVector RIndex residues)
             => BeginNode -> nodes NIndex HMMNode -> residues RIndex AA
             -> Scored [StateLabel]
-scoredPath = hoViterbi (Scored []) (minimum . map cons)
-  where cons (Scored (label, Scored path score) score') =
-          Scored (label : path) (score + score')
+scoredPath = hoViterbi (Scored []) (\s state path -> s /+/ fmap (state:) path) minimum
 
+{-# INLINE hoViterbi #-}
 -- | Higher-order implementation of the Viterbi algorithm, which can
--- be specialized to produce various outputs.
+-- be specialized to produce various outputs. 
 hoViterbi :: (MVector NIndex nodes, MVector RIndex residues)
          => (Score -> a) -- ^ reaction to initial transition
-         -> ([Scored (StateLabel, a)] -> a) -- ^ make node from children  
+         -> (Score -> StateLabel -> a -> b) -- ^ one possible child
+         -> ([b] -> a) -- ^ make answer from all children
          -> BeginNode -> nodes NIndex HMMNode -> residues RIndex AA -> a
-hoViterbi leaf internal bnode nodes aas = ct Mat (NI $ mvlength nodes) (RI $ mvlength aas)
-  where ct stateRight (NI 0) (RI 0) = leaf (btransition bnode stateRight)
-        ct stateRight (NI 0) ri     = insertAll stateRight ri
-        ct stateRight ni (RI 0)     = deleteAll stateRight ni
-        ct stateRight ni ri =
-          internal [ Scored (state, a) score
-                   | state <- preceders ! stateRight -- memoize!
-                   , let a = next state ni ri
-                   , let score = transition node state stateRight +
-                                 emission node state aa
-                   ]
-          where node = nodes `at` pred ni
-                aa = aas `at` pred ri
-
-        next s@Mat ni ri = ct' s (pred ni) (pred ri)
-        next s@Del ni ri = ct' s (pred ni) ri
-        next s@Ins ni ri = ct' s ni        (pred ri)
-
-        insertAll stateRight (RI 0) = ct stateRight (NI 0) (RI 0)
-        insertAll stateRight ri = 
-          internal [ Scored (stateRight, insertAll Ins (pred ri)) score ]
-          where aa = aas `at` pred ri
-                score = bitransition bnode stateRight + begin_emissions_i bnode ! aa
-        deleteAll Ins _ = error "this can't happen" -- XXX wrong, needs inf cost
-        deleteAll stateRight (NI 0) = ct stateRight (NI 0) (RI 0)
-        deleteAll stateRight ni = 
-          internal [ Scored (Del, deleteAll Del (pred ni)) score ]
+hoViterbi leaf child internal = viterbi 
+ where viterbi bnode nodes aas = ct Mat (NI $ mvlength nodes) (RI $ mvlength aas)
+        where
+          ct stateRight (NI 0) (RI 0) = leaf (btransition bnode stateRight)
+          ct stateRight (NI 0) ri     = insertAll stateRight ri
+          ct stateRight ni     (RI 0) = deleteAll stateRight ni
+          ct stateRight ni ri =
+            internal [ child score state (next state ni ri)
+                     | state <- preceders ! stateRight -- memoized!
+                     , let score = transition node state stateRight +
+                                   emission node state aa
+                     ]
             where node = nodes `at` pred ni
-                  score = transition node Del stateRight
+                  aa = aas `at` pred ri
 
-        ct' = Memo.memo3 (Memo.arrayRange (minBound, maxBound))
-                         (Memo.arrayRange (NI 0, NI $ pred $ mvlength nodes))
-                         (Memo.arrayRange (RI 0, RI $ pred $ mvlength aas))
-                         ct
-          -- N.B. could go with unsafe ranges here
+          next s@Mat ni ri = ct' s (pred ni) (pred ri)
+          next s@Del ni ri = ct' s (pred ni) ri
+          next s@Ins ni ri = ct' s ni        (pred ri)
+
+          insertAll stateRight (RI 0) = ct stateRight (NI 0) (RI 0)
+          insertAll stateRight ri = 
+            internal [ child score stateRight (insertAll Ins (pred ri)) ]
+            where aa = aas `at` pred ri
+                  score = bitransition bnode stateRight + begin_emissions_i bnode ! aa
+          deleteAll Ins _ = error "this can't happen" -- XXX wrong, needs inf cost
+          deleteAll stateRight (NI 0) = ct stateRight (NI 0) (RI 0)
+          deleteAll stateRight ni =
+            internal [ child score Del (deleteAll Del (pred ni)) ]
+              where node = nodes `at` pred ni
+                    score = transition node Del stateRight
+
+          ct' = Memo.memo3 (Memo.arrayRange (minBound, maxBound))
+                           (Memo.arrayRange (NI 0, NI $ pred $ mvlength nodes))
+                           (Memo.arrayRange (RI 0, RI $ pred $ mvlength aas))
+                           ct
+            -- N.B. could go with unsafe ranges here
 
 -- | Cost of transitions from the Ins state in the initial node
 -- (which also contains the Beg state)
@@ -224,3 +225,6 @@ bitransition :: BeginNode -> StateLabel -> Score
 bitransition bnode Mat = begin_i_m bnode
 bitransition bnode Ins = begin_i_i bnode
 bitransition _     Del = negLogZero
+
+--------------------------------------------
+
