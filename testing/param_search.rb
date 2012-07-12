@@ -31,37 +31,30 @@ io_pairs = {
     # ["barwin.hmm+", "8.fasta"], # negative
 }
 
-convergences = [100, 200, 1_000]
+convergences = [100, 200, 500, 1_000]
 # convergences = [20]
 
 ga_parameters = {
-    :popsize => [10, 100, 1000, 10_000],
+    :multipop => [1]
+    :popsize => [500, 1000, 10_000],
     :gens => [10, 20, 50, 100, 500],
     :converge => [5, 10, 20, 50, 100]
 }
 
-# debug
-# ga_parameters = {
-#     :popsize => [10],
-#     :gens => [100],
-#     :converge => convergences
-# }
-
-
-# need to cut this down a LOT
 sa_parameters = {
     # :multipop => [1, 2, 5, 10, 100],
     :multipop => [10],
-    :gens => [100, 500, 1_000, 10_000],
+    :gens => [10_000],
     :inittemp => [10, 100, 1_000, 10_000, 100_000],
     :coolfact => [0.75, 0.9, 0.99, 0.999, 0.99999],
-    :boltz => [1.0e-40, 1.38e-23, 1.0e-10, 1.0e-5, 1.0e-2, 1.0e-1],
+    # :boltz => [1.0e-40, 1.38e-23, 1.0e-10, 1.0e-5, 1.0e-2, 1.0e-1],
+    :boltz => [1e-20, 1.0],
     :converge => convergences
 }
 
 rhc_parameters = {
-    :multipop => [1, 2, 5, 10, 100],
-    :gens => [500, 1_000, 10_000],
+    :multipop => [10],
+    :gens => [10_000],
     :converge => convergences
 }
 
