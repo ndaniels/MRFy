@@ -35,7 +35,7 @@ convergences = [100, 200, 500, 1_000]
 # convergences = [20]
 
 ga_parameters = {
-    :multipop => [1]
+    :multipop => [1],
     :popsize => [500, 1000, 10_000],
     :gens => [10, 20, 50, 100, 500],
     :converge => [5, 10, 20, 50, 100]
