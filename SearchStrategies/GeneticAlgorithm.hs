@@ -49,6 +49,11 @@ mutate searchP query betas scorer (Scored placements _) =
    return . wrapBestScore
    =<< shuffle'
    =<< return . take (getSearchParm searchP populationSize)
+              -- TODO expand or narrow popSize
+              -- could start with e.g. pop of 100, and grow it over time
+              -- or start with 10,000 and winnow it
+              -- to grow pop, produce two or ten offspring per pair
+              -- mutation is important as crossover is deterministic!
               . sort
               . (placements ++)
    =<< progeny
