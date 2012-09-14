@@ -55,7 +55,10 @@ mutate searchP query betas scorer (Scored placements _) =
   where progeny = parRandom $ map (\gs -> scorer <$>
                                           randomizePlacement betas gs (V.length query))
                             $ getPairings
+--                            $ shuffle'
                             $ map unScored placements
+                            -- TODO this should be a randomized permutation
+                            -- so we don't just mate the two best siblings
 
 getPairings :: [Placement] -> [Placement]
 getPairings [] = []

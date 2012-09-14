@@ -15,7 +15,7 @@ numRuns = 10
 
 @base_name = ARGV[3] || "8"
 
-constArgs = " +RTS -N12"
+constArgs = " +RTS -N12 -K300M"
 
 io_pairs = {
     "8" => ["8.hmm+", "8.fasta"], # positive
@@ -173,6 +173,7 @@ allRunArgs.each do |argList|
     results = []
     numRuns.times do |run|
         realOutFile = outfile + run.to_s
+        next if File.exist?(realOutFile) && ! File.empty?(realOutFile)
         command = "#{@mrfy_path} #{args} #{realOutFile} #{constArgs}"
         # puts "executing #{command}"
         t0 = Time.now

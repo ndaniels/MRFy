@@ -32,10 +32,10 @@ type Vector a = U.Vector a
 
 -- @ start hmmnode.tex
 type EProbs = Vector Score
-data HMMNode = HMMNode { nodeNum :: Int
-                       , matEmissions :: EProbs
-                       , insEmissions :: EProbs
-                       , transitions  :: TProbs
+data HMMNode = HMMNode { nodeNum :: {-# UNPACK #-} !Int -- unpack all fields?
+                       , matEmissions :: !EProbs
+                       , insEmissions :: !EProbs
+                       , transitions  :: !TProbs
 -- @ end hmmnode.tex
 -- @ start hmmnode.tex
                        }
@@ -68,14 +68,14 @@ newtype TProb = TProb { logProbability :: Score }
 
 -- @ start tprob-tprobs.tex
 data TProbs = TProbs
-  { m_m :: TProb, m_i :: TProb, m_d :: TProb
-  , i_m :: TProb, i_i :: TProb
+  { m_m :: {-# UNPACK #-} !TProb, m_i :: {-# UNPACK #-} !TProb, m_d :: {-# UNPACK #-} !TProb
+  , i_m :: {-# UNPACK #-} !TProb, i_i :: {-# UNPACK #-} !TProb
 -- @ end tprob-tprobs.tex
   ---GROSS HACKERY (these are in the middle to prevent a bad page break in the paper)
-  , b_m :: TProb -- XXX aren't these just taking up space in the cache lines?
-  , m_e :: TProb
+  , b_m :: {-# UNPACK #-} !TProb -- XXX aren't these just taking up space in the cache lines?
+  , m_e :: {-# UNPACK #-} !TProb
 -- @ start tprob-tprobs.tex
-  , d_m :: TProb, d_d :: TProb }
+  , d_m :: {-# UNPACK #-} !TProb, d_d :: {-# UNPACK #-} !TProb }
 -- @ end tprob-tprobs.tex
             deriving (Show)
 

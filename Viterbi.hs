@@ -166,6 +166,7 @@ emissionScoreNode n q state =
 
 emissionScore :: HMM -> QuerySequence -> StateLabel -> Int -> Int -> Score
 emissionScore hmm qs state j i = emissionScoreNode (hmm V.! j) (qs U.! i) state
+-- should be able to use unsafeIndex here
 
 transScoreNode :: HMMNode -> StateLabel -> StateLabel -> Score
 transScoreNode n from to =
