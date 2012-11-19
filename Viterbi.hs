@@ -49,7 +49,7 @@ viterbi pathCons right query hmm =
   if numNodes == 0 then
     Scored [] negLogOne
   else
-    minimum $ [transN s $ 
+    minimum $ [transN s $
               vee'' s (numNodes - 1) (seqlen - 1) | s <- [Mat, Ins, Del]] ++ 
               case right of { HasEnd -> [bestEnd]; HasNoEnd -> [] }
 
