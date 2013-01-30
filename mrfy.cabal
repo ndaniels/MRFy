@@ -35,6 +35,7 @@ Extra-source-files: *.hs, SearchStrategies/*.hs
 
 Executable mrfy
   Main-is: Main.hs
+  ghc-options:         -O2 -threaded -rtsopts -with-rtsopts=-N
   
   -- Packages needed in order to build this package.
   Build-depends: base >= 4.0,
@@ -50,7 +51,7 @@ Executable mrfy
                  data-memocombinators >=0.4.2,
                  parsec,
                  vector >=0.9,
-                 Unixutils == 1.48.1,   
+                 Unixutils >= 1.48.1,   
                       -- Unixutils 1.50 fails to install
                  QuickCheck
                  -- TernaryTrees == 0.2.* -- incompatible with bio
