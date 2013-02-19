@@ -258,6 +258,22 @@ main = do -- standard loading
             >> exitSuccess
           else
             return ()
+          if length (betas header) == 0 then do
+            let vresult = viterbi (:) HasNoEnd query hmm
+            let outScore = scoreOf vresult
+            let dp = Scored [] outScore
+            let outAlign = outputAlignment hmm (betas header) dp query
+            let output = [ "Score: " ++ show outScore
+                         , outAlign
+                         ]
+            if outName == "-" then
+              mapM_ putStrLn output >> exitSuccess
+            else
+              writeFile outName (concat $ intersperse "\n" output) >>
+              exitSuccess
+          else
+            return()
+          
           let setSD = fromIntegral (U.length query) / 8
           -- print (U.length query,setSD,length $ betas header)
           -- setup the scorer, to be stored in the solutions
