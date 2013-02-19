@@ -291,7 +291,10 @@ main = do -- standard loading
           let output = [ "Score: " ++ show score'
                        , alignment
                        ]
-          writeFile outName (concat $ intersperse "\n" output)
+          if outName == "-" then
+            mapM_ putStrLn output
+          else
+            writeFile outName (concat $ intersperse "\n" output)
   where                                       
     setPS = 20
     diffTimeToSeconds :: DiffTime -> Integer
