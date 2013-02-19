@@ -244,7 +244,7 @@ backTrack n = concatMap (\a -> take (n-1) a++[minimum a]) . chunk n
 
 main :: IO()
 main = do -- standard loading
-          [hmmName,qName,outName]<- getArgs >>= return . take 23      
+          [hmmName,qName,outName]<- getArgs >>= return . take 3      
           startTime <- getCurrentTime >>= return . diffTimeToSeconds . utctDayTime
           (header, hmm, [query]) <- loadTestData (getFiles [hmmName,qName]) 
           -- create SD
