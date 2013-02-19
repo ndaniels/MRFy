@@ -10,13 +10,13 @@ import Data.List as DL
 import qualified Data.Vector.Unboxed as U
 import System.Console.CmdArgs
 import System.Random (getStdGen, mkStdGen, randoms)
-import qualified Data.Vector.Unboxed as V hiding (map)
+import qualified Data.Vector as V hiding (map)
 import System.Environment
 -- import Test.QuickCheck
 
 import Control.Parallel
 import Control.DeepSeq
-
+import Debug.Trace (trace)
 import Data.MemoTrie
 -- import Data.MemoCombinators as Memo
 import qualified Data.Map as M
@@ -58,8 +58,8 @@ loadTestData files =
      return (hmmHeader $ checkMRF mrf, hmm $ checkMRF mrf, map (translateQuery . toStr . seqdata) querySeqs)
 
 translateQuery :: String -> QuerySequence
-translateQuery = V.fromList . map lookup
-  where lookup k = case V.elemIndex k Constants.amino of
+translateQuery = U.fromList . map lookup
+  where lookup k = case U.elemIndex k Constants.amino of
                         Just i -> AA i
                         Nothing -> error "Residue not found in alphabet"
 
@@ -102,17 +102,76 @@ window sz xs = concat [zipWith take [0..sz] (repeat xs) ,map (take sz) . tails .
 
 -- NEW FORM OF SOLUTION CREATOR, BASED UPON NORMAL DISTRIBUTIONS, HARD CODED AT THE MOMENT
 -- YIELDS A GENERATOR, OR STREAM OF PLACEMENTS TO BE TURNED INTO SCORED SOLUTIONS
-basicGuesser :: RandomGen r=>r->QuerySequence->[BetaStrand]->[Placement]
-basicGuesser r qs betas = filter (isValid 0 betas) randOpts
-  where
-    randOpts = map sort $ chunk (length betas) $ randomRs (0,U.length qs) r
-    isValid lastGuess [] _ = True
-    isValid lastGuess (b:bs) (o:os) | o<lastGuess = False
-                                    | o>=betaSum   = False
-                                    | otherwise   = isValid (o+len b) bs os
-      where
-        betaSum = U.length qs - sum (map len (b:bs))
+-- basicGuesser :: RandomGen r=>r->QuerySequence->[BetaStrand]->[Placement]
+-- basicGuesser r qs betas = filter (isValid 0 betas) randOpts
+--   where
+--     randOpts = map sort $ chunk (length betas) $ randomRs (0,U.length qs) r
+--     isValid lastGuess [] _ = True
+--     isValid lastGuess (b:bs) (o:os) | o<lastGuess = False
+--                                     | o>=betaSum   = False
+--                                     | otherwise   = isValid (o+len b) bs os
+--       where
+--         betaSum = U.length qs - sum (map len (b:bs))
     
+basicGuesser :: RandomGen r=>r->QuerySequence->[BetaStrand]->[Placement]
+basicGuesser r qs betas = map (fixPlacement qs betas 0) randOpts
+ where
+   randOpts = map sort $ chunk (length betas) $ randomRs (0,U.length qs) r
+
+fixPlacement :: QuerySequence->[BetaStrand]->Int->Placement->Placement
+fixPlacement qs bs mPos ps = let (ls,mid:rs) = splitAt mPos ps
+                                 (bsL,bsM:bsR) = splitAt mPos bs
+                                 checked = concat [reverse $ fixLeft mid (reverse bsL) (reverse ls),
+                                                       [mid],
+                                                       fixRight (mid+len bsM) bsR rs]
+                            in fixRight 0 bs $ checked
+ where
+   fixLeft _ [] _ = []
+   fixLeft lastGuess (b:bs') (v:vs) | v>=l = l : fixLeft l bs' vs
+                                    | otherwise = v : fixLeft (lastGuess - len b) bs' vs
+     where l = lastGuess - len b
+
+   fixRight _ [] _ = []
+   fixRight lastGuess (b:bs') (v:vs) | v<lastGuess = lastGuess : fixRight (lastGuess+len b) bs' vs
+                                     | v>= betaSum = betaSum : fixRight (betaSum + len b) bs' vs
+                                     | otherwise = v : fixRight (v+len b) bs' vs
+     where betaSum = U.length qs - sum (map len (b:bs'))
+    
+-- Projection-based initial guess
+
+legalPlacement' :: QuerySequence -> [BetaStrand] -> Placement -> Bool
+legalPlacement' _ [] [] = True
+legalPlacement' _ [] [g] = False
+legalPlacement' _ [b] [] = False
+legalPlacement' qs (b:bs) (g:gs) = range && noClash
+  where range = g >= 0 && (g + len b) <= (U.length qs)
+        noClash = case gs of
+                    [] -> True
+                    (g':gs') -> g' >= g + len b
+
+projInitialGuess :: HMM-> QuerySequence -> [BetaStrand] -> Placement
+projInitialGuess hmm qs betas = trace (show betas) $ validate $ initialGuess' betas 0 0
+ where initialGuess' [] _ _ = []
+       initialGuess' (b:bs) lastPEnd lastBEnd = g : initialGuess' bs g' bEnd
+         where g = lastPEnd + gap
+               g' = g + len b
+
+               bEnd = (len b) + (resPosition $ head $ residues b)
+
+               gap = floor $ (fromIntegral origGap) * f
+               origGap = (resPosition $ head $ residues b) - lastBEnd
+               f = (fromIntegral newNonBeta) / (fromIntegral origNonBeta)
+               origNonBeta = (V.length hmm) - betaSum
+               newNonBeta  = (U.length qs) - betaSum
+               betaSum = sum (map len betas)
+       validate guesses =
+         if legalPlacement' qs betas guesses then
+           guesses
+         else
+           error ("Bad guesses!" ++ show guesses)
+
+
+
 -- NEW MUTATOR
 detMutate :: QuerySequence->[BetaStrand]->Int->Int->PricedSol [Int]->PricedSol [Int]
 detMutate qs bs p v s = let (as,c:cs) = splitAt p $ solution s
@@ -185,9 +244,9 @@ backTrack n = concatMap (\a -> take (n-1) a++[minimum a]) . chunk n
 
 main :: IO()
 main = do -- standard loading
-          [hmmName,qName]<- getArgs >>= return . take 2      
+          [hmmName,qName,outName]<- getArgs >>= return . take 23      
           startTime <- getCurrentTime >>= return . diffTimeToSeconds . utctDayTime
-          (header, hmm, [query]) <- loadTestData (getFiles ["testing/"++hmmName++".hmm+","testing/"++qName++".fasta"]) 
+          (header, hmm, [query]) <- loadTestData (getFiles [hmmName,qName]) 
           -- create SD
           let setSD = fromIntegral (U.length query) / 8
           -- print (U.length query,setSD,length $ betas header)
@@ -196,7 +255,8 @@ main = do -- standard loading
     
           -- generate a stream of initial solutions, ready priced up 
           initialSols<-newStdGen >>= return . map (mkPricing scorer) . (\g->basicGuesser g query (betas header))
-    
+          let initialSol = mkPricing scorer $ 
+                           projInitialGuess hmm query (betas header)
           
           gforchoice<-newStdGen
           gformutate<-newStdGen
@@ -217,19 +277,21 @@ main = do -- standard loading
                                                             -- guarantes uniform liklihood of new solution
                                                             -- from range of options
                               mutateBlock query (betas header) gformutate )
-                         ) (head initialSols) 
+                         ) initialSol --(head initialSols) 
           
           vs'<-takeFor (startTime+(30)) vs
 
-          print (hmmName++" vs "++qName,minimum vs',length vs')   
+          -- print (hmmName++" vs "++qName,minimum vs',length vs')   
           endTime <- getCurrentTime >>= return . diffTimeToSeconds . utctDayTime
           let winner' = minimum vs'
           let sol' = solution winner'
-          let score' = augmentedScore winner'
+          let score' = underlyingScore winner'
           let winner = Scored sol' (Score score')
           let alignment = outputAlignment hmm (betas header) winner query
-          putStrLn ("Score: " ++ show score')
-          putStrLn alignment
+          let output = [ "Score: " ++ show score'
+                       , alignment
+                       ]
+          writeFile outName (concat $ intersperse "\n" output)
   where                                       
     setPS = 20
     diffTimeToSeconds :: DiffTime -> Integer

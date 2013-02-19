@@ -122,13 +122,13 @@ legalPlacement qs (b:bs) (g:gs) = range && noClash
 
 score :: HMM -> QuerySequence -> [BetaStrand] -> Scorer Placement
 score hmm query betas ps =
---  if legalPlacement query betas ps then
+ if legalPlacement query betas ps then
   Scored ps (foldr (+) negLogOne
   $ (parMap rseq) viterbiOrBeta
   $ DL.zip4 hmmAlignTypes (map traceid miniHMMs) miniQueries
   $ dupeElements [0..])
---  else
---    error "invalid Placement"
+ else
+   error "invalid Placement"
   where viterbiOrBeta :: (BetaOrViterbi, HMM, QuerySequence, Int) -> Score
         -- NMD note: I think we'll have to do something with seq here
         -- to force evaluation of the Viterbis before the Betas (Vs can still be in parallel)

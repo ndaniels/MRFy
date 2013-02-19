@@ -89,7 +89,7 @@ getOpts argv =
 
 defaultSP :: SearchParameters
 defaultSP = SearchParameters { strategy = SimulatedAnnealing.nss
-                             , generations = 1000
+                             , generations = 10000
                              , multiStartPopSize = 10
                              , verbose = True
                              , populationSize = Just 20
@@ -97,6 +97,6 @@ defaultSP = SearchParameters { strategy = SimulatedAnnealing.nss
                              , coolingFactor = Just 0.99
                              , boltzmannConstant = Just 1.0
                              , mutationRate = Just 1.0
-                             , convergenceAge = Nothing
+                             , convergenceAge = Just 300
                              , secPreds = Nothing
                              }

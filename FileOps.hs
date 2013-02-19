@@ -181,7 +181,7 @@ runCommand (AlignmentSearch searchParams
                     trySearch r q = if alignable q bs then searchQ else noSearch
                       where searchQ = evalRand search (mkStdGen r)
                             search  = fullSearch (strat (score hmm q bs))
-                            strat   = strategy searchParams hmm searchParams q bs
+                            strat   = strategy searchParams hmm searchParams q bs                  
                     results = map (historySolution . popSearch searches) queries
                     output  = [ "Score: " ++ (show $ scoreOf $ head results) 
                               , ""
