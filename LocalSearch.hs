@@ -250,11 +250,11 @@ main = do -- standard loading
           -- create SD
           if not $ alignable query (betas header) then
             if outName == "-" then
-              putStrLn "Score: Infinity"
+              putStrLn "Score: Infinity" >> exitSuccess
             else
               writeFile outName ("Score: Infinity\n" ++ 
               "Query sequence shorter than combined beta strands;\n" ++ 
-              "no alignment possible")
+              "no alignment possible\n")
             >> exitSuccess
           else
             return ()
