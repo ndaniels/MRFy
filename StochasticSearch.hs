@@ -110,26 +110,40 @@ statePath hmm query betas ps = foldr (++) [] $ map viterbiOrBeta $ DL.zip4 hmmAl
         (miniHMMs, hmmAlignTypes) = sliceHMMs hmm betas 1 [] []
         miniQueries = sliceQuery query betas (unScored ps) 1 []
 
+legalPlacement :: QuerySequence -> [BetaStrand] -> Placement -> Bool
+legalPlacement _ [] [] = True
+legalPlacement _ [] [g] = False
+legalPlacement _ [b] [] = False
+legalPlacement qs (b:bs) (g:gs) = range && noClash
+  where range = g >= 0 && (g + len b) <= U.length qs
+        noClash = case gs of
+                    [] -> True
+                    (g':gs') -> g' >= g + len b
+
 score :: HMM -> QuerySequence -> [BetaStrand] -> Scorer Placement
 score hmm query betas ps =
+--  if legalPlacement query betas ps then
   Scored ps (foldr (+) negLogOne
   $ (parMap rseq) viterbiOrBeta
   $ DL.zip4 hmmAlignTypes (map traceid miniHMMs) miniQueries
   $ dupeElements [0..])
+--  else
+--    error "invalid Placement"
   where viterbiOrBeta :: (BetaOrViterbi, HMM, QuerySequence, Int) -> Score
         -- NMD note: I think we'll have to do something with seq here
         -- to force evaluation of the Viterbis before the Betas (Vs can still be in parallel)
         -- so we can use the last node of a Viterbi segment to inform the transition
         -- to Match for the Beta score.
         viterbiOrBeta (Beta, ns, qs, i) = betaScore query ps (residues (betas !! i)) ns qs
-        viterbiOrBeta (Viterbi, ns, qs, _) = scoreOf $ viterbi consNoPath HasNoEnd qs ns
+        viterbiOrBeta (Viterbi, ns, qs, _) =  scoreOf $ viterbi consNoPath HasNoEnd qs ns
+        
 
         -- traceid hmm = trace (show (V.map nodeNum hmm)) $ id hmm 
         traceid = id
         -- traceid = (trace (show hmmAlignTypes)) id 
 
         (miniHMMs, hmmAlignTypes) = sliceHMMs hmm betas 1 [] []
-        miniQueries = sliceQuery query betas ps 1 []
+        miniQueries = sliceQuery query betas ps 1 []          
 
 -- invariant: length residues == length hmmSlice == length querySlice
 betaScore :: QuerySequence -> Placement -> [BetaResidue] -> HMM -> QuerySequence -> Score

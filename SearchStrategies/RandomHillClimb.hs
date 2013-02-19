@@ -19,6 +19,7 @@ import Score
 import SearchStrategy
 import StochasticSearch
 import Viterbi
+import Debug.Trace (trace)
 
 nss :: NewSS
 nss hmm searchP query betas scorer = fullSearchStrategy
@@ -52,6 +53,8 @@ mutate _ query betas scorer (Scored oldp _) =
 -- is a list @betas@ of beta strands and a list @oldp@ of their leftmost positions.
 --
 -- precondition: length betas == length oldp && maxRight >= sum betas
+
+
 randomizePlacement 
   :: RandomGen r => [BetaStrand] -> Placement -> Int -> Rand r Placement
 randomizePlacement betas oldp maxRight = shiftFrom betas 0 (tail oldp ++ [maxRight])

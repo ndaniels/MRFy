@@ -115,14 +115,55 @@ genGuess :: (Random r, Fractional r, Ord r) => Seed -> [(Int, r)] -> Int -> Plac
 genGuess seed dist n = DL.sort $ take n $ randomsDist (mkStdGen seed) dist
 -}
 
+legalPlacement' :: QuerySequence -> [BetaStrand] -> Placement -> Bool
+legalPlacement' _ [] [] = True
+legalPlacement' _ [] [g] = False
+legalPlacement' _ [b] [] = False
+legalPlacement' qs (b:bs) (g:gs) = range && noClash
+  where range = g >= 0 && (g + len b) <= (U.length qs)
+        noClash = case gs of
+                    [] -> True
+                    (g':gs') -> g' >= g + len b
+
+-- projInitialGuess :: RandomGen r => InitialGuesser r
+-- projInitialGuess hmm _ qs betas = return $ validate $ initialGuess' betas 0 0
+--   where initialGuess' [] _ _ = []
+--   -- trace ("g: " ++ show g ++ " f: " ++ show f ++ " pos: " ++ show pos ++ " lastB: " ++ show lastB ++ " lastP: " ++ show lastP) $
+--         initialGuess' (b:bs) lastPEnd lastBEnd =   trace ("g: " ++ show g ++ " f: " ++ show f ++ " bPos: " ++ show bPos ++ " lastBEnd: " ++ show lastBEnd ++ " lastPEnd: " ++ show lastPEnd ++ " b: " ++ show b ++ " lenQS: " ++ show (U.length qs)) $ g : initialGuess' bs g' bPos
+--         -- no, scale the between-beta distances!
+--           where g = lastPEnd + (floor $ (fromIntegral $ bPos - lastBEnd) * f)
+--                 g' = g + len b
+--                 f = (fromIntegral $ U.length qs) / (fromIntegral $ V.length hmm)
+--                 bPos = (len b) + (resPosition $ head $ residues b)
+--         validate guesses = 
+--           if legalPlacement' qs betas guesses then
+--             trace "good guess!" $ guesses
+--           else
+--             error "Bad guesses!"
+
 projInitialGuess :: RandomGen r => InitialGuesser r
-projInitialGuess hmm _ qs betas = return $ initialGuess' betas 0 0
+projInitialGuess hmm _ qs betas = return $ validate $ initialGuess' betas 0 0
   where initialGuess' [] _ _ = []
-  -- trace ("g: " ++ show g ++ " f: " ++ show f ++ " pos: " ++ show pos ++ " lastB: " ++ show lastB ++ " lastP: " ++ show lastP) $
-        initialGuess' (b:bs) lastP lastB = g : initialGuess' bs g pos
-          where g = lastP + (floor $ (fromIntegral $ pos - lastB) * f)
-                f = (fromIntegral $ U.length qs) / (fromIntegral $ V.length hmm)
-                pos = resPosition $ head $ residues b
+        -- initialGuess' (b:bs) lastPEnd lastBEnd = trace ("g: " ++ show g ++ " f:  " ++ show f ++ " bEnd: " ++ show bEnd ++ " gap: " ++ show gap ++ " origGap: " ++ show origGap ++ " origNonBeta: " ++ show origNonBeta ++ " newNonBeta: " ++ show newNonBeta  ++ " qLen: " ++ show (U.length qs) ++ show b) $ g : initialGuess' bs g' bEnd
+        initialGuess' (b:bs) lastPEnd lastBEnd = g : initialGuess' bs g' bEnd
+          where g = lastPEnd + gap
+                g' = g + len b
+
+                bEnd = (len b) + (resPosition $ head $ residues b)
+                
+                gap = floor $ (fromIntegral origGap) * f 
+                origGap = (resPosition $ head $ residues b) - lastBEnd
+                f = (fromIntegral newNonBeta) / (fromIntegral origNonBeta)
+                origNonBeta = (V.length hmm) - betaSum
+                newNonBeta  = (U.length qs) - betaSum
+                betaSum = sum (map len betas)
+        validate guesses = 
+          if legalPlacement' qs betas guesses then
+            guesses
+          else
+            error ("Bad guesses!" ++ show guesses)
+
+
 
 -- XXX name? contract?
 checkGuess :: [BetaStrand] -> Placement -> Bool

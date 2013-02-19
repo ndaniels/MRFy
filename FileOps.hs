@@ -2,13 +2,13 @@ module FileOps
        ( Commanded(..)
        , loadTestData, translateQuery
        , runCommand
+       , outputAlignment
        )
 where
   
 import Control.Monad.LazyRandom
 import Control.Parallel.Strategies
 import ParRandom
-
 import Data.Array
 import Data.List as DL
 import System.Console.CmdArgs
