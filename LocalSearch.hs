@@ -150,7 +150,7 @@ legalPlacement' qs (b:bs) (g:gs) = range && noClash
                     (g':gs') -> g' >= g + len b
 
 projInitialGuess :: HMM-> QuerySequence -> [BetaStrand] -> Placement
-projInitialGuess hmm qs betas = trace (show betas) $ validate $ initialGuess' betas 0 0
+projInitialGuess hmm qs betas =  validate $ initialGuess' betas 0 0
  where initialGuess' [] _ _ = []
        initialGuess' (b:bs) lastPEnd lastBEnd = g : initialGuess' bs g' bEnd
          where g = lastPEnd + gap
