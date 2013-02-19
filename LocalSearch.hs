@@ -16,10 +16,10 @@ import System.Environment
 
 import Control.Parallel
 import Control.DeepSeq
-import Debug.Trace (trace)
 import Data.MemoTrie
 -- import Data.MemoCombinators as Memo
 import qualified Data.Map as M
+import System.Exit
 import System.IO.Unsafe
 import Data.Maybe
 
@@ -248,6 +248,16 @@ main = do -- standard loading
           startTime <- getCurrentTime >>= return . diffTimeToSeconds . utctDayTime
           (header, hmm, [query]) <- loadTestData (getFiles [hmmName,qName]) 
           -- create SD
+          if not $ alignable query (betas header) then
+            if outName == "-" then
+              putStrLn "Score: Infinity"
+            else
+              writeFile outName ("Score: Infinity\n" ++ 
+              "Query sequence shorter than combined beta strands;\n" ++ 
+              "no alignment possible")
+            >> exitSuccess
+          else
+            return ()
           let setSD = fromIntegral (U.length query) / 8
           -- print (U.length query,setSD,length $ betas header)
           -- setup the scorer, to be stored in the solutions
