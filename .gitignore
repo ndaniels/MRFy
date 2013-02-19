@@ -5,6 +5,7 @@
 *.prof
 tags
 TAGS
+/localsearch
 /mrfy
 /mrfy_prof
 /mrfyprof
@@ -23,3 +24,4 @@ psipred-trash
 /mrfy.out
 .DS_Store
 /mrfy-prof
+localsearch
