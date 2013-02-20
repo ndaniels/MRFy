@@ -43,14 +43,15 @@ loadTestData :: Files -> IO (HMMHeader, HMM, [QuerySequence])
 loadTestData files =
   do querySeqs <- readFasta $ fastaF files
      mrf <- parseMRF $ hmmPlusF files
-     return (hmmHeader $ checkMRF mrf, hmm $ checkMRF mrf, map (translateQuery . toStr . seqdata) querySeqs)
-     
-translateQuery :: String -> QuerySequence
-translateQuery = V.fromList . map lookup
-  where lookup k = case V.elemIndex k Constants.amino of
-                        Just i -> AA i
-                        Nothing -> error "Residue not found in alphabet"
+     return (hmmHeader $ checkMRF mrf, hmm $ checkMRF mrf, 
+                         map (qSeq . loadQuery) querySeqs)
 
+loadRealData :: Files -> IO (HMMHeader, HMM, [Query])
+loadRealData files =
+  do querySeqs <- readFasta $ fastaF files
+     mrf <- parseMRF $ hmmPlusF files
+     return (hmmHeader $ checkMRF mrf, hmm $ checkMRF mrf, map loadQuery querySeqs)
+     
 runCommand :: Commanded -> IO ()
 runCommand (TestHMM "mini") =
   do test <- loadTestData $ Files "testing/mini8.hmm+" "testing/mini8.fasta" "/dev/null"
@@ -167,7 +168,7 @@ runCommand (TestHMM t) =
 
 runCommand (AlignmentSearch searchParams
                 (files @ Files { hmmPlusF = hmmPlusFile, outputF = outFile })) = do
-  (header, hmm, queries) <- loadTestData files
+  (header, hmm, queries) <- loadRealData files
   rgn <- getStdGen
   -- secPred <- getSecondary $ fastaF files
   finish (betas header) hmm queries (randoms rgn)
@@ -182,8 +183,10 @@ runCommand (AlignmentSearch searchParams
                       where searchQ = evalRand search (mkStdGen r)
                             search  = fullSearch (strat (score hmm q bs))
                             strat   = strategy searchParams hmm searchParams q bs                  
-                    results = map (historySolution . popSearch searches) queries
-                    output  = [ "Score: " ++ (show $ scoreOf $ head results) 
+                    results = map (historySolution . popSearch searches) qSeqs
+                    qSeqs = map qSeq queries
+                    output  = [ qHeader $ head queries
+                              , "Score: " ++ (show $ scoreOf $ head results) 
                               , ""
                               , concat $ intersperse "\n\n" $
                                 zipWith (outputAlignment hmm bs) results queries
@@ -191,12 +194,14 @@ runCommand (AlignmentSearch searchParams
 
 
 
-outputAlignment :: HMM -> [BetaStrand] -> Scored Placement -> QuerySequence -> String
-outputAlignment hmm betas ps querySeq = 
+outputAlignment :: HMM -> [BetaStrand] -> Scored Placement -> Query -> String
+outputAlignment hmm betas ps query = 
     if alignable querySeq betas
     then showAlignment hmm betas querySeq sp 60 Constants.amino
     else "Query sequence shorter than combined beta strands; no alignment possible"
   where sp = statePath hmm querySeq betas ps
+        querySeq = qSeq query
+        h = qHeader query
 
 
 

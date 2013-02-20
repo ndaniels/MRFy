@@ -51,17 +51,11 @@ import V2 (Tree(..), costTree)
 import System.Random
 
 -- CODE DRAWN FROM ORIGINAL MRFy
-loadTestData :: Files -> IO (HMMHeader, HMM, [QuerySequence])
-loadTestData files =
+loadRealData :: Files -> IO (HMMHeader, HMM, [Query])
+loadRealData files =
   do querySeqs <- readFasta $ fastaF files
      mrf <- parseMRF $ hmmPlusF files
-     return (hmmHeader $ checkMRF mrf, hmm $ checkMRF mrf, map (translateQuery . toStr . seqdata) querySeqs)
-
-translateQuery :: String -> QuerySequence
-translateQuery = U.fromList . map lookup
-  where lookup k = case U.elemIndex k Constants.amino of
-                        Just i -> AA i
-                        Nothing -> error "Residue not found in alphabet"
+     return (hmmHeader $ checkMRF mrf, hmm $ checkMRF mrf, map loadQuery querySeqs)
 
 -- CODE DRAWN FROM LOCAL SEARCH LIBRARY
 type Stream a = [a]
@@ -246,24 +240,26 @@ main :: IO()
 main = do -- standard loading
           [hmmName,qName,outName]<- getArgs >>= return . take 3      
           startTime <- getCurrentTime >>= return . diffTimeToSeconds . utctDayTime
-          (header, hmm, [query]) <- loadTestData (getFiles [hmmName,qName]) 
+          (header, hmm, [query]) <- loadRealData (getFiles [hmmName,qName]) 
           -- create SD
-          if not $ alignable query (betas header) then
+          if not $ alignable (qSeq query) (betas header) then
             if outName == "-" then
+              putStrLn (qHeader query) >>
               putStrLn "Score: Infinity" >> exitSuccess
             else
-              writeFile outName ("Score: Infinity\n" ++ 
+              writeFile outName ((qHeader query) ++ "\nScore: Infinity\n" ++ 
               "Query sequence shorter than combined beta strands;\n" ++ 
               "no alignment possible\n")
             >> exitSuccess
           else
             return ()
           if length (betas header) <= 1 then do -- single beta useless
-            let vresult = viterbi (:) HasNoEnd query hmm
+            let vresult = viterbi (:) HasNoEnd (qSeq query) hmm
             let outScore = scoreOf vresult
             let dp = Scored [] outScore
             let outAlign = outputAlignment hmm (betas header) dp query
-            let output = [ "Score: " ++ show outScore
+            let output = [ qHeader query
+                         , "Score: " ++ show outScore
                          , outAlign
                          ]
             if outName == "-" then
@@ -274,15 +270,17 @@ main = do -- standard loading
           else
             return()
           
-          let setSD = fromIntegral (U.length query) / 8
+          let setSD = fromIntegral (U.length (qSeq query)) / 8
           -- print (U.length query,setSD,length $ betas header)
           -- setup the scorer, to be stored in the solutions
-          let scorer = memo (unScore . scoreOf . score hmm query (betas header))
+          let scorer = memo (unScore . scoreOf . 
+                       score hmm (qSeq query) (betas header))
     
           -- generate a stream of initial solutions, ready priced up 
-          initialSols<-newStdGen >>= return . map (mkPricing scorer) . (\g->basicGuesser g query (betas header))
+          initialSols<-newStdGen >>= return . map (mkPricing scorer) . 
+                      (\g->basicGuesser g (qSeq query) (betas header))
           let initialSol = mkPricing scorer $ 
-                           projInitialGuess hmm query (betas header)
+                           projInitialGuess hmm (qSeq query) (betas header)
           
           gforchoice<-newStdGen
           gformutate<-newStdGen
@@ -293,7 +291,8 @@ main = do -- standard loading
                                   dropWhile (\[a,b]->a>b) . 
                                   map (take 2) . tails . 
                                   loopP (\xs->zipWith safeMin xs . 
-                                              improvement (neighbourhood query (betas header)) $ xs)
+                                              improvement (neighbourhood 
+                                              (qSeq query) (betas header)) $ xs)
                                 ) 
 
           -- The stream of outputs from the process, vs. 
@@ -302,7 +301,8 @@ main = do -- standard loading
                               stochasticChoice gforchoice . -- use of stochastic choice over mutate block,
                                                             -- guarantes uniform liklihood of new solution
                                                             -- from range of options
-                              mutateBlock query (betas header) gformutate )
+                              mutateBlock (qSeq query) (betas header)
+                                                         gformutate )
                          ) initialSol --(head initialSols) 
           
           vs'<-takeFor (startTime+(30)) vs
@@ -314,7 +314,8 @@ main = do -- standard loading
           let score' = underlyingScore winner'
           let winner = Scored sol' (Score score')
           let alignment = outputAlignment hmm (betas header) winner query
-          let output = [ "Score: " ++ show score'
+          let output = [ ">" ++ (qHeader query)
+                       , "Score: " ++ show score'
                        , alignment
                        ]
           if outName == "-" then

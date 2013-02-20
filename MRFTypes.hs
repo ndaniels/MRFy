@@ -13,6 +13,7 @@ module MRFTypes
   , mkTransProb, mkTransProbs
   , mkScore
   , showBetas
+  , Query(..), loadQuery, translateQuery, QuerySequence
   )
 where
 
@@ -25,7 +26,30 @@ import qualified Data.Vector.Unboxed as U
 import Test.QuickCheck
 import Text.Printf
 
+import Bio.Sequence
+
+import Constants
 import Score
+
+type QuerySequence = U.Vector AA
+
+data Query = Query { qSeq    :: QuerySequence
+                   , qHeader :: String
+                   }
+    deriving Show
+
+
+loadQuery :: Sequence a -> Query
+loadQuery sequence = Query s h
+  where s = translateQuery $ toStr $ seqdata sequence
+        h = toStr $ seqheader sequence
+
+translateQuery :: String -> QuerySequence
+translateQuery = U.fromList . map lookup
+  where lookup k = case U.elemIndex k Constants.amino of
+                        Just i -> AA i
+                        Nothing -> error "Residue not found in alphabet"
+
 
 type HMM = V.Vector HMMNode
 type Vector a = U.Vector a

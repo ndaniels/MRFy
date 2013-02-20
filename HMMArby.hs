@@ -32,6 +32,9 @@ verifySearchGuess hmm (b:bs) (g:gs) = range && noClash
                     [] -> True
                     (g':gs') -> g' > g + len b
 
+instance Arbitrary Query
+  
+
 instance Arbitrary QuerySequence where
   shrink = (map U.fromList) . (shrink . U.toList)
   arbitrary = do

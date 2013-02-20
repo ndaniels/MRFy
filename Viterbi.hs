@@ -24,9 +24,6 @@ import Constants
 import MRFTypes
 import Score
 
-
-type QuerySequence = U.Vector AA
-
 type StatePath = [ StateLabel ]
 
 type ScorePathCons a = a -> [a] -> [a]
