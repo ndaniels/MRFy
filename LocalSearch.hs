@@ -258,7 +258,7 @@ main = do -- standard loading
             >> exitSuccess
           else
             return ()
-          if length (betas header) == 0 then do
+          if length (betas header) <= 1 then do -- single beta useless
             let vresult = viterbi (:) HasNoEnd query hmm
             let outScore = scoreOf vresult
             let dp = Scored [] outScore
