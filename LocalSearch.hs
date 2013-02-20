@@ -245,7 +245,7 @@ main = do -- standard loading
           if not $ alignable (qSeq query) (betas header) then
             if outName == "-" then
               putStrLn (qHeader query) >>
-              putStrLn "Score: Infinity" >> exitSuccess
+              putStrLn "Raw score: Infinity" >> exitSuccess
             else
               writeFile outName ((qHeader query) ++ "\nScore: Infinity\n" ++ 
               "Query sequence shorter than combined beta strands;\n" ++ 
@@ -259,7 +259,7 @@ main = do -- standard loading
             let dp = Scored [] outScore
             let outAlign = outputAlignment hmm (betas header) dp query
             let output = [ qHeader query
-                         , "Score: " ++ show outScore
+                         , "Raw score: " ++ show outScore
                          , outAlign
                          ]
             if outName == "-" then
@@ -315,7 +315,7 @@ main = do -- standard loading
           let winner = Scored sol' (Score score')
           let alignment = outputAlignment hmm (betas header) winner query
           let output = [ ">" ++ (qHeader query)
-                       , "Score: " ++ show score'
+                       , "Raw score: " ++ show score'
                        , alignment
                        ]
           if outName == "-" then
