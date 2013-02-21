@@ -247,8 +247,8 @@ main = do -- standard loading
               putStrLn (qHeader query) >>
               putStrLn "Raw score: Infinity" >> exitSuccess
             else
-              writeFile outName ((qHeader query) ++ "\nScore: Infinity\n" ++ 
-              "Query sequence shorter than combined beta strands;\n" ++ 
+              writeFile outName ((qHeader query) ++ "\nRaw score: Infinity\n"
+               ++ "Query sequence shorter than combined beta strands;\n" ++ 
               "no alignment possible\n")
             >> exitSuccess
           else
