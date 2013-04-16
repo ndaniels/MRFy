@@ -305,7 +305,7 @@ main = do -- standard loading
                                                          gformutate )
                          ) initialSol --(head initialSols) 
           
-          vs'<-takeFor (startTime+(30)) vs
+          vs'<-takeFor (startTime+(60*20)) vs
 
           -- print (hmmName++" vs "++qName,minimum vs',length vs')   
           endTime <- getCurrentTime >>= return . diffTimeToSeconds . utctDayTime
@@ -314,9 +314,14 @@ main = do -- standard loading
           let score' = underlyingScore winner'
           let winner = Scored sol' (Score score')
           let alignment = outputAlignment hmm (betas header) winner query
+          -- let smurfAlign = [56,67,72,102,112,119,122,124,133,153,161,175,187,231,238,246,255,261,267,281,295,299,314,322,333,338,387,417,441,455,466,469,474,483,495,505,518,563,570,573]
+          -- let bestPossible = scoreOf $ score hmm (qSeq query) (betas header) smurfAlign
           let output = [ ">" ++ (qHeader query)
                        , "Raw score: " ++ show score'
                        , alignment
+                       -- , "Best possible: "
+                       -- , show bestPossible
+                       --, show $ betas header
                        ]
           if outName == "-" then
             mapM_ putStrLn output
