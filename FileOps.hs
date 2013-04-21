@@ -17,7 +17,6 @@ import qualified Data.Vector.Unboxed as V hiding (map)
 import System.Environment
 import Test.QuickCheck
 
-import Bio.Sequence
 import Bio.Sequence.Fasta
 
 import Beta
