@@ -40,7 +40,7 @@ Executable mrfy
   -- Packages needed in order to build this package.
   Build-depends: base >= 4.0,
                  array >= 0.3,
-                 bio >= 0.5,
+                 biofasta,
                  containers >= 0.4,
                  directory >= 1.1,
                  parallel >= 3.2,
@@ -51,8 +51,7 @@ Executable mrfy
                  data-memocombinators >=0.4.2,
                  parsec,
                  vector >=0.9,
-                 Unixutils >= 1.48.1,   
-                      -- Unixutils 1.50 fails to install
+                 Unixutils,
                  QuickCheck
                  -- TernaryTrees == 0.2.* -- incompatible with bio
 

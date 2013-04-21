@@ -26,7 +26,7 @@ import qualified Data.Vector.Unboxed as U
 import Test.QuickCheck
 import Text.Printf
 
-import Bio.Sequence
+import Bio.Sequence.Fasta
 
 import Constants
 import Score
@@ -39,10 +39,10 @@ data Query = Query { qSeq    :: QuerySequence
     deriving Show
 
 
-loadQuery :: Sequence a -> Query
+loadQuery :: Sequence -> Query
 loadQuery sequence = Query s h
   where s = translateQuery $ toStr $ seqdata sequence
-        h = toStr $ seqheader sequence
+        h = show $ seqheader sequence
 
 translateQuery :: String -> QuerySequence
 translateQuery = U.fromList . map lookup
