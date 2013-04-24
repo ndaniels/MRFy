@@ -44,6 +44,7 @@ data Files = Files { hmmPlusF :: String
 -- | Things this program can be commanded to do
 data Commanded = AlignmentSearch SearchParameters Files
                | TestHMM String
+               | TestViterbi SearchParameters Files
      
 
 getFiles :: [String] -> Files
@@ -81,6 +82,11 @@ getParams (f:fs) =
 
 getOpts :: [String] -> Commanded 
 getOpts ["-test", what] = TestHMM what
+getOpts ("-viterbi":argv) = 
+    case getOpt RequireOrder options argv of
+      (o, moreArgs, []) -> TestViterbi (getParams o) (getFiles moreArgs)
+      (_, _, errs) -> error (concat errs ++ usageInfo header options)
+  where header = "Usage: mrfy [OPTION ...] files..."
 getOpts argv =
     case getOpt RequireOrder options argv of
       (o, moreArgs, []) -> AlignmentSearch (getParams o)  (getFiles moreArgs)

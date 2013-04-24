@@ -164,6 +164,13 @@ runCommand (TestHMM "all-props") =
 
 runCommand (TestHMM t) =
   error $ "I never heard of test " ++ t
+  
+runCommand (TestViterbi searchParams
+                (files @ Files { hmmPlusF = hmmPlusFile, outputF = outFile})) = do
+  (header, model, queries) <- loadTestData files
+  let scores = map (vTest model) queries
+  mapM_ putStrLn scores
+    where vTest h q = show $ scoreOf $ viterbi (:) HasNoEnd q h
 
 runCommand (AlignmentSearch searchParams
                 (files @ Files { hmmPlusF = hmmPlusFile, outputF = outFile })) = do
