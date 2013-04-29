@@ -85,10 +85,17 @@ alignable q bs = bLen < qLen
         qLen = U.length q
 
 
-vfoldr3 :: (BetaResidue -> HMMNode -> AA -> Score -> Score) -> Score -> [BetaResidue] -> HMM -> QuerySequence -> Score
+vfoldr3 ::
+  (BetaResidue -> HMMNode -> AA -> Score -> Score)
+  -> Score
+  -> [BetaResidue]
+  -> HMM
+  -> QuerySequence
+  -> Score
 -- vfoldr3 :: (a -> b -> c -> d -> d) -> d -> [a] -> Vector b -> Vector c -> d 
 vfoldr3 _ init [] _ _ = init
-vfoldr3 f init (r:rs) hmm query = f r (n V.! 0) (q U.! 0) $ vfoldr3 f init rs ns qs
+vfoldr3 f init (r:rs) hmm query =
+  f r (n V.! 0) (q U.! 0) $ vfoldr3 f init rs ns qs
   where (n, ns)  = V.splitAt 1 hmm
         (q, qs) = U.splitAt 1 query
 
@@ -96,10 +103,20 @@ dupeElements :: [a] -> [a]
 dupeElements [] = []
 dupeElements (x:xs) = x : x : dupeElements xs
 
-statePath :: HMM -> QuerySequence -> [BetaStrand] -> Scored Placement -> StatePath
-statePath hmm query betas ps = foldr (++) [] $ map viterbiOrBeta $ DL.zip4 hmmAlignTypes (map traceid miniHMMs) miniQueries $ dupeElements [0..]
+statePath ::
+  HMM
+  -> QuerySequence
+  -> [BetaStrand]
+  -> Scored Placement
+  -> StatePath
+statePath hmm query betas ps =
+  foldr (++) []
+    $ map viterbiOrBeta
+    $ DL.zip4 hmmAlignTypes (map traceid miniHMMs) miniQueries
+    $ dupeElements [0..]
   where viterbiOrBeta :: (BetaOrViterbi, HMM, QuerySequence, Int) -> StatePath
-        viterbiOrBeta (Beta,   _ns, _qs, i) = take (len (betas !! i)) $ repeat BMat
+        viterbiOrBeta (Beta,   _ns, _qs, i) =
+          take (len (betas !! i)) $ repeat BMat
         viterbiOrBeta (Viterbi, ns, qs, _i) =
           unScored $ viterbi consPath HasNoEnd qs ns
 
@@ -118,11 +135,14 @@ score hmm query betas ps =
   $ dupeElements [0..])
   where viterbiOrBeta :: (BetaOrViterbi, HMM, QuerySequence, Int) -> Score
         -- NMD note: I think we'll have to do something with seq here
-        -- to force evaluation of the Viterbis before the Betas (Vs can still be in parallel)
-        -- so we can use the last node of a Viterbi segment to inform the transition
-        -- to Match for the Beta score.
-        viterbiOrBeta (Beta, ns, qs, i) = betaScore query ps (residues (betas !! i)) ns qs
-        viterbiOrBeta (Viterbi, ns, qs, _) = scoreOf $ viterbi consNoPath HasNoEnd qs ns
+        -- to force evaluation of the Viterbis before the Betas
+        -- (Vs can still be in parallel)
+        -- so we can use the last node of a Viterbi segment to inform the 
+        -- transition to Match for the Beta score.
+        viterbiOrBeta (Beta, ns, qs, i) =
+          betaScore query ps (residues (betas !! i)) ns qs
+        viterbiOrBeta (Viterbi, ns, qs, _) =
+          scoreOf $ viterbi consNoPath HasNoEnd qs ns
 
         -- traceid hmm = trace (show (V.map nodeNum hmm)) $ id hmm 
         traceid = id
@@ -132,11 +152,20 @@ score hmm query betas ps =
         miniQueries = sliceQuery query betas ps 1 []
 
 -- invariant: length residues == length hmmSlice == length querySlice
-betaScore :: QuerySequence -> Placement -> [BetaResidue] -> HMM -> QuerySequence -> Score
+betaScore ::
+  QuerySequence
+  -> Placement
+  -> [BetaResidue]
+  -> HMM
+  -> QuerySequence
+  -> Score
 betaScore query guesses = vfoldr3 betaScore' negLogOne
   where betaScore' :: BetaResidue -> HMMNode -> AA -> Score -> Score
-        betaScore' r n q s = s + Score (betaCoeff * unScore betaTableScore) + Score ((1 - betaCoeff) * unScore viterbiScore)
-          where viterbiScore = transScoreNode n Mat Mat + emissionScoreNode n q Mat
+        betaScore' r n q s = s
+                             + Score (betaCoeff * unScore betaTableScore)
+                             + Score ((1 - betaCoeff) * unScore viterbiScore)
+          where viterbiScore = transScoreNode n Mat Mat
+                               + emissionScoreNode n q Mat
                 -- also, not blindly m_m
                 -- do we have to look at neighboring states?
                 -- e.g. came from i or d rather than m?
@@ -145,17 +174,32 @@ betaScore query guesses = vfoldr3 betaScore' negLogOne
                 -- a m_m transition.
                 betaTableScore = foldr tableLookup negLogOne $ pairs r
                 tableLookup pair score = score + lookupScore
-                  where lookupScore = case expose pair of
-                                           Buried -> bLookup betaBuried partnerInd q
-                                           Exposed -> bLookup betaExposed partnerInd q
+                  where lookupScore =
+                          case expose pair of
+                            Buried -> bLookup betaBuried partnerInd q
+                            Exposed -> bLookup betaExposed partnerInd q
                         partnerInd = query U.! partnerBeta
-                        partnerBeta = (guesses !! (pairStrandSerial pair)) + (residueInd pair)
+                        partnerBeta = (guesses !! (pairStrandSerial pair))
+                                      + (residueInd pair)
                         bLookup table (AA i) (AA j) = table V.! i U.! j
 
 -- invariant: length betas == length guesses
-sliceQuery :: QuerySequence -> [BetaStrand] -> Placement -> Int -> [QuerySequence] -> [QuerySequence]
-sliceQuery query betas placement queryPos queries = reverse $ sliceQuery' betas placement queryPos queries
-  where sliceQuery' :: [BetaStrand] -> Placement -> Int -> [QuerySequence] -> [QuerySequence]
+sliceQuery ::
+  QuerySequence
+  -> [BetaStrand]
+  -> Placement
+  -> Int
+  -> [QuerySequence]
+  -> [QuerySequence]
+sliceQuery query betas placement queryPos queries =
+  reverse
+  $ sliceQuery' betas placement queryPos queries
+  where sliceQuery' ::
+          [BetaStrand]
+          -> Placement
+          -> Int
+          -> [QuerySequence]
+          -> [QuerySequence]
         sliceQuery' [] [] queryPos queries =
           if length betas == 0 then
             [query]
@@ -171,8 +215,10 @@ sliceQuery query betas placement queryPos queries = reverse $ sliceQuery' betas 
                 vQuery = uslice "1" 0 (firstRes b) query
                 bQuery = uslice "2" (firstRes b) (len b) query
         sliceQuery' (b:b2:bs) (g:g2:gs) queryPos queries
-          | queryPos == 1 = sliceQuery' betas' guesses' initLastPos (initBQuery : initVQuery : queries)
-          | otherwise = sliceQuery' betas' guesses' lastPos (bQuery : vQuery : queries)
+          | queryPos == 1 = sliceQuery' betas' guesses' initLastPos
+                              (initBQuery : initVQuery : queries)
+          | otherwise =     sliceQuery' betas' guesses' lastPos
+                              (bQuery : vQuery : queries)
           where endRes = g + len b
         
                 initVQuery = uslice "3" 0 g query
@@ -195,20 +241,29 @@ sliceHMMs :: V.Vector a
           -> ([V.Vector a], [BetaOrViterbi])
 sliceHMMs hmm betas hmmPos hmms atypes = (reverse hmms', reverse atypes')
   where (hmms', atypes') = sliceHMMs' betas hmmPos hmms atypes
-  -- TODO: alternating beta and viterbi can be simplified with 'intersperse' from prelude
+  -- TODO: alternating beta and viterbi can be simplified with 'intersperse' 
+  -- from prelude
 
-        sliceHMMs' [] hmmPos hmms atypes = ((V.drop (hmmPos - 1) hmm) : hmms, Viterbi : atypes)
+        sliceHMMs' [] hmmPos hmms atypes = ( (V.drop (hmmPos - 1) hmm) : hmms
+                                           , Viterbi : atypes
+                                           )
         sliceHMMs' [b] hmmPos hmms atypes = if length betas /= 1 then
                                              sliceHMMs' [] hmmPos hmms atypes
                                            else
-                                             sliceHMMs' [] endRes (bHMM : vHMM : []) (Beta : Viterbi : [])
+                                             sliceHMMs' [] endRes
+                                               (bHMM : vHMM : [])
+                                               (Beta : Viterbi : [])
           where firstRes = resPosition . head . residues
                 endRes = firstRes b + len b
                 vHMM = vslice "7" 0 (firstRes b) hmm
                 bHMM = vslice "8" (firstRes b) (len b) hmm
         sliceHMMs' (b:b2:bs) hmmPos hmms atypes
-          | hmmPos == 1 = sliceHMMs' betas' initLastPos (initBHMM : initVHMM : hmms) (Beta : Viterbi : atypes)
-          | otherwise = sliceHMMs' betas' lastPos (bHMM : vHMM : hmms) (Beta : Viterbi : atypes)
+          | hmmPos == 1 = sliceHMMs' betas' initLastPos
+                            (initBHMM : initVHMM : hmms)
+                            (Beta : Viterbi : atypes)
+          | otherwise =   sliceHMMs' betas' lastPos
+                            (bHMM : vHMM : hmms)
+                            (Beta : Viterbi : atypes)
           where firstRes = resPosition . head . residues
                 endRes = firstRes b + len b
         
@@ -216,16 +271,19 @@ sliceHMMs hmm betas hmmPos hmms atypes = (reverse hmms', reverse atypes')
                 initBHMM = vslice "10" (firstRes b) (len b) hmm
                 initLastPos = firstRes b + len b
         
-                -- the zeroth node should be the LAST BETA node from the previous slice
-                -- vHMM = trace ("firstRes: " ++ (show (firstRes b2)) ++ " endRes: " ++ (show endRes)) $ vslice "11" (endRes - 1) (firstRes b2 - endRes + 1) hmm 
+                -- the zeroth node should be the LAST BETA node from the 
+                -- previous slice
                 vHMM = vslice "11" (endRes - 1) (firstRes b2 - endRes + 1) hmm
                 bHMM = vslice "12" (firstRes b2) (len b2) hmm
                 lastPos = firstRes b2 + len b2
         
                 betas' = if hmmPos == 1 then (b:b2:bs) else (b2:bs)
 
--- TODO: We currently allow beta strands to abut. This is fine for unpaired strands
--- (which we may have split due to non-consensus residues). But it's not possible
+-- TODO: We currently allow beta strands to abut.
+-- This is fine for unpaired strands
+-- (which we may have split due to non-consensus residues).
+-- But it's not possible
 -- for paired strands. We should consider a further restriction on placements
 -- that requires at least 3 or 4 residues between strands *iff* those strands
 -- contain paired residues.
+
