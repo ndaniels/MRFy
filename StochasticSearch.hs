@@ -111,9 +111,9 @@ statePath ::
   -> StatePath
 statePath hmm query betas ps =
   foldr (++) []
-    $ map viterbiOrBeta
-    $ DL.zip4 hmmAlignTypes (map traceid miniHMMs) miniQueries
-    $ dupeElements [0..]
+  $ map viterbiOrBeta
+  $ DL.zip4 hmmAlignTypes (map traceid miniHMMs) miniQueries
+  $ dupeElements [0..]
   where viterbiOrBeta :: (BetaOrViterbi, HMM, QuerySequence, Int) -> StatePath
         viterbiOrBeta (Beta,   _ns, _qs, i) =
           take (len (betas !! i)) $ repeat BMat
