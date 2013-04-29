@@ -43,5 +43,8 @@ fast-test:V: $TGT
 test-sandwich:V: $TGT
 	./$TGT testing/sandwich.hmm+ testing/sandwich.fasta
 
+bench-short:V:
+	(cabal install && in-dir mrfy-bench ./mrfy-bench -s)
+
 # note: to build profile: ghc --make Main.hs -O3 -rtsopts -o $TGT
 # then, ghc --make Main.hs -O3 -prof -auto-all -caf-all -rtsopts -osuf p_o -o $TGT
