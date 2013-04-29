@@ -10,6 +10,7 @@ module MRFTypes
   , Direction(..), mkDirection
   , BetaStrand(..), BetaPosition, BetaResidue(..), BetaPair(..)
   , TProb(..), TProbs, m_m, m_i, m_d, i_m, i_i, d_m, d_d, b_m, m_e
+  , EProbs
   , mkTransProb, mkTransProbs
   , mkScore
   , showBetas
