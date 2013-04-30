@@ -65,7 +65,7 @@ data StateLabel = Mat | Ins | Del | Beg | End
 -- @ start tprob-tprobs.tex
 newtype TProb = TProb { logProbability :: Score }
 -- @ end tprob-tprobs.tex
-           deriving (Show)
+           deriving (Show, Eq)
 
 -- @ start tprob-tprobs.tex
 data TProbs = TProbs
@@ -78,7 +78,7 @@ data TProbs = TProbs
 -- @ start tprob-tprobs.tex
   , d_m :: TProb, d_d :: TProb }
 -- @ end tprob-tprobs.tex
-            deriving (Show)
+            deriving (Show, Eq)
 
 data TxLabel = TL String String (TProbs -> TProb)
 showTx :: TProbs -> String
