@@ -160,14 +160,17 @@ instance Arbitrary BeginNode where
   arbitrary = do
     mate <- randEProbs
     inse <- randEProbs
-    (bm, bi) <- arbitrary :: Gen (T.TProb, T.TProb)
-    return $ BeginNode mate inse bm bi
+    (mm, mi, md) <- arbitrary :: Gen (T.TProb, T.TProb, T.TProb)
+    (im, ii) <- arbitrary :: Gen (T.TProb, T.TProb)
+    return $ BeginNode mate inse mm mi md im ii
 
 instance Arbitrary EndNode where
   arbitrary = do
     mate <- randEProbs
-    me <- arbitrary :: Gen T.TProb
-    return $ EndNode mate me
+    inse <- randEProbs
+    (mm, mi) <- arbitrary :: Gen (T.TProb, T.TProb)
+    (im, ii, dm) <- arbitrary :: Gen (T.TProb, T.TProb, T.TProb)
+    return $ EndNode mate inse mm mi im ii dm
 
 instance Arbitrary MiddleNode where
   arbitrary = do
