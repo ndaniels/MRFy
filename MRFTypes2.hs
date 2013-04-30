@@ -23,14 +23,28 @@ numNodes (HMM (hmmBegin, mids, hmmEnd)) = 2 + (end - start + 1)
 
 data BeginNode = BeginNode { bmate :: T.EProbs
                            , binse :: T.EProbs
-                           , b_m :: T.TProb
-                           , b_i :: T.TProb
+                           , b_m_m :: T.TProb
+                           , b_m_i :: T.TProb
+                           , b_m_d :: T.TProb
+                           , b_i_m :: T.TProb
+                           , b_i_i :: T.TProb
                            }
                  deriving (Show, Eq)
 
 
+-- We are choosing to represent the last "real" node as an end
+-- node, even though the Viterbi recurrence starts on a kind-of
+-- virtual node proceeding it.
+-- Alternatively, we could have an end node that contains no
+-- members and modify the previous nodes transition probabilities.
+-- Or, a 4-tuple.
 data EndNode = EndNode { emate :: T.EProbs
-                       , m_e :: T.TProb
+                       , einse :: T.EProbs
+                       , e_m_m :: T.TProb
+                       , e_m_i :: T.TProb
+                       , e_i_m :: T.TProb
+                       , e_i_i :: T.TProb
+                       , e_d_m :: T.TProb
                        }
                deriving (Show, Eq)
 
@@ -47,10 +61,10 @@ data MiddleNode = MiddleNode { mate :: T.EProbs
                  deriving (Show, Eq)
 
 asBegin :: MiddleNode -> BeginNode
-asBegin n = BeginNode (mate n) (inse n) (m_m n) (m_i n)
+asBegin n = BeginNode (mate n) (inse n) (m_m n) (m_i n) (m_d n) (i_m n) (i_i n)
 
 asEnd :: MiddleNode -> EndNode
-asEnd n = EndNode (mate n) (T.TProb S.negLogZero)
+asEnd n = EndNode (mate n) (inse n) (m_m n) (m_i n) (i_m n) (i_i n) (d_m n)
 
 data Model = Model { begin :: BeginNode
                    , middle :: Int -> MiddleNode

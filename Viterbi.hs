@@ -43,9 +43,60 @@ consNoPath _ _ = []
 data LeftBoundary  = HasStart | HasNoStart
 data RightBoundary = HasEnd | HasNoEnd
 
-viterbi :: ScorePathCons StateLabel -> RightBoundary ->
+data Tree = FromBegin Score
+          | StepFrom [Scored (StateLabel, Tree)]
+
+statePath :: Tree -> Scored StatePath
+statePath (FromBegin s) = Scored s
+statePath (StepFrom scores) = (Scored state (scoreOf s)) /+/ statePath tree
+  where (state, tree) = unScored s
+        s = minimum scores
+
+cost :: Tree -> Score
+cost (FromBegin s) = s
+cost (StepFrom scores) = scoreOf s + cost tree
+  where (_, tree) = unScored s
+        s = minimum scores
+
+-- Probably all wrong. We're having trouble.
+-- The central idea of our new Viterbi with a three-node record type is
+-- to traverse the structure of a Model with `mfoldr`, which does case
+-- analysis for us on Begin/Middle/End nodes.
+--
+-- Our *problem* is coming up with a suitable type to accumulate the cost
+-- tree. The tree itself is straight forward, but the recursions require
+-- additional information for case analysis: the state we're going *TO*
+-- and the position of the query sequence.
+--
+-- *However*, constructing such a value doesn't seem to make sense to us
+-- in the base case: the query sequence position and state no longer matter.
+-- Therefore it seems sensible to define Iota like so:
+--
+-- data Iota = Base Tree
+--           | Step (Int, StateLabel, Tree -> Tree)
+--
+-- But then we're right back where we started: case analysis hell.
+--
+-- Could you shed some light on our predicament?
+type Iota = (Int, StateLabel, Tree -> Tree)
+
+viterbi :: Model -> QuerySequence -> Tree
+viterbi mod qs =
+  where (_, mkTree) = mfoldr begf medf endf (U.length qs, Mat, initTree) mod
+        initTree t = StepFrom [Scored (Mat, t), Scored (Ins, t), Scored (Del, t)]
+
+        begf :: BeginNode -> Iota -> Iota
+        begf node (0, stateTo, mkTree) =
+          (0, Mat, \t -> mkTree (FromBegin $ beginMatch node stateTo))
+
+        beginMatch :: BeginNode -> StateLabel -> Score
+        beginMatch n Mat = logProbability $ b_m_m n
+        beginMatch n Ins = logProbability $ b_m_i n
+        beginMatch n Del = logProbability $ b_m_d n
+
+viterbiICFP :: ScorePathCons StateLabel -> RightBoundary ->
            QuerySequence -> HMM -> Scored StatePath
-viterbi pathCons right query hmm =
+viterbiICFP pathCons right query hmm =
   if numNodes == 0 then
     Scored [] negLogOne
   else
