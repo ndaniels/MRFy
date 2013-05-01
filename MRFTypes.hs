@@ -60,7 +60,7 @@ insertionEmissions = insEmissions
 data StateLabel = Mat | Ins | Del | Beg | End
 -- @ end statelabel.tex
                 | BMat  -- keeping secrets from our readers...
-                deriving (Show, Ord, Eq, Enum, Ix)
+                deriving (Show, Ord, Eq, Enum, Ix, Bounded)
 
 -- @ start tprob-tprobs.tex
 newtype TProb = TProb { logProbability :: Score }
