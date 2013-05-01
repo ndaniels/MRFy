@@ -37,16 +37,11 @@ data BeginNode = BeginNode { bmate :: T.EProbs
 -- virtual node proceeding it.
 -- Alternatively, we could have an end node that contains no
 -- members and modify the previous nodes transition probabilities.
--- Or, a 4-tuple.
-data EndNode = EndNode { emate :: T.EProbs
-                       , einse :: T.EProbs
-                       , e_m_m :: T.TProb
-                       , e_m_i :: T.TProb
-                       , e_i_m :: T.TProb
-                       , e_i_i :: T.TProb
-                       , e_d_m :: T.TProb
-                       }
-               deriving (Show, Eq)
+-- Or, a 4-tuple
+--
+--
+--
+data EndNode = EndNode.-- always in match state; no transitions out
 
 data MiddleNode = MiddleNode { mate :: T.EProbs
                              , inse :: T.EProbs
@@ -65,6 +60,8 @@ asBegin n = BeginNode (mate n) (inse n) (m_m n) (m_i n) (m_d n) (i_m n) (i_i n)
 
 asEnd :: MiddleNode -> EndNode
 asEnd n = EndNode (mate n) (inse n) (m_m n) (m_i n) (i_m n) (i_i n) (d_m n)
+
+data Seq a = Seq { get :: Int -> a, seqLength :: Int } 
 
 data Model = Model { begin :: BeginNode
                    , middle :: Int -> MiddleNode
@@ -93,13 +90,12 @@ modelList = mfoldr fbeg fmid fend (Nothing, [], Nothing)
         fmid n (beg, mids, end) = (beg, n:mids, end)
         fend n (beg, mids, _) = (beg, mids, Just n)
 
+  -> Model
 mfoldr
   :: (BeginNode -> a -> a)
   -> (MiddleNode -> a -> a)
   -> (EndNode -> a -> a)
-  -> a
-  -> Model
-  -> a
+  -> (Model -> a -> a)
 mfoldr bf mf ef init mod
   | size mod == 0 = init
   | size mod == 1 = bf (begin mod) init

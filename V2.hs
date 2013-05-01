@@ -177,6 +177,11 @@ scoredPath = hoViterbi (Scored []) (\s state path -> s /+/ fmap (state:) path) m
 {-# INLINE hoViterbi #-}
 -- | Higher-order implementation of the Viterbi algorithm, which can
 -- be specialized to produce various outputs. 
+-- NR's attempt to speed up Viterbi relative to C++ by reducing the amount
+-- of case analysis without leaving the essentially index-based nature
+-- of the computation...
+-- TODO: see if this code is still manifestly isomorphic to the equations 
+-- from the textbook
 hoViterbi :: (MVector NIndex nodes, MVector RIndex residues)
          => (Score -> a) -- ^ reaction to initial transition
          -> (Score -> StateLabel -> a -> b) -- ^ one possible child
