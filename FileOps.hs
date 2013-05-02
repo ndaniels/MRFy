@@ -163,6 +163,9 @@ runCommand (TestHMM "all-props") =
   mapM_ run $ perturbProps ++ hmmProps ++ hyperProps
     where run (s, p) = do { putStrLn ("Testing " ++ s); quickCheck p }
 
+runCommand (TestHMM "fight") =
+  quickCheck viterbiFight
+
 runCommand (TestHMM t) =
   error $ "I never heard of test " ++ t
   

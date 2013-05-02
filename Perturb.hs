@@ -8,6 +8,7 @@ module Perturb
        , consistentScoring
        , scoreableMetrics
        , viterbiIsAwesome
+       , viterbiFight
        , approxEq
        )
 where
@@ -31,6 +32,9 @@ import HMMProps
 import MRFTypes
 import Score
 import Viterbi
+
+import Model (toHMM, slice, numNodes, traceid)
+import ViterbiThree
 
 
 type State = StateLabel
@@ -346,6 +350,13 @@ viterbiIsAwesome model query =
         -- the state sequence. This is difficult to represent here; perhaps
         -- it should go in the generator? How?
         (n, r) = (V.length model, U.length query)
+
+viterbiFight :: HMM -> QuerySequence -> Bool
+viterbiFight ohmm query = abs (oscore - nscore) < 0.00001
+  where oscore = unScore $ scoreOf $ viterbi (:) HasNoEnd query ohmm
+        nscore = unScore $ scoreOnly model query
+        model = slice hmm (0, numNodes hmm)
+        hmm = toHMM ohmm
 
 -----------------------------------------------------------------------------------
 -- TESTS ON REAL DATA
