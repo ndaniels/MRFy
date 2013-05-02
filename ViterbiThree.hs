@@ -1,4 +1,8 @@
-module ViterbiThree where
+module ViterbiThree
+  ( hoViterbi
+  , scoreOnly
+  )
+where
 
 import Data.Array as A
 import qualified Data.MemoCombinators as Memo
@@ -10,7 +14,7 @@ import MRFTypes hiding ( HMM
                        , pred
                        , m_m, m_i, m_d, i_m, i_i, d_m, d_d
                        )
-import MRFTypes2
+import Model
 import Score
 
 type StatePath = [ StateLabel ]
@@ -52,6 +56,9 @@ addHead s (StepFrom subtrees) =
             -- -> Scored [StateLabel] 
 -- scoredPath = hoViterbi (Scored []) (\s state path -> s /+/ fmap (state:) path) minimum 
 
+scoreOnly :: Model -> QuerySequence -> Score
+scoreOnly = hoViterbi id (\s _ s' -> s + s') minimum
+
 {-# INLINE hoViterbi #-}
 -- | Higher-order implementation of the Viterbi algorithm, which can
 -- be specialized to produce various outputs. 
@@ -70,10 +77,10 @@ hoViterbi leaf child internal = viterbi
           bnode = begin mod
           enode = end mod
 
-          ct stateRight (-1) 0  = leaf (beginMatch bnode stateRight)
-          ct stateRight (-1) ri = insertAll stateRight ri
-          ct stateRight ni   0  = deleteAll stateRight ni
-          ct stateRight ni ri   =
+          ct stateRight 0  0  = leaf (beginMatch bnode stateRight)
+          ct stateRight 0  ri = insertAll stateRight ri
+          ct stateRight ni 0  = deleteAll stateRight ni
+          ct stateRight ni ri =
             internal [ child score state (next state ni ri)
                      | state <- preceders A.! stateRight -- memoized!
                      , let score = transition node state stateRight
@@ -86,13 +93,14 @@ hoViterbi leaf child internal = viterbi
           next s@Del ni ri = ct' s (pred ni) ri
           next s@Ins ni ri = ct' s ni        (pred ri)
 
-          insertAll stateRight 0 = ct stateRight (-1) 0
+          insertAll stateRight 0 = ct stateRight 0 0
           insertAll stateRight ri = 
             internal [ child score stateRight (insertAll Ins (pred ri)) ]
             where aa = rs U.! pred ri
                   score = bitransition bnode stateRight + ((binse bnode) C./!/ aa)
-          deleteAll Ins _ = error "this can't happen" -- XXX wrong, needs inf cost
-          deleteAll stateRight 0 = ct stateRight (-1) 0
+          -- deleteAll Ins _ = error "this can't happen" -- XXX wrong, needs inf cost 
+          deleteAll Ins _ = leaf negLogZero
+          deleteAll stateRight 0 = ct stateRight 0 0
           deleteAll stateRight ni =
             internal [ child score Del (deleteAll Del (pred ni)) ]
               where node = (middle mod) (pred ni)
@@ -134,21 +142,25 @@ transition n from to = logp $ (edge from to) n
         edge Ins Ins = i_i
         edge Del Mat = d_m
         edge Del Del = d_d
+        edge Del Ins = error "d_i impossible"
+        edge Ins Del = error "i_d impossible"
 
 emission :: MiddleNode -> StateLabel -> C.AA -> Score
 emission n state residue =
     case state of
       Mat -> (mate n) C./!/ residue 
       Ins -> (inse n) C./!/ residue 
-      _   -> error ("State " ++ (show state) ++ "cannot emit")
+      Del -> negLogOne
+      -- _   -> error ("State " ++ (show state) ++ " cannot emit") 
 
 logp = logProbability
 
 preceders :: A.Array StateLabel [StateLabel]
-preceders = A.array (minBound, maxBound)
+preceders = A.array (minb, maxb)
             [ (follows, [ s | s <- labels, canFollow s follows])
             | follows <- labels ]
-  where labels = [minBound .. maxBound]
+  where labels = [minb .. maxb]
+        (minb, maxb) = (Mat, Del)
 
 
 -- | @canFollow s s'@ tells whether one state can follow another 
