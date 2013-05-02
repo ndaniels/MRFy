@@ -36,7 +36,9 @@ import SearchStrategy (tickProp)
 import ShowAlignment
 import StochasticSearch
 import Viterbi
-import V2 (Tree(..), costTree)
+
+import Model (toHMM, slice, numNodes)
+import ViterbiThree
 
 loadTestData :: Files -> IO (HMMHeader, HMM, [QuerySequence])
 loadTestData files =
@@ -165,6 +167,15 @@ runCommand (TestHMM t) =
   error $ "I never heard of test " ++ t
   
 runCommand (TestViterbi searchParams
+                (files @ Files { hmmPlusF = hmmPlusFile, outputF = outFile})) = do
+  (header, ohmm, queries) <- loadTestData files
+  let hmm = toHMM ohmm
+  let model = slice hmm (0, numNodes hmm)
+  let scores = map (vTest model) queries
+  mapM_ putStrLn scores
+    where vTest m q = show $ scoreOnly m q
+
+runCommand (TestOldViterbi searchParams
                 (files @ Files { hmmPlusF = hmmPlusFile, outputF = outFile})) = do
   (header, model, queries) <- loadTestData files
   let scores = map (vTest model) queries
