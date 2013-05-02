@@ -222,3 +222,27 @@ propSliceLenFull hmm = numNodes hmm == 1 + midSize (slice hmm (0, numNodes hmm))
 traceid :: (Show a) => a -> a
 traceid x = trace ("[[TRACE: " ++ show x ++ "]]") x
 
+
+--------------------------------------------------------------------------------
+-- Conversions
+--------------------------------------------------------------------------------
+
+toHMM :: T.HMM -> HMM
+toHMM ohmm = HMM (asBegin $ toMidNode obnode, listArray $ map toMidNode omids)
+  where obnode = V.head ohmm
+        omids  = V.toList $ V.drop 1 ohmm
+
+toMidNode :: T.HMMNode -> MiddleNode
+toMidNode on =
+  MiddleNode { mate = T.matEmissions on
+             , inse = T.insEmissions on
+             , m_m  = T.m_m trans
+             , m_i  = T.m_i trans
+             , m_d  = T.m_d trans
+             , i_m  = T.i_m trans
+             , i_i  = T.i_i trans
+             , d_m  = T.d_m trans
+             , d_d  = T.d_d trans
+             }
+  where trans = T.transitions on
+
