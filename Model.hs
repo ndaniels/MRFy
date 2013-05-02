@@ -1,9 +1,10 @@
-module MRFTypes2
+module Model
 where
 
 import Debug.Trace
 
 import qualified Data.Array as A
+import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
 import Text.Printf (printf)
 import Test.QuickCheck
@@ -26,8 +27,7 @@ numNodes :: HMM -> Int
 numNodes (HMM (_, mids)) = 1 + (end - start + 1)
   where (start, end) = A.bounds (mids)
 
-data BeginNode = BeginNode { bmate :: T.EProbs
-                           , binse :: T.EProbs
+data BeginNode = BeginNode { binse :: T.EProbs
                            , b_m_m :: T.TProb
                            , b_m_i :: T.TProb
                            , b_m_d :: T.TProb
@@ -76,7 +76,7 @@ instance Show MiddleNode where
           probs = [m_m n, m_i n, m_d n, i_m n, i_i n, d_m n, d_d n]
 
 asBegin :: MiddleNode -> BeginNode
-asBegin n = BeginNode (mate n) (inse n) (m_m n) (m_i n) (m_d n) (i_m n) (i_i n)
+asBegin n = BeginNode (inse n) (m_m n) (m_i n) (m_d n) (i_m n) (i_i n)
 
 -- data Seq a = Seq { get :: Int -> a, seqLength :: Int }  
 
@@ -113,7 +113,7 @@ slice hmm@(HMM (hmmBegin, mids)) (start, len) =
   Model begNode mid EndNode (len - 1)
   where mid :: Int -> MiddleNode
         mid n
-          | n < 0         = error "< oob"
+          | n < 0         = error ("< oob (" ++ show n ++ ")")
           | n >= len - 1  = error "> oob"
           -- Gross. Indexing here must be offset by whether the
           -- begin node was the real begin node or if it was
@@ -155,11 +155,10 @@ instance Arbitrary HMM where
 
 instance Arbitrary BeginNode where
   arbitrary = do
-    mate <- randEProbs
     inse <- randEProbs
     (mm, mi, md) <- arbitrary :: Gen (T.TProb, T.TProb, T.TProb)
     (im, ii) <- arbitrary :: Gen (T.TProb, T.TProb)
-    return $ BeginNode mate inse mm mi md im ii
+    return $ BeginNode inse mm mi md im ii
 
 instance Arbitrary EndNode where
   arbitrary = return EndNode
