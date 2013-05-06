@@ -1,0 +1,21 @@
+To benchmark stuff, you'll need `mrfy-bench`:
+
+  cd path/to/mrfy
+  git clone git@github.com:ndaniels/mrfy-bench
+
+To get a short benchmark, make sure `mrfy` is in your `PATH`:
+
+  cd mrfy-bench
+  ./mrfy-bench -s
+
+If you happen to be on a branch that supports the `-old-viterbi` flag, then
+
+  ./mrfy-bench -s -old
+
+will run the ICFP version of `viterbi`. Currently, the only branch that
+supports this is `three-node-record`.
+
+It is possible that `mk bench-short` and `mk bench-short-old` will do useful
+things in the `mrfy` directory. It may not be suitable for those who do not
+compile with `cabal install`.
+
