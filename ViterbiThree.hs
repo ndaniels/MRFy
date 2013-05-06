@@ -11,7 +11,6 @@ import Prelude hiding (pred)
 
 import qualified Constants as C
 import MRFTypes hiding ( HMM
-                       , pred
                        , m_m, m_i, m_d, i_m, i_i, d_m, d_d
                        )
 import Model
