@@ -61,7 +61,7 @@ scoreOnly :: Model -> QuerySequence -> Score
 scoreOnly = hoViterbi id (\s _ s' -> s + s') minimum
 
 strictScoreOnly :: Model -> QuerySequence -> Score
-strictScoreOnly = hoViterbi id (\(!s) _ (!s') -> s + s') minimum
+strictScoreOnly = hoViterbi id (\(!s) _ s' -> s + s') minimum
 
 
 
@@ -77,7 +77,7 @@ hoViterbi :: (Score -> a) -- ^ reaction to initial transition
           -> (Score -> StateLabel -> a -> b) -- ^ one possible child
           -> ([b] -> a) -- ^ make answer from all children
           -> Model -> QuerySequence -> a
-hoViterbi (!leaf) (!child) (!internal) = viterbi 
+hoViterbi leaf child internal = viterbi 
  where viterbi mod rs = ct Mat (midSize mod) (U.length rs)
         where
           bnode = begin mod
