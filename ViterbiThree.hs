@@ -1,3 +1,5 @@
+{-# LANGUAGE BangPatterns #-}
+
 module ViterbiThree
   ( hoViterbi
   , scoreOnly
@@ -58,6 +60,11 @@ addHead s (StepFrom subtrees) =
 scoreOnly :: Model -> QuerySequence -> Score
 scoreOnly = hoViterbi id (\s _ s' -> s + s') minimum
 
+strictScoreOnly :: Model -> QuerySequence -> Score
+strictScoreOnly = hoViterbi id (\(!s) _ (!s') -> s + s') minimum
+
+
+
 {-# INLINE hoViterbi #-}
 -- | Higher-order implementation of the Viterbi algorithm, which can
 -- be specialized to produce various outputs. 
@@ -79,6 +86,7 @@ hoViterbi leaf child internal = viterbi
           ct stateRight 0  0  = leaf (beginMatch bnode stateRight)
           ct stateRight 0  ri = insertAll stateRight ri
           ct stateRight ni 0  = deleteAll stateRight ni
+          -- @ start hoviterbi.tex -10
           ct stateRight ni ri =
             internal [ child score state (next state ni ri)
                      | state <- preceders stateRight -- memoized!
@@ -87,6 +95,7 @@ hoViterbi leaf child internal = viterbi
                      ]
             where node = (middle mod) (pred ni)
                   aa = rs U.! pred ri
+          -- @ end hoviterbi.tex
 
           next s@Mat ni ri = ct' s (pred ni) (pred ri)
           next s@Del ni ri = ct' s (pred ni) ri
