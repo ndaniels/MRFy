@@ -35,6 +35,7 @@ Extra-source-files: *.hs, SearchStrategies/*.hs
 
 Executable mrfy
   Main-is: Main.hs
+  -- ghc-options: -O2 -prof -fprof-auto
   ghc-options: -O2
   
   -- Packages needed in order to build this package.
