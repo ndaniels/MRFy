@@ -2,7 +2,7 @@
 
 module ViterbiThree
   ( hoViterbi
-  , strictScoreOnly
+  , scoreOnly
   )
 where
 
@@ -57,10 +57,9 @@ addHead s (StepFrom subtrees) =
             -- -> Scored [StateLabel] 
 -- scoredPath = hoViterbi (Scored []) (\s state path -> s /+/ fmap (state:) path) minimum 
 
-scoreOnly :: Model -> QuerySequence -> Score
-scoreOnly = hoViterbi id (\s _ s' -> s + s') minimum
-
-strictScoreOnly :: Model -> QuerySequence -> Score
+scoreOnly, lazyScoreOnly, strictScoreOnly :: Model -> QuerySequence -> Score
+scoreOnly = strictScoreOnly 
+lazyScoreOnly   = hoViterbi id (\s _ s' -> s + s') minimum
 strictScoreOnly = hoViterbi id (\(!s) _ (!s') -> s + s') minimum
 
 

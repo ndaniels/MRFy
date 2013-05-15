@@ -354,7 +354,7 @@ viterbiIsAwesome model query =
 viterbiFight :: HMM -> QuerySequence -> Bool
 viterbiFight ohmm query = abs (oscore - nscore) < 0.00001
   where oscore = unScore $ scoreOf $ viterbi (:) HasNoEnd query ohmm
-        nscore = unScore $ strictScoreOnly model query
+        nscore = unScore $ scoreOnly model query
         model = slice hmm (0, numNodes hmm)
         hmm = toHMM ohmm
 
