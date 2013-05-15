@@ -61,7 +61,7 @@ scoreOnly :: Model -> QuerySequence -> Score
 scoreOnly = hoViterbi id (\s _ s' -> s + s') minimum
 
 strictScoreOnly :: Model -> QuerySequence -> Score
-strictScoreOnly = hoViterbi id (\(!s) _ (!s') -> s + s') minimum
+strictScoreOnly = hoViterbi id (\(!s) _ s' -> s + s') minimum
 
 
 
