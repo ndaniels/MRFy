@@ -172,9 +172,7 @@ runCommand (TestHMM t) =
 runCommand (TestViterbi searchParams
                 (files @ Files { hmmPlusF = hmmPlusFile, outputF = outFile})) = do
   (header, ohmm, queries) <- loadTestData files
-  let hmm = toHMM ohmm
-  let model = slice hmm (0, numNodes hmm)
-  let scores = map (vTest model) queries
+  let scores = map (vTest ohmm) queries
   mapM_ putStrLn scores
     where vTest m q = show $ scoreOnly m q
 

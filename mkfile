@@ -43,6 +43,10 @@ fast-test:V: $TGT
 test-sandwich:V: $TGT
 	./$TGT testing/sandwich.hmm+ testing/sandwich.fasta
 
+build:V:
+	cabal build
+	cp dist/build/mrfy/mrfy ./
+
 bench-short:V:
 	(cabal install && in-dir mrfy-bench ./mrfy-bench -s)
 
