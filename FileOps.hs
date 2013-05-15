@@ -176,7 +176,7 @@ runCommand (TestViterbi searchParams
   let model = slice hmm (0, numNodes hmm)
   let scores = map (vTest model) queries
   mapM_ putStrLn scores
-    where vTest m q = show $ scoreOnly m q
+    where vTest m q = show $ strictScoreOnly m q
 
 runCommand (TestOldViterbi searchParams
                 (files @ Files { hmmPlusF = hmmPlusFile, outputF = outFile})) = do
