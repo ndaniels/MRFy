@@ -83,7 +83,7 @@ hoViterbi leaf child internal = viterbi
           ct stateRight ni 0  = deleteAll stateRight ni
           ct stateRight ni ri =
             internal [ child score state (next state ni ri)
-                     | state <- preceders A.! stateRight -- memoized!
+                     | state <- preceders stateRight -- memoized!
                      , let score = transition node state stateRight
                                    + emission node state aa
                      ]
@@ -139,19 +139,8 @@ emission n state residue =
 
 logp = logProbability
 
-preceders :: A.Array StateLabel [StateLabel]
-preceders = A.array (minb, maxb)
-            [ (follows, [ s | s <- labels, canFollow s follows])
-            | follows <- labels ]
-  where labels = [minb .. maxb]
-        (minb, maxb) = (Mat, Del)
-
-
--- | @canFollow s s'@ tells whether one state can follow another 
--- in the Plan7 scheme.  This predicate is symmetric:
--- order doesn't matter.
-canFollow :: StateLabel -> StateLabel -> Bool
-canFollow Del Ins = False
-canFollow Ins Del = False
-canFollow _   _   = True
+preceders :: StateLabel -> [StateLabel]
+preceders Mat = [Mat, Ins, Del]
+preceders Ins = [Mat, Ins]
+preceders Del = [Mat, Del]
 
