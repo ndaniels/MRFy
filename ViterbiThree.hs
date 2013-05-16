@@ -136,27 +136,6 @@ bemission bn state residue =
       Ins -> (binse bn) C./!/ residue
       _   -> error ("State " ++ (show state) ++ "cannot emit")
 
-<<<<<<< HEAD
-beginMatch :: BeginNode -> StateLabel -> Score
-beginMatch b Mat = logp (b_m_m b)
-beginMatch b Ins = logp (b_m_i b)
-beginMatch b Del = logp (b_m_d b)
-
--- | Cost of transitions from the Ins state in the initial node
--- (which also contains the Beg state)
-bitransition :: BeginNode -> StateLabel -> Score
-bitransition bnode Mat = logp $ b_i_m bnode
-bitransition bnode Ins = logp $ b_i_i bnode
-bitransition _     Del = negLogZero
-
-bemission :: BeginNode -> StateLabel -> C.AA -> Score
-bemission bn state residue =
-    case state of
-      Ins -> (binse bn) C./!/ residue
-      _   -> error ("State " ++ (show state) ++ "cannot emit")
-
-=======
->>>>>>> d6dc4cd... newtypes for node/residue indices. Close #7.
 transition :: MiddleNode -> StateLabel -> StateLabel -> Score
 transition n from to = logp $ (edge from to) n
   where edge Mat Mat = m_m
