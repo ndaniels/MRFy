@@ -1,3 +1,5 @@
+{-# LANGUAGE BangPatterns, GeneralizedNewtypeDeriving #-}
+
 module ViterbiThree
   ( hoViterbi
   , scoreOnly
@@ -8,7 +10,6 @@ import Data.Array as A
 import qualified Data.MemoCombinators as Memo
 import qualified Data.Vector as V
 import Data.Vector.Unboxed as U hiding (minimum, (++), map)
-import Prelude hiding (pred)
 
 import qualified Constants as C
 import MRFTypes
@@ -21,6 +22,8 @@ import Score
 type StatePath = [ StateLabel ]
 
 type QuerySequence = U.Vector C.AA
+
+newtype ResidueIndex = RI Int deriving (Enum, Eq, Ix, Ord)
 
 data Tree = FromBegin Score
           | StepFrom [Scored (StateLabel, Tree)]
@@ -73,52 +76,70 @@ hoViterbi :: (Score -> a) -- ^ reaction to initial transition
           -> ([b] -> a) -- ^ make answer from all children
           -> HMM -> QuerySequence -> a
 hoViterbi leaf child internal = viterbi 
- where viterbi hmm rs = ct Mat (V.length mod) (U.length rs)
+ where viterbi mod rs = ct Mat (NI $ midSize mod) (RI $ U.length rs)
         where
           bnode = hmm V.! 0
           mod = V.slice 1 (V.length hmm - 1) hmm
 
-          ct stateRight 0  0  = leaf (transition bnode Mat stateRight)
-          ct stateRight 0  ri = insertAll stateRight ri
-          ct stateRight ni 0  = deleteAll stateRight ni
+          ct stateRight (NI 0) (RI 0)  = leaf (beginMatch bnode stateRight)
+          ct stateRight (NI 0)  ri     = insertAll stateRight ri
+          ct stateRight ni     (RI 0)  = deleteAll stateRight ni
+          -- @ start hoviterbi.tex -10
           ct stateRight ni ri =
             internal [ child score state (next state ni ri)
                      | state <- preceders A.! stateRight -- memoized!
                      , let score = transition node state stateRight
                                    + emission node state aa
                      ]
-            where node = mod V.! pred ni
-                  aa = rs U.! pred ri
+            where node = (middle mod) (pred ni)
+                  aa = rs `rat` pred ri
+          -- @ end hoviterbi.tex
 
           next s@Mat ni ri = ct' s (pred ni) (pred ri)
           next s@Del ni ri = ct' s (pred ni) ri
           next s@Ins ni ri = ct' s ni        (pred ri)
 
-          insertAll stateRight 0 = ct stateRight 0 0
+          insertAll stateRight (RI 0) = ct stateRight (NI 0) (RI 0)
           insertAll stateRight ri = 
             internal [ child score stateRight (insertAll Ins (pred ri)) ]
-            where aa = rs U.! pred ri
-                  score = transition bnode Ins stateRight
-                          + emission bnode Ins aa
+            where aa = rs `rat` pred ri
+                  score = bitransition bnode stateRight + ((binse bnode) C./!/ aa)
+          -- deleteAll Ins _ = error "this can't happen" -- XXX wrong, needs inf cost 
           deleteAll Ins _ = leaf negLogZero
-          deleteAll stateRight 0 = ct stateRight 0 0
+          deleteAll stateRight (NI 0) = ct stateRight (NI 0) (RI 0)
           deleteAll stateRight ni =
             internal [ child score Del (deleteAll Del (pred ni)) ]
               where node = mod V.! pred ni
                     score = transition node Del stateRight
 
           ct' = Memo.memo3 (Memo.arrayRange (minBound, maxBound))
-                           (Memo.arrayRange (0, pred $ V.length mod))
-                           (Memo.arrayRange (0, pred $ U.length rs))
+                           (Memo.arrayRange (NI 0, NI $ pred $ midSize mod))
+                           (Memo.arrayRange (RI 0, RI $ pred $ U.length rs))
                            ct
             -- N.B. could go with unsafe ranges here
 
-pred :: Int -> Int
-pred x = x - 1
+beginMatch :: BeginNode -> StateLabel -> Score
+beginMatch b Mat = logp (b_m_m b)
+beginMatch b Ins = logp (b_m_i b)
+beginMatch b Del = logp (b_m_d b)
 
-transition :: HMMNode -> StateLabel -> StateLabel -> Score
-transition n Ins Del = negLogZero -- for the begin node
-transition n from to = logp $ (edge from to) $ transitions n
+x `rat` (RI i) = x U.! i
+
+-- | Cost of transitions from the Ins state in the initial node
+-- (which also contains the Beg state)
+bitransition :: BeginNode -> StateLabel -> Score
+bitransition bnode Mat = logp $ b_i_m bnode
+bitransition bnode Ins = logp $ b_i_i bnode
+bitransition _     Del = negLogZero
+
+bemission :: BeginNode -> StateLabel -> C.AA -> Score
+bemission bn state residue =
+    case state of
+      Ins -> (binse bn) C./!/ residue
+      _   -> error ("State " ++ (show state) ++ "cannot emit")
+
+transition :: MiddleNode -> StateLabel -> StateLabel -> Score
+transition n from to = logp $ (edge from to) n
   where edge Mat Mat = m_m
         edge Mat Ins = m_i
         edge Mat Del = m_d
