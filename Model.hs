@@ -83,7 +83,13 @@ instance Show MiddleNode where
           probs = [m_m n, m_i n, m_d n, i_m n, i_i n, d_m n, d_d n]
 
 asBegin :: MiddleNode -> BeginNode
-asBegin n = BeginNode (inse n) (m_m n) (m_i n) (m_d n) (i_m n) (i_i n)
+asBegin n = BeginNode { binse = inse n
+                      , b_m = m_m n
+                      , b_i = m_i n
+                      , b_d = m_d n
+                      , b_i_i = i_i n
+                      , b_i_m = i_m n
+                      }
 
 -- data Seq a = Seq { get :: Int -> a, seqLength :: Int }  
 
