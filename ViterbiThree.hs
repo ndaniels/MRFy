@@ -241,42 +241,44 @@ listViterbi leaf child internal model rs = vee' Mat middles rs
                           (Memo.boundedList (length rs) Memo.integral)
                         vee'
 
-hov2 leaf child internal model rs = vee' Mat (NC nMids) (RC $ U.length rs)
+hov2 leaf edge internal model rs = vee' Mat (NC nMids) (RC $ U.length rs)
  where Model { begin = bnode, middle = middle', midSize = nMids } = model
-       middle (NC i) = middle' (NI (pred i))
+       middle  (NC i) = middle' (NI (pred i))
+       residue (RC i) = rs U.! (pred i)
+
        vee' stateRight (NC 0) aas = beginTo stateRight aas
-       -- @ start hoviterbi.tex -10
+       -- @ start hov2.tex -7
        vee' stateRight j i =
-         internal [ child score state (vee'' state (prevnode stateRight)
-                                                   (prevres  stateRight))
+         internal [ edge score state (vee'' state (prevnode stateRight)
+                                                  (prevres  stateRight))
                   | state <- preceders stateRight
                   , hasAA stateRight
                   , let score = transition node state stateRight
                                 + emission node state aa
                   ]
-         where -- Del does not consume a residue
+         where aa   = residue i
+               node = middle j
+       -- @ end hov2.tex
+
                -- Ins does not consume a node
                prevnode  Ins = j
                prevnode  _   = pred j
+
+               -- Del does not consume a residue
                prevres   Del = i
                prevres   _   = pred i
                hasAA Del = True
                hasAA _   = i > 0
-               aa = residue i
-               node = middle j
-       -- @ end hoviterbi.tex
-
-       residue (RC i) = rs U.! (pred i)
 
 
        beginTo Ins _      = internal [] -- no path
        beginTo Del (RC 0) = leaf (logp (b_d bnode))
        beginTo Del _      = internal [] -- no path
        beginTo Mat (RC 0) = leaf (logp (b_m bnode))
-       beginTo Mat rc     = internal [child score Ins (insertAll rc)]
+       beginTo Mat rc     = internal [edge score Ins (insertAll rc)]
          where score = logp (b_i_m bnode)
                insertAll (RC 0) = leaf (logp (b_i bnode))
-               insertAll rc = internal [child score Ins (insertAll (pred rc))]
+               insertAll rc = internal [edge score Ins (insertAll (pred rc))]
                  where score = logp (b_i_i bnode) + (binse bnode C./!/ aa)
                        aa = residue rc
 
