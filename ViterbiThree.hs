@@ -8,8 +8,9 @@ module ViterbiThree
 where
 
 import Data.Array as A
+import qualified Data.List as L
 import qualified Data.MemoCombinators as Memo
-import Data.Vector.Unboxed hiding (minimum, (++), map, head, tail, null, length)
+import Data.Vector.Unboxed hiding (minimum, (++), map, head, tail, null, length, foldl')
   -- XXX why import unqualified??? ---NR
 import qualified Data.Vector.Unboxed as U
 
@@ -64,12 +65,15 @@ addHead s (StepFrom subtrees) =
 scoreOnly, lazyScoreOnly, strictScoreOnly :: Model -> QuerySequence -> Score
 scoreOnly = strictScoreOnly 
 lazyScoreOnly   = hoViterbi id (\s _ s' -> s + s') minimum
-strictScoreOnly = hoViterbi id (\(!s) _ (!s') -> s + s') minimum
+strictScoreOnly = hoViterbi id (\(!s) _ (!s') -> s + s') xminimum
+  where xminimum = L.foldl' min negLogZero
 
 
 
 newtype NodeCount    = NC Int
+  deriving (Enum, Ord, Eq, Num, Ix)
 newtype ResidueCount = RC Int
+  deriving (Enum, Ord, Eq, Num, Ix)
 
 
 {-# INLINE hoViterbi #-}
@@ -80,11 +84,11 @@ newtype ResidueCount = RC Int
 -- of the computation...
 -- TODO: see if this code is still manifestly isomorphic to the equations 
 -- from the textbook
-hoViterbi :: (Score -> a) -- ^ reaction to initial transition
+hoViterbi, hov1, hov2 :: (Score -> a) -- ^ reaction to initial transition
           -> (Score -> StateLabel -> a -> b) -- ^ one possible child
           -> ([b] -> a) -- ^ make answer from all children
           -> Model -> QuerySequence -> a
-hoViterbi leaf child internal = viterbi 
+hov1 leaf child internal = viterbi 
  where viterbi model rs = vee' Mat (NC nMids) (RC $ U.length rs)
 -- READ ME FIRST: the index types *count* items, so if we get to index 0,
 -- there is nothing there...  And if we 
@@ -236,3 +240,49 @@ listViterbi leaf child internal model rs = vee' Mat middles rs
                           (Memo.boundedList (length middles) memo_middle)
                           (Memo.boundedList (length rs) Memo.integral)
                         vee'
+
+hov2 leaf child internal model rs = vee' Mat (NC nMids) (RC $ U.length rs)
+ where Model { begin = bnode, middle = middle', midSize = nMids } = model
+       middle (NC i) = middle' (NI (pred i))
+       vee' stateRight (NC 0) aas = beginTo stateRight aas
+       -- @ start hoviterbi.tex -10
+       vee' stateRight j i =
+         internal [ child score state (vee'' state (prevnode stateRight)
+                                                   (prevres  stateRight))
+                  | state <- preceders stateRight
+                  , hasAA stateRight
+                  , let score = transition node state stateRight
+                                + emission node state aa
+                  ]
+         where -- Del does not consume a residue
+               -- Ins does not consume a node
+               prevnode  Ins = j
+               prevnode  _   = pred j
+               prevres   Del = i
+               prevres   _   = pred i
+               hasAA Del = True
+               hasAA _   = i > 0
+               aa = residue i
+               node = middle j
+       -- @ end hoviterbi.tex
+
+       residue (RC i) = rs U.! (pred i)
+
+
+       beginTo Ins _      = internal [] -- no path
+       beginTo Del (RC 0) = leaf (logp (b_d bnode))
+       beginTo Del _      = internal [] -- no path
+       beginTo Mat (RC 0) = leaf (logp (b_m bnode))
+       beginTo Mat rc     = internal [child score Ins (insertAll rc)]
+         where score = logp (b_i_m bnode)
+               insertAll (RC 0) = leaf (logp (b_i bnode))
+               insertAll rc = internal [child score Ins (insertAll (pred rc))]
+                 where score = logp (b_i_i bnode) + (binse bnode C./!/ aa)
+                       aa = residue rc
+
+       vee'' = Memo.memo3 (Memo.arrayRange (minBound, maxBound))
+                          (Memo.arrayRange (0, NC (pred nMids)))
+                          (Memo.arrayRange (0, RC (pred $ U.length rs)))
+               vee'
+
+hoViterbi = hov2
