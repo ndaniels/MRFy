@@ -88,7 +88,7 @@ hoViterbi leaf child internal = viterbi
           -- @ start hoviterbi.tex -10
           vee' stateRight j i =
             internal [ child score state (next state j i)
-                     | state <- preceders stateRight -- memoized!
+                     | state <- preceders stateRight
                      , let score = transition node state stateRight
                                    + emission node state aa
                      ]
