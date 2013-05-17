@@ -167,6 +167,16 @@ randEProbs = do
           toScore :: Double -> S.Score
           toScore f = if f == 0.0 then S.negLogZero else S.Score (- log f)
 
+reduce :: S.Score -> S.Score
+reduce s = let n = S.unScore s
+            in S.Score (if n < 0.25 then 0 else n / 2.0)
+
+reduceT :: T.TProb -> T.TProb
+reduceT = T.TProb . reduce . T.logProbability
+
+reduceE :: T.EProbs -> T.EProbs
+reduceE = U.map reduce
+
 instance Arbitrary HMM where
   shrink (HMM (beg, mids)) = [HMM (beg, m) | m <- mids' ]
     where mids' = map listArray $ shrink $ A.elems mids
@@ -175,12 +185,29 @@ instance Arbitrary HMM where
     return $ HMM (beg, listArray mids)
 
 instance Arbitrary BeginNode where
+  shrink b = [BeginNode { b_m = reduceT (b_m b)
+                        , b_i = reduceT (b_i b)
+                        , b_d = reduceT (b_d b)
+                        , binse = reduceE (binse b)
+                        , b_i_i = reduceT (b_i_i b)
+                        , b_i_m = reduceT (b_i_m b)
+                        }]
   arbitrary = fmap asBegin arbitrary
 
 instance Arbitrary EndNode where
   arbitrary = return EndNode
 
 instance Arbitrary MiddleNode where
+  shrink m = [MiddleNode { mate = reduceE (mate m)
+                         , inse = reduceE (inse m)
+                         , m_m = reduceT (m_m m)
+                         , m_i = reduceT (m_i m)
+                         , m_d = reduceT (m_d m)
+                         , i_m = reduceT (i_m m)
+                         , i_i = reduceT (i_i m)
+                         , d_m = reduceT (d_m m)
+                         , d_d = reduceT (d_d m)
+                         }]
   arbitrary = do
     mate <- randEProbs
     inse <- randEProbs
