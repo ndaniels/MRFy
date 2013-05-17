@@ -102,6 +102,11 @@ data Model = Model { begin :: BeginNode
                    , midSize :: Int
                    }
 
+data ListModel = ListModel { lbegin :: BeginNode
+                           , lmiddle :: [MiddleNode]
+                           , lend :: EndNode
+                           }
+
 instance Eq Model where
   m1 == m2 = modelList m1 == modelList m2
 
