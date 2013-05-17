@@ -156,7 +156,7 @@ emission n state residue =
     case state of
       Mat -> (mate n) C./!/ residue 
       Ins -> (inse n) C./!/ residue 
-      Del -> negLogOne
+      Del -> 0
       -- _   -> error ("State " ++ (show state) ++ " cannot emit") 
 
 logp = logProbability
