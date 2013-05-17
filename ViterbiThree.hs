@@ -78,10 +78,9 @@ hoViterbi :: (Score -> a) -- ^ reaction to initial transition
           -> ([b] -> a) -- ^ make answer from all children
           -> Model -> QuerySequence -> a
 hoViterbi leaf child internal = viterbi 
- where viterbi mod rs = ct Mat (NI $ midSize mod) (RI $ U.length rs)
+ where viterbi model rs = ct Mat (NI nMids) (RI $ U.length rs)
         where
-          bnode = begin mod
-          enode = end mod
+          Model { begin = bnode, middle = middle, end = enode, midSize = nMids } = model
 
           ct stateRight (NI 0) (RI 0)  = leaf (beginMatch bnode stateRight)
           ct stateRight (NI 0)  ri     = insertAll stateRight ri
@@ -93,7 +92,7 @@ hoViterbi leaf child internal = viterbi
                      , let score = transition node state stateRight
                                    + emission node state aa
                      ]
-            where node = (middle mod) (pred ni)
+            where node = middle (pred ni)
                   aa = rs `rat` pred ri
           -- @ end hoviterbi.tex
 
@@ -111,11 +110,11 @@ hoViterbi leaf child internal = viterbi
           deleteAll stateRight (NI 0) = ct stateRight (NI 0) (RI 0)
           deleteAll stateRight ni =
             internal [ child score Del (deleteAll Del (pred ni)) ]
-              where node = (middle mod) (pred ni)
+              where node = middle (pred ni)
                     score = transition node Del stateRight
 
           ct' = Memo.memo3 (Memo.arrayRange (minBound, maxBound))
-                           (Memo.arrayRange (NI 0, NI $ pred $ midSize mod))
+                           (Memo.arrayRange (NI 0, NI $ pred $ nMids))
                            (Memo.arrayRange (RI 0, RI $ pred $ U.length rs))
                            ct
             -- N.B. could go with unsafe ranges here
