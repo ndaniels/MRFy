@@ -170,11 +170,7 @@ instance Arbitrary HMM where
     return $ HMM (beg, listArray mids)
 
 instance Arbitrary BeginNode where
-  arbitrary = do
-    inse <- randEProbs
-    (mm, mi, md) <- arbitrary :: Gen (T.TProb, T.TProb, T.TProb)
-    (im, ii) <- arbitrary :: Gen (T.TProb, T.TProb)
-    return $ BeginNode inse mm mi md im ii
+  arbitrary = fmap asBegin arbitrary
 
 instance Arbitrary EndNode where
   arbitrary = return EndNode
