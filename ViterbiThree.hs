@@ -3,16 +3,19 @@
 module ViterbiThree
   ( hoViterbi
   , scoreOnly
+  , listViterbi
   )
 where
 
 import Data.Array as A
 import qualified Data.MemoCombinators as Memo
-import Data.Vector.Unboxed as U hiding (minimum, (++), map)
+import Data.Vector.Unboxed hiding (minimum, (++), map, head, tail, null, length)
+  -- XXX why import unqualified??? ---NR
+import qualified Data.Vector.Unboxed as U
 
 import qualified Constants as C
 import MRFTypes hiding ( HMM
-                       , m_m, m_i, m_d, i_m, i_i, d_m, d_d
+                       , m_m, m_i, m_d, i_m, i_i, d_m, d_d, b_m
                        )
 import Model
 import Score
@@ -65,6 +68,10 @@ strictScoreOnly = hoViterbi id (\(!s) _ (!s') -> s + s') minimum
 
 
 
+newtype NodeCount    = NC Int
+newtype ResidueCount = RC Int
+
+
 {-# INLINE hoViterbi #-}
 -- | Higher-order implementation of the Viterbi algorithm, which can
 -- be specialized to produce various outputs. 
@@ -78,27 +85,50 @@ hoViterbi :: (Score -> a) -- ^ reaction to initial transition
           -> ([b] -> a) -- ^ make answer from all children
           -> Model -> QuerySequence -> a
 hoViterbi leaf child internal = viterbi 
- where viterbi model rs = vee' Mat (NI nMids) (RI $ U.length rs)
+ where viterbi model rs = vee' Mat (NC nMids) (RC $ U.length rs)
+-- READ ME FIRST: the index types *count* items, so if we get to index 0,
+-- there is nothing there...  And if we 
         where
           Model { begin = bnode, middle = middle, end = enode, midSize = nMids } = model
 
-          vee' stateRight (NI 0) (RI 0)  = leaf (beginMatch bnode stateRight)
-          vee' stateRight (NI 0)  ri     = insertAll stateRight ri
-          vee' stateRight ni     (RI 0)  = deleteAll stateRight ni
+          x `rat` (RC i) = x U.! (pred i)
+          nodeAt (NC j) = middle (NI (pred j))
+
+          vee' = error "might as well cut my own throat"
+          {-
+          vee' stateRight (NC 0) rc     = beginTo stateRight rc
+          vee' stateRight nc     (RC 0) = deleteAll stateRight ni
           -- @ start hoviterbi.tex -10
           vee' stateRight j i =
-            internal [ child score state (next state j i)
+            internal [ child score state (vee'' state pj pi)
                      | state <- preceders stateRight
                      , let score = transition node state stateRight
                                    + emission node state aa
                      ]
-            where node = middle (pred j)
-                  aa = rs `rat` pred i
+            where pi = prevres  stateRight i
+                  pj = prevnode stateRight j
+                  node = middle pj
+                  aa = rs `rat` i
           -- @ end hoviterbi.tex
 
-          next s@Mat ni ri = vee'' s (pred ni) (pred ri)
-          next s@Del ni ri = vee'' s (pred ni) ri
-          next s@Ins ni ri = vee'' s ni        (pred ri)
+          prevres Del ri = ri
+          prevres _   ri = pred ri
+
+          prevnode Ins ni = ni
+          prevnode _   ni = pred ni
+
+          beginTo Mat (RC 0) = leaf (logp (b_m bnode))
+          beginTo Del (RC 0) = leaf (logp (b_d bnode))
+          beginTo Mat ri     = internal [ child (logp (b_i_m bnode)) Ins (insert ri)]
+            where insert (RI 0) = leaf (logp (b_i bnode))
+                  insert ri     = internal [ child score Ins (insert (pred ri)) ]
+                    where aa = rs `rat` ri
+                          score = bitransition bnode stateRight + ((binse bnode) C./!/ aa)
+          beginTo _   _      = negLogZero
+
+       
+                           
+          beginTo state = leaf (beginMatch bnode state)
 
           insertAll stateRight (RI 0) = vee' stateRight (NI 0) (RI 0)
           insertAll stateRight ri = 
@@ -118,13 +148,8 @@ hoViterbi leaf child internal = viterbi
                            (Memo.arrayRange (RI 0, RI $ pred $ U.length rs))
                            vee'
             -- N.B. could go with unsafe ranges here
+          -}
 
-beginMatch :: BeginNode -> StateLabel -> Score
-beginMatch b Mat = logp (b_m_m b)
-beginMatch b Ins = logp (b_m_i b)
-beginMatch b Del = logp (b_m_d b)
-
-x `rat` (RI i) = x U.! i
 
 -- | Cost of transitions from the Ins state in the initial node
 -- (which also contains the Beg state)
@@ -166,3 +191,48 @@ preceders Mat = [Mat, Ins, Del]
 preceders Ins = [Mat, Ins]
 preceders Del = [Mat, Del]
 
+
+
+
+listViterbi :: (Score -> a) -- ^ reaction to initial transition
+            -> (Score -> StateLabel -> a -> b) -- ^ one possible child
+            -> ([b] -> a) -- ^ make answer from all children
+            -> ListModel -> [C.AA] -> a
+listViterbi leaf child internal model rs = vee' Mat middles rs
+ where ListModel { lbegin = bnode, lmiddle = middles } = model
+       vee' stateRight [] aas = beginTo stateRight aas
+       -- @ start hoviterbi.tex -10
+       vee' stateRight nodes@(node:ntail) aas =
+         internal [ child score state (vee'' state (nextNodes stateRight)
+                                                   (nextAAs   stateRight))
+                  | state <- preceders stateRight
+                  , hasAA stateRight aas
+                  , let score = transition node state stateRight
+                                + emission node state (head aas)
+                  ]
+         where -- Del does not consume a residue
+               -- Ins does not consume a node
+               nextNodes Ins = nodes
+               nextNodes _   = ntail
+               nextAAs Del   = aas
+               nextAAs _     = tail aas
+               hasAA Del _   = True
+               hasAA _  aas  = not (null aas)
+       -- @ end hoviterbi.tex
+
+       beginTo Ins _     = internal [] -- no path
+       beginTo Del []    = leaf (logp (b_d bnode))
+       beginTo Del (_:_) = internal [] -- no path
+       beginTo Mat []    = leaf (logp (b_m bnode))
+       beginTo Mat aas   = internal [child score Ins (insertAll aas)]
+         where score = logp (b_i_m bnode)
+               insertAll [] = leaf (logp (b_i bnode))
+               insertAll (aa:aas) = internal [child score Ins (insertAll aas)]
+                 where score = logp (b_i_i bnode) + (binse bnode C./!/ aa)
+
+       memo_middle = error "memoizing nodes looks like lots more work than I thought"
+
+       vee'' = Memo.memo3 (Memo.arrayRange (minBound, maxBound))
+                          (Memo.boundedList (length middles) memo_middle)
+                          (Memo.boundedList (length rs) Memo.integral)
+                        vee'
