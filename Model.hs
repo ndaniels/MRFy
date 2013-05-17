@@ -29,12 +29,15 @@ numNodes :: HMM -> Int
 numNodes (HMM (_, mids)) = 1 + (end - start + 1)
   where (start, end) = A.bounds (mids)
 
-data BeginNode = BeginNode { binse :: T.EProbs
-                           , b_m_m :: T.TProb
-                           , b_m_i :: T.TProb
-                           , b_m_d :: T.TProb
-                           , b_i_m :: T.TProb
+data BeginNode = BeginNode { -- three transitions out of the Begin state
+                             b_m :: T.TProb
+                           , b_i :: T.TProb
+                           , b_d :: T.TProb
+                             -- self-edge for the Insert state
+                           , binse :: T.EProbs
                            , b_i_i :: T.TProb
+                             -- one transition out of Insert state
+                           , b_i_m :: T.TProb
                            }
                  deriving (Eq)
 
@@ -42,7 +45,7 @@ instance Show BeginNode where
   show b = printf "BEGIN (inse %f, trans %f)"
                   (S.unScore $ U.sum $ binse b) (transSum)
     where transSum = sum $ map (S.unScore . T.logProbability) probs
-          probs = [b_m_m b, b_m_i b, b_m_d b, b_i_m b, b_i_i b]
+          probs = [b_m b, b_i b, b_d b, b_i_m b, b_i_i b]
 
 
 -- We are choosing to represent the last "real" node as an end
