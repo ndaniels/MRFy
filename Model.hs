@@ -61,7 +61,9 @@ data EndNode = EndNode -- always in match state; no transitions out
                deriving (Eq, Show)
 
 data MiddleNode = MiddleNode { mate :: T.EProbs
-                             , inse :: T.EProbs
+                             , inse :: T.EProbs -- goes with i_i edge
+                               -- m_i and i_i are edges within the node
+                               -- other edges are to the next node
                              , m_m :: T.TProb
                              , m_i :: T.TProb
                              , m_d :: T.TProb
