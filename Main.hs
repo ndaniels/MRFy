@@ -6,7 +6,7 @@ import System.Environment
 
 import CommandArgs
 import FileOps
-import Model2
+import V4
 
 main = do argv <- getArgs
           runCommand (getOpts argv)

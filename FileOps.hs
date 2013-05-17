@@ -39,6 +39,7 @@ import Viterbi
 
 import Model (toHMM, slice, numNodes)
 import ViterbiThree
+import qualified V4
 
 loadTestData :: Files -> IO (HMMHeader, HMM, [QuerySequence])
 loadTestData files =
