@@ -91,6 +91,7 @@ newtype NodeIndex = NI Int deriving (Enum, Eq, A.Ix, Ord)
 
 data Model = Model { begin :: BeginNode
                    , middle :: NodeIndex -> MiddleNode
+                       -- defined on [0..pred (NI midSize)]
                    , end :: EndNode
                    , midSize :: Int
                    }
