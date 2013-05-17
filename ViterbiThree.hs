@@ -247,26 +247,28 @@ hov2 leaf edge internal model rs = vee' Mat (NC nMids) (RC $ U.length rs)
        residue (RC i) = rs U.! (pred i)
 
        vee' stateRight (NC 0) aas = beginTo stateRight aas
-       -- @ start hoviterbi.tex -10
+       -- @ start hov2.tex -7
        vee' stateRight j i =
          internal [ edge score state (vee'' state (prevnode stateRight)
-                                                   (prevres  stateRight))
+                                                  (prevres  stateRight))
                   | state <- preceders stateRight
                   , hasAA stateRight
                   , let score = transition node state stateRight
                                 + emission node state aa
                   ]
-         where -- Del does not consume a residue
+         where aa   = residue i
+               node = middle j
+       -- @ end hov2.tex
+
                -- Ins does not consume a node
                prevnode  Ins = j
                prevnode  _   = pred j
+
+               -- Del does not consume a residue
                prevres   Del = i
                prevres   _   = pred i
                hasAA Del = True
                hasAA _   = i > 0
-               aa = residue i
-               node = middle j
-       -- @ end hoviterbi.tex
 
 
        beginTo Ins _      = internal [] -- no path
