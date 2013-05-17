@@ -71,12 +71,8 @@ newtype TProb = TProb { logProbability :: Score }
 data TProbs = TProbs
   { m_m :: TProb, m_i :: TProb, m_d :: TProb
   , i_m :: TProb, i_i :: TProb
--- @ end tprob-tprobs.tex
-  ---GROSS HACKERY (these are in the middle to prevent a bad page break in the paper)
-  , b_m :: TProb -- XXX aren't these just taking up space in the cache lines?
-  , m_e :: TProb
--- @ start tprob-tprobs.tex
-  , d_m :: TProb, d_d :: TProb }
+  , d_m :: TProb, d_d :: TProb
+  , b_m :: TProb, m_e :: TProb } -- legacy
 -- @ end tprob-tprobs.tex
             deriving (Show, Eq)
 
@@ -98,7 +94,11 @@ showTx t = intercalate ", " $ map tx [ TL "M" "M" m_m
 -- | Don't ask. Probably something foul to do with HMMER
 mkTransProbs :: TProb -> TProb -> TProb -> TProb -> TProb -> TProb -> TProb -> TProbs
 mkTransProbs t0 t1 t2 t3 t4 t5 t6 =
-  TProbs t0 t1 t2 t3 t4 nlz nlz t5 t6 -- gross, gross, gross
+  TProbs { m_m = t0, m_i = t1, m_d = t2
+         , i_m = t3, i_i = t4
+         , d_m = t5, d_d = t6
+         , b_m = nlz, m_e = nlz
+         } 
   where nlz = TProb negLogZero
         
 sprintf :: PrintfType t => String -> Score -> t
