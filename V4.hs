@@ -100,29 +100,22 @@ hoViterbi :: forall a b .
           -> ([b] -> a) -- ^ make answer from all children
           -> Model -> QuerySequence -> a
 hoViterbi leaf edge internal model rs = vee' Mat (NC $ count model) (RC $ U.length rs)
- where node    (NC j) = get model (NI $ pred j)
-       residue (RC i) = rs U.! (pred i)
+ where node    (NC j) = get model (NI j)
+       residue (RC i) = rs U.! i
 
        vee' :: StateLabel -> NodeCount -> ResidueCount -> a
-       -- ^ The first two inputs characterize a state in the HMM:
-       -- The count identifies the number of nodes to the left
-       -- of the node containing the given state, and the state
-       -- identifies which of the three states it is.
+       -- ^ @vee' sHat j i@ returns the min-cost path
+       -- from state @Mat@ node 0 to state @sHat@ node @j@,
+       -- producing the first @i@ residues from the vector @rs@.
        -- (For diagram see https://www.evernote.com/shard/s276/sh/39e47600-3354-4e8e-89f8-5c89884f9245/8880bd2c2a94dffb9be1432f12471ff2)
-       -- 
-       -- The third argument is the number of residues
-       --
-       -- The result is the minimum-cost path that consumes those
-       -- residues.  The path originates in the Match state of the leftmost
-       -- node and terminates in the state given by the first two arguments.
        -- @ start hov4.tex -7
        vee' Mat (NC 0) (RC 0) = leaf 0  -- start state is free
        vee' stateRight j i =
          internal [ edge score state (vee'' state pj pi)
                   | state <- preceders stateRight
-                  , i > 0, j > 0
-                  , let score = transition (node j) state stateRight
-                                + emission (node j) state (residue i)
+                  , pj >= 0, pi >= 0
+                  , let score = transition (node pj) state stateRight
+                                + emission (node pj) state (residue pi)
                   ]
          where (pi, pj) = case stateRight of Mat -> (pred i, pred j)
                                              Del -> (i,      pred j)
