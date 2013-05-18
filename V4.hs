@@ -113,13 +113,12 @@ hoViterbi leaf edge internal model rs = vee' Mat (NC $ count model) (RC $ U.leng
        vee' stateRight j i =
          internal [ edge score state (vee'' state pj pi)
                   | state <- preceders stateRight
+                  , let pi = case state of { Del -> i ; _ -> pred i }
                   , pj >= 0, pi >= 0
                   , let score = transition (node pj) state stateRight
                                 + emission (node pj) state (residue pi)
                   ]
-         where (pi, pj) = case stateRight of Mat -> (pred i, pred j)
-                                             Del -> (i,      pred j)
-                                             Ins -> (pred i, j)
+         where pj = case stateRight of { Ins -> j ; _ -> pred j }
        -- @ end hov4.tex
                -- Ins does not consume a node; Del does not consume a residue
 
