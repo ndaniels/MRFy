@@ -33,8 +33,8 @@ import MRFTypes
 import Score
 import Viterbi
 
-import Model (toHMM, slice, numNodes, traceid)
-import ViterbiThree
+import Model3 (toHMM, slice, Slice(..), numNodes)
+import V4
 
 
 type State = StateLabel
@@ -355,7 +355,7 @@ viterbiFight :: HMM -> QuerySequence -> Bool
 viterbiFight ohmm query = abs (oscore - nscore) < 0.00001
   where oscore = unScore $ scoreOf $ viterbi (:) HasNoEnd query ohmm
         nscore = unScore $ scoreOnly model query
-        model = slice hmm (0, numNodes hmm)
+        model = slice hmm (Slice { nodes_skipped = 0, width = numNodes hmm })
         hmm = toHMM ohmm
 
 -----------------------------------------------------------------------------------

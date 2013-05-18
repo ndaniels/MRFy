@@ -1,6 +1,15 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# OPTIONS_GHC -Wall -fno-warn-name-shadowing #-}
 
 module Model
+  ( Model(..), BeginNode(..), MiddleNode(..)
+  , NodeIndex(..)
+  , toHMM, slice, numNodes
+
+  , propSliceLen, propInvertible, propInverse, propSliceLenFull -- properties
+
+  , ListModel(..) -- obsolete
+  ) 
 where
 
 import Debug.Trace
@@ -10,11 +19,11 @@ import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
 import Text.Printf (printf)
 import Test.QuickCheck
-import Test.QuickCheck.Arbitrary
-import Test.QuickCheck.Gen
+--import Test.QuickCheck.Arbitrary
+--import Test.QuickCheck.Gen
 
 import qualified Constants as C
-import qualified HMMArby as Arby
+import HMMArby()
 import qualified MRFTypes as T
 import qualified Score as S
 
@@ -113,8 +122,6 @@ instance Eq Model where
 instance Show Model where
   show m = "(MODEL: size = " ++ show (midSize m) ++ ") "
 
-type Interval = (Int, Int)
-
 -- This is bunk. Not every `Model` is a valid `HMM`. Namely, a `Model`
 -- can have a single node (just the `BeginNode`), while an `HMM` needs
 -- at least a `BeginNode` and an `EndNode`.
@@ -129,8 +136,10 @@ modelList mod = (begin mod, reverse $ midsList (midSize mod - 1), end mod)
 
         mid = middle mod
 
+type Interval = (Int, Int)
+
 slice :: HMM -> Interval -> Model
-slice hmm@(HMM (hmmBegin, mids)) (start, len) =
+slice (HMM (hmmBegin, mids)) (start, len) =
   Model begNode mid EndNode (len - 1)
   where mid :: NodeIndex -> MiddleNode
         mid (NI n)
@@ -181,7 +190,7 @@ instance Arbitrary HMM where
   shrink (HMM (beg, mids)) = [HMM (beg, m) | m <- mids' ]
     where mids' = map listArray $ shrink $ A.elems mids
   arbitrary = do
-    (beg, mids, end) <- arbitrary :: Gen (BeginNode, [MiddleNode], EndNode)
+    (beg, mids, _) <- arbitrary :: Gen (BeginNode, [MiddleNode], EndNode)
     return $ HMM (beg, listArray mids)
 
 instance Arbitrary BeginNode where

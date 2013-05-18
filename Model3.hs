@@ -9,6 +9,12 @@
 
 
 module Model3
+  ( Model, Sequence(..), Node(..), Slice(..)
+  , NodeIndex(..)
+  , MState(..), IState(..), DState(..)
+                            
+  , toHMM, slice, numNodes
+  )
 where
 
 --import Text.Printf (printf)
@@ -17,6 +23,7 @@ where
 --import Test.QuickCheck.Gen
 
 import qualified Data.Array as A
+import qualified Data.Vector as V
 --import qualified Constants as C
 --import qualified HMMArby as Arby
 import qualified MRFTypes as T
@@ -47,3 +54,36 @@ newtype NodeIndex = NI Int deriving (Enum, Eq, A.Ix, Ord)
 instance (Enum i, Eq a) => Eq (Sequence i a) where
   m1 == m2 = count m1 == count m2 &&
     and [get m1 i == get m2 i | i <- [toEnum 0..pred (toEnum (count m1))]]
+
+newtype HMM = HMM (V.Vector Node)
+  deriving (Eq)
+
+toHMM :: T.HMM -> HMM
+toHMM old_nodes = HMM (fmap toNode old_nodes)
+  where toNode n = Node m d i
+          where m = M { m_i = T.logProbability $ T.m_i trans
+                      , m_m = T.logProbability $ T.m_m trans
+                      , m_d = T.logProbability $ T.m_d trans
+                      , m_emission = T.matEmissions n
+                      }
+                i = I { i_i = T.logProbability $ T.i_i trans
+                      , i_m = T.logProbability $ T.i_m trans
+                      , i_emission = T.insEmissions n
+                      }
+                d = D { d_d = T.logProbability $ T.d_d trans
+                      , d_m = T.logProbability $ T.d_m trans
+                      }
+                trans = T.transitions n
+
+data Slice = Slice { width :: Int, nodes_skipped :: Int }
+
+slice :: HMM -> Slice -> Model
+slice (HMM nodes) s = Sequence (width s) mid
+  where mid :: NodeIndex -> Node
+        mid (NI n)
+          | n < 0         = error ("< oob (" ++ show n ++ ")")
+          | n > (width s) = error "> oob"
+          | otherwise     = nodes V.! (n + nodes_skipped s)
+
+numNodes :: HMM -> Int
+numNodes (HMM nodes) = V.length nodes

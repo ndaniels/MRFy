@@ -37,9 +37,8 @@ import ShowAlignment
 import StochasticSearch
 import Viterbi
 
-import Model (toHMM, slice, numNodes)
-import ViterbiThree
-import qualified V4
+import Model3 (toHMM, slice, Slice(..), numNodes)
+import V4 hiding (statePath)
 
 loadTestData :: Files -> IO (HMMHeader, HMM, [QuerySequence])
 loadTestData files =
@@ -174,7 +173,7 @@ runCommand (TestViterbi searchParams
                 (files @ Files { hmmPlusF = hmmPlusFile, outputF = outFile})) = do
   (header, ohmm, queries) <- loadTestData files
   let hmm = toHMM ohmm
-  let model = slice hmm (0, numNodes hmm)
+  let model = slice hmm (Slice { width = numNodes hmm, nodes_skipped = 0 })
   let scores = map (vTest model) queries
   mapM_ putStrLn scores
     where vTest m q = show $ scoreOnly m q
