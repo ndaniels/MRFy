@@ -120,7 +120,7 @@ hoViterbi leaf edge internal model rs = vee' Mat (NC $ count model) (RC $ U.leng
        vee' stateRight j i =
          internal [ edge score state (vee'' state pj pi)
                   | state <- preceders stateRight
-                  , pi >= 0, pj >= 0
+                  , i > 0, j > 0
                   , let score = transition (node j) state stateRight
                                 + emission (node j) state (residue i)
                   ]
