@@ -6,7 +6,7 @@ import Control.Monad
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
 import System.Random
-import Test.QuickCheck
+import Test.QuickCheck hiding (ShrinkState)
 import Test.QuickCheck.Arbitrary
 import Test.QuickCheck.Gen
 -- import Data.List 
@@ -72,7 +72,10 @@ instance Arbitrary HMMNode where
                    , transitions  = rTrans
                    }
     where toScoreVec = U.fromList . map toScore
-
+  shrink n = [n { matEmissions = m } | m <- shrinkE (matEmissions n)] ++
+             [n { insEmissions = i } | i <- shrinkE (insEmissions n)] ++
+             [n { transitions  = t } | t <- shrinkT clobber (transitions n)]
+    where clobber p = if p < negLogZero then Just negLogZero else Nothing
 instance Arbitrary TProbs where
   arbitrary = mkTransProbs <$> p <*> p <*> p <*> p <*> p <*> p <*> p
    where p = arbitrary   
@@ -95,6 +98,68 @@ instance Arbitrary StateLabel where
 toScore :: Double -> Score
 toScore f = if f == 0.0 then negLogZero else Score (- log f)
  
+
+
+{-
+Think of a graymap image.
+The image triggers a bug in my program.
+I want the simplest possible image.
+That means as many white pixels as possible.
+So in an ideal world, each shrinking step would turn half the nonwhite pixels white.
+That's hard to implement, so I'm turning just one pixel white.
+The white pixel corresponds to probability zero.
+As long as it is not white, there is no point changing its color.
+-}
+
+shrinkE :: EProbs -> [EProbs]
+-- push probabilities to zero.  Will be *very* slow.
+-- (a good person would shrink half the probs at every go)
+shrinkE v = [smash i | i <- [0..U.length v - 1], v U.! i < negLogZero ]
+    where smash i = v U.// [(i, negLogZero)]
+
+shrinkT :: (Score -> Maybe Score) -> TProbs -> [TProbs]
+shrinkT shrinkOne t = onlyShrunk $
+  do new_m_m <- hit $ m_m t
+     new_m_i <- hit $ m_i t
+     new_m_d <- hit $ m_d t
+     new_d_m <- hit $ d_m t
+     new_d_d <- hit $ d_d t
+     new_i_m <- hit $ i_m t
+     new_i_i <- hit $ i_i t
+     new_b_m <- hit $ b_m t
+     new_m_e <- hit $ m_e t
+     return $ TProbs { m_m = TProb new_m_m
+                     , m_i = TProb new_m_i
+                     , m_d = TProb new_m_d
+                     , d_m = TProb new_d_m
+                     , d_d = TProb new_d_d
+                     , i_m = TProb new_i_m
+                     , i_i = TProb new_i_i
+                     , b_m = TProb new_b_m
+                     , m_e = TProb new_m_e
+                     }
+  where hit p = shrinkMe shrinkOne $ logProbability p
+        
+onlyShrunk :: ShrinkMonad a -> [a]
+onlyShrunk (SM ss) = [a | Shrunk a <- ss]
+
+data ShrunkScore = Maximized | Untouched Score
+data ShrinkState a = Shrunk a | Waiting a
+data ShrinkMonad a = SM { smStates :: [ShrinkState a] }
+instance Monad ShrinkMonad where
+  return a = SM [Waiting a]
+  SM ss >>= k = SM $ concatMap (combine k) ss
+    where combine k (Shrunk a)  = [Shrunk b | Waiting b <- smStates (k a)]
+          combine k (Waiting a) = smStates $ k a
+
+shrinkMe :: (a -> Maybe a) -> a -> ShrinkMonad a
+shrinkMe shrink a =
+  case shrink a of Nothing -> return a
+                   Just shrunk -> SM [Waiting a, Shrunk shrunk]
+                    
+runShrink ss = [a | Shrunk a <- ss]
+
+
 
 
 -- possibly useful idea

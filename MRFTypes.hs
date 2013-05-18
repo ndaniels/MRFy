@@ -9,7 +9,7 @@ module MRFTypes
   , Exposure(..), mkExposure
   , Direction(..), mkDirection
   , BetaStrand(..), BetaPosition, BetaResidue(..), BetaPair(..)
-  , TProb(..), TProbs, m_m, m_i, m_d, i_m, i_i, d_m, d_d, b_m, m_e
+  , TProb(..), TProbs(..)
   , EProbs
   , mkTransProb, mkTransProbs
   , mkScore
@@ -23,6 +23,7 @@ import Data.Ix
 import Data.List -- (intercalate)
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
+import Prelude hiding (showList)
 import Test.QuickCheck
 import Text.Printf
 
@@ -47,10 +48,16 @@ instance Show HMMNode where
             ++ "; " ++ showEmit "I" (insEmissions node)
             ++ ")"
 
+showList :: String -> [String] -> String
+showList what [ ] = "no-" ++ what
+showList _    ss  = intercalate ", " ss
+
 showEmit :: String -> EProbs -> String
-showEmit pfx table = intercalate ", " $ zipWith p (U.toList table) [0..]
-  where p score aa = pfx ++ show aa ++ "=" ++ sprintf "%.2f" score
-        p :: Score -> Int -> String
+showEmit pfx table = showList (pfx++"-emissions") $ map p $ filter nonzero $
+                     zip (U.toList table) [0..]
+  where p (score, aa) = pfx ++ show aa ++ "=" ++ sprintf "%.2f" score
+        nonzero (s, _) = s < negLogZero
+        p :: (Score, Int) -> String
 
 matchEmissions, insertionEmissions :: HMMNode -> EProbs
 matchEmissions = matEmissions
@@ -78,18 +85,20 @@ data TProbs = TProbs
 
 data TxLabel = TL String String (TProbs -> TProb)
 showTx :: TProbs -> String
-showTx t = intercalate ", " $ map tx [ TL "M" "M" m_m
-                                     , TL "M" "I" m_i
-                                     , TL "M" "D" m_d
-                                     , TL "D" "M" d_m
-                                     , TL "D" "D" d_d
-                                     , TL "I" "M" i_m
-                                     , TL "I" "I" i_i
-                                     , TL "B" "M" b_m
-                                     , TL "M" "E" m_e
-                                     ]
+showTx t = showList "transitions" $ map tx $ filter nonzero
+           [ TL "M" "M" m_m
+           , TL "M" "I" m_i
+           , TL "M" "D" m_d
+           , TL "D" "M" d_m
+           , TL "D" "D" d_d
+           , TL "I" "M" i_m
+           , TL "I" "I" i_i
+           , TL "B" "M" b_m
+           , TL "M" "E" m_e
+           ]
   where tx (TL from to f) = from ++ "-" ++ tprintf "%.2f" (f t) ++ "->" ++ to
         tprintf fmt = sprintf fmt . logProbability
+        nonzero (TL _ _ f) = logProbability (f t) < negLogZero
 
 -- | Don't ask. Probably something foul to do with HMMER
 mkTransProbs :: TProb -> TProb -> TProb -> TProb -> TProb -> TProb -> TProb -> TProbs
