@@ -44,14 +44,17 @@ instance Arbitrary AA where
 prob :: Gen Double
 prob = choose (0.0, 1.0)
 
+minimumModelSize :: Int
+minimumModelSize = 2
+
 instance Arbitrary (V.Vector HMMNode) where
-  shrink = (map V.fromList) . filter (\xs -> length xs >= 2) . (shrink . V.toList)
+  shrink = map V.fromList . filter ((>= minimumModelSize) . length) . shrink . V.toList
   arbitrary = do
     -- A random length is used here to essentially guarantee
     -- that we get a list of HMMNodes with at least length 2.
     -- Is there a better way to do this? (Preferably without
     -- setting a maximum.)
-    randLen <- choose (2, 12)
+    randLen <- sized $ \n -> choose (minimumModelSize, n `max` minimumModelSize)
     nodes <- vectorOf randLen arbitrary :: Gen [HMMNode]
     return $ V.fromList $ map annotate $ zip [0..] nodes
 
