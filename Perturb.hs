@@ -359,8 +359,10 @@ viterbiFight ohmm query = abs (oscore - nscore) < 0.00001
         model = slice hmm (Slice { nodes_skipped = 0, width = numNodes hmm })
         hmm = toHMM ohmm
 
-viterbiFightPath :: HMM -> QuerySequence -> Bool
-viterbiFightPath ohmm query = all stateEq $ zip opath npath
+viterbiFightPath :: HMM -> QuerySequence -> Property
+viterbiFightPath ohmm query =
+  printTestCase ("OLDPATH: " ++ show opath ++ "\nNEWPATH: " ++ show npath)
+    $ all stateEq $ zip opath npath
   where opath = unScored $ viterbi consPath HasNoEnd query ohmm
         npath = unScored $ V4.statePath $ V4.inlinedTree model query
         model = slice hmm (Slice { nodes_skipped = 0, width = numNodes hmm })

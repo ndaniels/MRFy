@@ -17,6 +17,8 @@ import qualified Constants as C
 import Model3
 import Score
 
+import Debug.Trace (trace)
+
 type StatePath = [ StateLabel ]
 
 type QuerySequence = U.Vector C.AA
