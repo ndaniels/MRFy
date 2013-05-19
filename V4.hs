@@ -104,6 +104,28 @@ hoViterbi leaf edge internal model rs = vee' Mat (NC $ count model) (RC $ U.leng
  where node    (NC j) = get model (NI j)
        residue (RC i) = rs U.! i
 
+       {-# INLINE prevs #-}
+       prevs :: [StateLabel]
+             -> StateLabel
+             -> (StateLabel -> NodeCount)
+             -> (StateLabel -> ResidueCount)
+             -> a
+       -- NR: the following line is a redundant case, but it seems
+       -- to every-so-slightly make things go faster.
+       -- prevs []        _          _  _  = internal [] 
+       prevs preceders stateRight fj fi =
+        internal [ edge score state (vee'' state pj pi)
+                 | state <- preceders
+                 , let pi = fi state
+                 , pj >= 0, pi >= 0
+                 , let score = transition (node pj) state stateRight
+                               + emission (node pj) state (residue pi)
+                 ]
+        where pj = fj stateRight
+
+       notConsumeIf :: forall a . Enum a => StateLabel -> a -> StateLabel -> a
+       notConsumeIf except n s = if s == except then n else pred n
+
        vee' :: StateLabel -> NodeCount -> ResidueCount -> a
        -- ^ @vee' sHat j i@ returns the min-cost path
        -- from state @Mat@ node 0 to state @sHat@ node @j@,
@@ -114,43 +136,20 @@ hoViterbi leaf edge internal model rs = vee' Mat (NC $ count model) (RC $ U.leng
        vee' Ins (NC 0) i = intoInsZero i
        vee' Mat (NC 1) i = intoMatOne i
        vee' Del (NC 1) i = intoDelOne i
-       vee' stateRight j i =
-         internal [ edge score state (vee'' state pj pi)
-                  | state <- preceders stateRight
-                  , let pi = case state of { Del -> i ; _ -> pred i }
-                  , pj >= 0, pi >= 0
-                  , let score = transition (node pj) state stateRight
-                                + emission (node pj) state (residue pi)
-                  ]
-         where pj = case stateRight of { Ins -> j ; _ -> pred j }
+       vee' stateRight j i = prevs (preceders stateRight) stateRight
+                                   (notConsumeIf Ins j) (notConsumeIf Del i)
        -- @ end hov4.tex
                -- Ins does not consume a node; Del does not consume a residue
        -- handles special non-emitting transitions into Ins state 0 and Mat state 1
        -- as well as self-transition for Ins state 0
        intoInsZero (RC 0) = leaf (transition (node 0) Mat Ins)
-       intoInsZero i =
-         internal [ edge score state (intoInsZero pi)
-                  | state <- [Ins]
-                  , let pi = pred i
-                  , let score = transition (node pj) state stateRight
-                                + emission (node pj) state (residue pi)
-                  ]
-           where pj = 0
-                 stateRight = Ins
+       intoInsZero i = prevs [Ins] Ins (\_ -> 0) (\_ -> pred i)
 
        intoDelOne (RC 0) = leaf (transition (node 0) Mat Del)
        intoDelOne _      = internal []
 
        intoMatOne (RC 0) = leaf (transition (node 0) Mat Mat)
-       intoMatOne i =
-         internal $ [ edge score state (vee'' state pj pi)
-                    | state <- [Ins, Del]
-                    , let pi = case state of { Del -> i ; _ -> pred i }
-                    , let score = transition (node pj) state stateRight
-                                  + emission (node pj) state (residue pi)
-                  ]
-         where pj = 0
-               stateRight = Mat
+       intoMatOne i = prevs [Ins, Del] Mat (\_ -> 0) (notConsumeIf Del i)
 
 
        vee'' = Memo.memo3 (Memo.arrayRange (minBound, maxBound))
