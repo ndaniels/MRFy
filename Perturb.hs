@@ -9,6 +9,7 @@ module Perturb
        , scoreableMetrics
        , viterbiIsAwesome
        , viterbiFight
+       , viterbiFightPath
        , approxEq
        )
 where
@@ -34,7 +35,7 @@ import Score
 import Viterbi
 
 import Model3 (toHMM, slice, Slice(..), numNodes)
-import V4
+import qualified V4
 
 
 type State = StateLabel
@@ -353,10 +354,26 @@ viterbiIsAwesome model query =
 
 viterbiFight :: HMM -> QuerySequence -> Bool
 viterbiFight ohmm query = abs (oscore - nscore) < 0.00001
-  where oscore = unScore $ scoreOf $ viterbi (:) HasNoEnd query ohmm
-        nscore = unScore $ scoreOnly model query
+  where oscore = unScore $ scoreOf $ viterbi consNoPath HasNoEnd query ohmm
+        nscore = unScore $ V4.scoreOnly model query
         model = slice hmm (Slice { nodes_skipped = 0, width = numNodes hmm })
         hmm = toHMM ohmm
+
+viterbiFightPath :: HMM -> QuerySequence -> Bool
+viterbiFightPath ohmm query = all stateEq $ zip opath npath
+  where opath = unScored $ viterbi consPath HasNoEnd query ohmm
+        npath = unScored $ V4.statePath $ V4.inlinedTree model query
+        model = slice hmm (Slice { nodes_skipped = 0, width = numNodes hmm })
+        hmm = toHMM ohmm
+
+        stateEq :: (StateLabel, V4.StateLabel) -> Bool
+        stateEq (Mat, V4.Mat) = True
+        stateEq (Ins, V4.Ins) = True
+        stateEq (Del, V4.Del) = True
+        stateEq (_  , _     ) = False
+
+traceid :: Show a => String -> a -> a
+traceid prefix a = trace (prefix ++ ": " ++ (show a)) a
 
 -----------------------------------------------------------------------------------
 -- TESTS ON REAL DATA

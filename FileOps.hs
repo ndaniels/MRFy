@@ -166,6 +166,9 @@ runCommand (TestHMM "all-props") =
 runCommand (TestHMM "fight") =
   quickCheck viterbiFight
 
+runCommand (TestHMM "fight-path") =
+  quickCheck viterbiFightPath
+
 runCommand (TestHMM t) =
   error $ "I never heard of test " ++ t
   

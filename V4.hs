@@ -4,7 +4,7 @@
 module V4
   ( hoViterbi
   , scoreOnly, scoredPath, inlinedTree, statePath, cost, Tree(..)
-  -- , StateLabel(..)
+  , StateLabel(..)
   )
 where
 
@@ -30,6 +30,7 @@ data Tree = FromBegin Score
 
 statePath :: Tree -> Scored StatePath
 statePath (FromBegin s) = Scored [] s
+statePath (StepFrom []) = Scored [] negLogZero
 statePath (StepFrom scores) = fmap ((:) state) $ (scoreOf s) /+/ next
   where next = statePath tree
         (state, tree) = unScored s
