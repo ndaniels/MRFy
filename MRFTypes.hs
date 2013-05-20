@@ -9,9 +9,9 @@ module MRFTypes
   , Exposure(..), mkExposure
   , Direction(..), mkDirection
   , BetaStrand(..), BetaPosition, BetaResidue(..), BetaPair(..)
-  , TProb(..), TProbs(..)
-  , EProbs
-  , mkTransProb, mkTransProbs
+  , TScores(..)
+  , EScores
+  , mkTransScore, mkTransScores
   , mkScore
   , showBetas
   , hmmDot, hmmDotString
@@ -36,11 +36,11 @@ type HMM = V.Vector HMMNode
 type Vector a = U.Vector a
 
 -- @ start hmmnode.tex
-type EProbs = Vector Score
+type EScores = Vector Score
 data HMMNode = HMMNode { nodeNum :: Int
-                       , matEmissions :: EProbs
-                       , insEmissions :: EProbs
-                       , transitions  :: TProbs
+                       , matEmissions :: EScores
+                       , insEmissions :: EScores
+                       , transitions  :: TScores
 -- @ end hmmnode.tex
 -- @ start hmmnode.tex
                        }
@@ -55,7 +55,7 @@ showList :: String -> [String] -> String
 showList what [ ] = "no-" ++ what
 showList _    ss  = intercalate ", " ss
 
-showEmit :: String -> EProbs -> String
+showEmit :: String -> EScores -> String
 showEmit pfx table = showList (pfx++"-emissions") $ map p $ filter nonzero $
                      zip (U.toList table) [0..]
   where p (score, aa) = pfx ++ show aa ++ "=" ++ sprintf "%.2f" score
@@ -94,11 +94,11 @@ hmmDot nodes =
          where n = nodes V.! j
                trans = transitions n
                        
-       edge from to (TProb p) =
+       edge from to p =
          if p < negLogZero then Dot.edge from to (sprintf "%.2f" p)
          else return ()
 
-       emissions :: EProbs -> String
+       emissions :: EScores -> String
        emissions v = concat $ map p $ filter nonzero $ zip [0..] (U.toList v)
          where p (i, (Score score)) = printf "\\nAA%d = %.2f" i score
                p :: (Int, Score) -> String
@@ -106,7 +106,7 @@ hmmDot nodes =
                        
                        
 
-matchEmissions, insertionEmissions :: HMMNode -> EProbs
+matchEmissions, insertionEmissions :: HMMNode -> EScores
 matchEmissions = matEmissions
 insertionEmissions = insEmissions
 
@@ -117,21 +117,16 @@ data StateLabel = Mat | Ins | Del | Beg | End
                 deriving (Show, Ord, Eq, Enum, Ix, Bounded)
 
 -- @ start tprob-tprobs.tex
-newtype TProb = TProb { logProbability :: Score }
--- @ end tprob-tprobs.tex
-           deriving (Show, Eq)
-
--- @ start tprob-tprobs.tex
-data TProbs = TProbs
-  { m_m :: TProb, m_i :: TProb, m_d :: TProb
-  , i_m :: TProb, i_i :: TProb
-  , d_m :: TProb, d_d :: TProb
-  , b_m :: TProb, m_e :: TProb } -- legacy
+data TScores = TScores
+  { m_m :: Score, m_i :: Score, m_d :: Score
+  , i_m :: Score, i_i :: Score
+  , d_m :: Score, d_d :: Score
+  , b_m :: Score, m_e :: Score } -- legacy
 -- @ end tprob-tprobs.tex
             deriving (Show, Eq)
 
-data TxLabel = TL String String (TProbs -> TProb)
-showTx :: TProbs -> String
+data TxLabel = TL String String (TScores -> Score)
+showTx :: TScores -> String
 showTx t = showList "transitions" $ map tx $ filter nonzero
            [ TL "M" "M" m_m
            , TL "M" "I" m_i
@@ -144,24 +139,24 @@ showTx t = showList "transitions" $ map tx $ filter nonzero
            , TL "M" "E" m_e
            ]
   where tx (TL from to f) = from ++ "-" ++ tprintf "%.2f" (f t) ++ "->" ++ to
-        tprintf fmt = sprintf fmt . logProbability
-        nonzero (TL _ _ f) = logProbability (f t) < negLogZero
+        tprintf fmt = sprintf fmt
+        nonzero (TL _ _ f) = f t < negLogZero
 
 -- | Don't ask. Probably something foul to do with HMMER
-mkTransProbs :: TProb -> TProb -> TProb -> TProb -> TProb -> TProb -> TProb -> TProbs
-mkTransProbs t0 t1 t2 t3 t4 t5 t6 =
-  TProbs { m_m = t0, m_i = t1, m_d = t2
-         , i_m = t3, i_i = t4
-         , d_m = t5, d_d = t6
-         , b_m = nlz, m_e = nlz
-         } 
-  where nlz = TProb negLogZero
+mkTransScores :: Score -> Score -> Score -> Score -> Score -> Score -> Score -> TScores
+mkTransScores t0 t1 t2 t3 t4 t5 t6 =
+  TScores { m_m = t0, m_i = t1, m_d = t2
+          , i_m = t3, i_i = t4
+          , d_m = t5, d_d = t6
+          , b_m = nlz, m_e = nlz
+          } 
+  where nlz = negLogZero
         
 sprintf :: PrintfType t => String -> Score -> t
 sprintf fmt (Score s) = printf fmt s
 
-mkTransProb :: StateLabel -> StateLabel -> Score -> TProb
-mkTransProb _from _to s = TProb s
+mkTransScore :: StateLabel -> StateLabel -> Score -> Score
+mkTransScore _from _to = id -- wtf?
 
 mkScore :: String -> Score
 mkScore "*" = negLogZero

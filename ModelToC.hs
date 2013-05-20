@@ -6,7 +6,7 @@ import qualified Data.Vector as V
 import Text.Printf (printf)
 
 import Model3
-import MRFTypes (EProbs)
+import MRFTypes (EScores)
 import Score (Score, unScore)
 
 indent = "    "
@@ -36,6 +36,6 @@ toc (HMM hmm) =
           where memit = m_emission $ m n
                 iemit = i_emission $ i n
 
-        etoc :: EProbs -> String
+        etoc :: EScores -> String
         etoc = intercalate ", " . map us . U.toList
 

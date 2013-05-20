@@ -11,8 +11,7 @@ module Viterbi
        , emissionScoreNode
        , consPath
        , consNoPath
-       , TProb
-       , TProbs
+       , TScores
        )
 where
 
@@ -169,10 +168,10 @@ emissionScore hmm qs state j i = emissionScoreNode (hmm V.! j) (qs U.! i) state
 
 transScoreNode :: HMMNode -> StateLabel -> StateLabel -> Score
 transScoreNode n from to =
-  logProbability $ edge from to (transitions n)
+  edge from to (transitions n)
  where
         -- @ start edge.tex -8
-        edge :: StateLabel -> StateLabel -> (TProbs -> TProb)
+        edge :: StateLabel -> StateLabel -> (TScores -> Score)
         -- @ end edge.tex
         edge Mat Mat = m_m
         edge Mat Ins = m_i

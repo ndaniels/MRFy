@@ -68,7 +68,7 @@ instance Arbitrary HMMNode where
     -- (rMatEmi, rInsEmi) <- fmap unzip $ listOf1 (liftM2 (,) prob prob) 
     rMatEmi <- sequence $ take (length aminoList) $ repeat prob
     rInsEmi <- sequence $ take (length aminoList) $ repeat prob
-    rTrans <- arbitrary :: Gen TProbs
+    rTrans <- arbitrary :: Gen TScores
     return HMMNode { nodeNum = 0
                    , matEmissions = toScoreVec rMatEmi
                    , insEmissions = toScoreVec rInsEmi
@@ -79,13 +79,9 @@ instance Arbitrary HMMNode where
              [n { insEmissions = i } | i <- shrinkE (insEmissions n)] ++
              [n { transitions  = t } | t <- shrinkT clobber (transitions n)]
     where clobber p = if p < negLogZero then Just negLogZero else Nothing
-instance Arbitrary TProbs where
-  arbitrary = mkTransProbs <$> p <*> p <*> p <*> p <*> p <*> p <*> p
+instance Arbitrary TScores where
+  arbitrary = mkTransScores <$> p <*> p <*> p <*> p <*> p <*> p <*> p
    where p = arbitrary   
-
--- Fix this so that only legal transitions are allowed.
-instance Arbitrary TProb where
-  arbitrary = TProb <$> arbitrary
 
 instance Arbitrary Score where
   arbitrary = do
@@ -114,13 +110,13 @@ The white pixel corresponds to probability zero.
 As long as it is not white, there is no point changing its color.
 -}
 
-shrinkE :: EProbs -> [EProbs]
+shrinkE :: EScores -> [EScores]
 -- push probabilities to zero.  Will be *very* slow.
 -- (a good person would shrink half the probs at every go)
 shrinkE v = [smash i | i <- [0..U.length v - 1], v U.! i < negLogZero ]
     where smash i = v U.// [(i, negLogZero)]
 
-shrinkT :: (Score -> Maybe Score) -> TProbs -> [TProbs]
+shrinkT :: (Score -> Maybe Score) -> TScores -> [TScores]
 shrinkT shrinkOne t = onlyShrunk $
   do new_m_m <- hit $ m_m t
      new_m_i <- hit $ m_i t
@@ -131,17 +127,17 @@ shrinkT shrinkOne t = onlyShrunk $
      new_i_i <- hit $ i_i t
      new_b_m <- hit $ b_m t
      new_m_e <- hit $ m_e t
-     return $ TProbs { m_m = TProb new_m_m
-                     , m_i = TProb new_m_i
-                     , m_d = TProb new_m_d
-                     , d_m = TProb new_d_m
-                     , d_d = TProb new_d_d
-                     , i_m = TProb new_i_m
-                     , i_i = TProb new_i_i
-                     , b_m = TProb new_b_m
-                     , m_e = TProb new_m_e
-                     }
-  where hit p = shrinkMe shrinkOne $ logProbability p
+     return $ TScores { m_m = new_m_m
+                      , m_i = new_m_i
+                      , m_d = new_m_d
+                      , d_m = new_d_m
+                      , d_d = new_d_d
+                      , i_m = new_i_m
+                      , i_i = new_i_i
+                      , b_m = new_b_m
+                      , m_e = new_m_e
+                      }
+  where hit p = shrinkMe shrinkOne p
         
 onlyShrunk :: ShrinkMonad a -> [a]
 onlyShrunk (SM ss) = [a | Shrunk a <- ss]
