@@ -30,12 +30,12 @@ import qualified MRFTypes as T
 import qualified Score as S
 
 data MState = M { m_i, m_m, m_d :: S.Score
-                , m_emission :: T.EProbs
+                , m_emission :: T.EScores
                 }
   deriving (Eq, Show)
 
 data IState = I { i_i, i_m :: S.Score
-                , i_emission :: T.EProbs
+                , i_emission :: T.EScores
                 }
   deriving (Eq, Show)
               
@@ -61,17 +61,17 @@ newtype HMM = HMM (V.Vector Node)
 toHMM :: T.HMM -> HMM
 toHMM old_nodes = HMM (fmap toNode old_nodes)
   where toNode n = Node m d i
-          where m = M { m_i = T.logProbability $ T.m_i trans
-                      , m_m = T.logProbability $ T.m_m trans
-                      , m_d = T.logProbability $ T.m_d trans
+          where m = M { m_i = T.m_i trans
+                      , m_m = T.m_m trans
+                      , m_d = T.m_d trans
                       , m_emission = T.matEmissions n
                       }
-                i = I { i_i = T.logProbability $ T.i_i trans
-                      , i_m = T.logProbability $ T.i_m trans
+                i = I { i_i = T.i_i trans
+                      , i_m = T.i_m trans
                       , i_emission = T.insEmissions n
                       }
-                d = D { d_d = T.logProbability $ T.d_d trans
-                      , d_m = T.logProbability $ T.d_m trans
+                d = D { d_d = T.d_d trans
+                      , d_m = T.d_m trans
                       }
                 trans = T.transitions n
 
