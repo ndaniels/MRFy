@@ -50,6 +50,7 @@ Executable mrfy
                  filepath >= 1.2,
                  cmdargs >=0.8,
                  data-memocombinators >=0.4.2,
+                 mtl >= 2.1,
                  parsec,
                  vector >=0.9,
                  Unixutils,

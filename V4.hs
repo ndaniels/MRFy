@@ -3,7 +3,7 @@
 
 module V4
   ( hoViterbi
-  , scoreOnly, scoredPath, inlinedTree, statePath, cost, Tree(..)
+  , scoreOnly, scoredPath, costTree, statePath, cost, Tree(..), treeDot
   , StateLabel(..)
   )
 where
@@ -12,12 +12,14 @@ import Data.Array as A
 import qualified Data.List as L
 import qualified Data.MemoCombinators as Memo
 import qualified Data.Vector.Unboxed as U
+import Text.Printf (printf)
 
 import qualified Constants as C
+import qualified Dot
 import Model3
 import Score
 
-import Debug.Trace (trace)
+-- import Debug.Trace (trace)
 
 type StatePath = [ StateLabel ]
 
@@ -30,13 +32,37 @@ data StateLabel = Mat | Ins | Del
 data Tree = FromBegin Score
           | StepFrom [Scored (StateLabel, Tree)]
 
+instance Show Tree where
+  show (FromBegin s) = printf "Beg@%.2f" (unScore s)
+  show (StepFrom []) = "Blocked"
+  show (StepFrom ss) = printf "Min [%s]" $ L.intercalate ", " $ map edge ss
+    where edge (Scored (state, t) score) =
+            printf "%s@%.2f -> %s" (show state) (unScore score) (show t)
+ 
+
+treeDot :: Tree -> String
+treeDot t = Dot.toDot $ do { n <- node "E"; build n t }
+  where
+    node = Dot.node
+    build root (FromBegin s) =
+      do { b <- node "B"; Dot.edge root b (printf "%.2f" (unScore s)) }
+    build _ (StepFrom []) = return ()
+    build root (StepFrom ss) = mapM_ edge ss
+      where edge (Scored (state, t) score) =
+              do { n <- node (show state)
+                 ; Dot.edge root n (printf "%.2f" (unScore score))
+                 ; build n t
+                 }
+    
+
 statePath :: Tree -> Scored StatePath
-statePath (FromBegin s) = Scored [] s
-statePath (StepFrom []) = Scored [] negLogZero
-statePath (StepFrom scores) = fmap ((:) state) $ (scoreOf s) /+/ next
-  where next = statePath tree
-        (state, tree) = unScored s
-        s = minimum scores
+statePath = fmap reverse . rightToLeft
+  where rightToLeft (FromBegin s) = Scored [] s
+        rightToLeft (StepFrom []) = Scored [] negLogZero
+        rightToLeft (StepFrom scores) = fmap ((:) state) $ (scoreOf s) /+/ next
+          where next = rightToLeft tree
+                (state, tree) = unScored s
+                s = minimum scores
 
 cost :: Tree -> Score
 cost (FromBegin s) = s
@@ -46,8 +72,8 @@ cost (StepFrom scores) = scoreOf s + cost tree
         s = minimum scores
 
 
-inlinedTree :: Model -> QuerySequence -> Tree
-inlinedTree = hoViterbi FromBegin (\s l t -> Scored (l, t) s) StepFrom 
+costTree :: Model -> QuerySequence -> Tree
+costTree = hoViterbi FromBegin (\s l t -> Scored (l, t) s) StepFrom 
 
 scoredPath :: Model -> QuerySequence -> Scored [StateLabel] 
 scoredPath = hoViterbi (Scored []) (\s state path -> s /+/ fmap (state:) path) xminimum 

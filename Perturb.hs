@@ -28,6 +28,7 @@ import qualified Data.Vector.Unboxed as U
 import Debug.Trace (trace)
 import Test.QuickCheck
 import Test.QuickCheck.Property
+import Text.Printf (printf)
 
 import HMMProps
 import MRFTypes
@@ -361,10 +362,11 @@ viterbiFight ohmm query = abs (oscore - nscore) < 0.00001
 
 viterbiFightPath :: HMM -> QuerySequence -> Property
 viterbiFightPath ohmm query =
-  printTestCase ("OLDPATH: " ++ show opath ++ "\nNEWPATH: " ++ show npath)
-    $ all stateEq $ zip opath npath
-  where opath = unScored $ viterbi consPath HasNoEnd query ohmm
-        npath = unScored $ V4.statePath $ V4.inlinedTree model query
+  (scoreOf opath < negLogZero && scoreOf npath < negLogZero) ==>
+  printTestCase infodump $ all stateEq $ zip (unScored opath) (unScored npath)
+  where opath = viterbi consPath HasNoEnd query ohmm
+        ntree = V4.costTree model query
+        npath = V4.statePath $ ntree
         model = slice hmm (Slice { nodes_skipped = 0, width = numNodes hmm })
         hmm = toHMM ohmm
 
@@ -373,6 +375,16 @@ viterbiFightPath ohmm query =
         stateEq (Ins, V4.Ins) = True
         stateEq (Del, V4.Del) = True
         stateEq (_  , _     ) = False
+
+        infodump =
+          printf ("=== %s nodes; %s residues\nOLDPATH: %s\nNEWPATH: %s\nTREE: %s\n" ++
+                  "DOT: \n%s\nDOTMODEL:\n%s\n")
+          (show $ numNodes hmm) (show $ U.length query)
+          (showpath opath) (showpath npath) (show ntree)
+          (V4.treeDot ntree) (hmmDotString ohmm)
+        showpath :: Show a => Scored [a] -> String
+        showpath (Scored path (Score s)) = printf "%.2f@%s" s (show path)
+
 
 traceid :: Show a => String -> a -> a
 traceid prefix a = trace (prefix ++ ": " ++ (show a)) a

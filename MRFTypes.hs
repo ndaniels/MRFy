@@ -14,10 +14,12 @@ module MRFTypes
   , mkTransProb, mkTransProbs
   , mkScore
   , showBetas
+  , hmmDot, hmmDotString
   )
 where
 
 import Control.Applicative
+import Data.Char()
 import Data.Function
 import Data.Ix
 import Data.List -- (intercalate)
@@ -27,6 +29,7 @@ import Prelude hiding (showList)
 import Test.QuickCheck
 import Text.Printf
 
+import qualified Dot
 import Score
 
 type HMM = V.Vector HMMNode
@@ -58,6 +61,50 @@ showEmit pfx table = showList (pfx++"-emissions") $ map p $ filter nonzero $
   where p (score, aa) = pfx ++ show aa ++ "=" ++ sprintf "%.2f" score
         nonzero (s, _) = s < negLogZero
         p :: (Score, Int) -> String
+
+hmmDotString :: HMM -> String
+hmmDotString = Dot.toDot . hmmDot
+
+hmmDot :: HMM -> Dot.DotBuilder ()
+hmmDot nodes =
+  do e <- Dot.node "E"
+     ed <- Dot.node "ED"
+     node (V.length nodes - 1) e ed
+ where node 0 m d = do b <- Dot.node ("B" ++ emissions (matEmissions n))
+                       i <- Dot.node ("I" ++ emissions (insEmissions n))
+                       edge b i (m_i trans)
+                       edge b m (m_m trans)
+                       edge b d (m_d trans)
+                       edge i i (i_i trans)
+                       edge i m (i_m trans)
+         where n = nodes V.! 0
+               trans = transitions n
+                       
+       node j m d = do m' <- Dot.node ("M" ++ emissions (matEmissions n))
+                       i  <- Dot.node ("I" ++ emissions (insEmissions n))
+                       d' <- Dot.node "D"
+                       edge m' i (m_i trans)
+                       edge m' m (m_m trans)
+                       edge m' d (m_d trans)
+                       edge i i (i_i trans)
+                       edge i m (i_m trans)
+                       edge d' m (d_m trans)
+                       edge d' d (d_d trans)
+                       node (pred j) m' d'
+         where n = nodes V.! j
+               trans = transitions n
+                       
+       edge from to (TProb p) =
+         if p < negLogZero then Dot.edge from to (sprintf "%.2f" p)
+         else return ()
+
+       emissions :: EProbs -> String
+       emissions v = concat $ map p $ filter nonzero $ zip [0..] (U.toList v)
+         where p (i, (Score score)) = printf "\\nAA%d = %.2f" i score
+               p :: (Int, Score) -> String
+               nonzero (_, s) = s < negLogZero
+                       
+                       
 
 matchEmissions, insertionEmissions :: HMMNode -> EProbs
 matchEmissions = matEmissions
