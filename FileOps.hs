@@ -169,6 +169,9 @@ runCommand (TestHMM "fight") =
 runCommand (TestHMM "fight-path") =
   quickCheck viterbiFightPath
 
+runCommand (TestHMM "tree-consistent") =
+  quickCheck costTreeConsistent
+
 runCommand (TestHMM t) =
   error $ "I never heard of test " ++ t
   
