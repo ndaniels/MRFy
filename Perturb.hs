@@ -10,6 +10,7 @@ module Perturb
        , viterbiIsAwesome
        , viterbiFight
        , viterbiFightPath
+       , costTreeConsistent
        , approxEq
        )
 where
@@ -44,6 +45,29 @@ type State = StateLabel
 type SSeq = [State]
 type BSeq = [Block State]
 type Pred = State -> Bool
+
+vitScore :: HMM -> QuerySequence -> Score
+vitScore hmm query = vit
+  where
+    -- vit = scoreOf $ viterbi consNoPath HasNoEnd query hmm 
+
+    vit = V4.scoreOnly model query
+    model = slice newHmm (Slice { nodes_skipped = 0, width = numNodes newHmm })
+    newHmm = toHMM hmm
+
+vitPath :: HMM -> QuerySequence -> Scored StatePath
+vitPath hmm query = vit
+  where
+    -- vit = viterbi consPath HasNoEnd query hmm 
+
+    vit = fmap (map convState) $ V4.scoredPath model query
+    model = slice newHmm (Slice { nodes_skipped = 0, width = numNodes newHmm })
+    newHmm = toHMM hmm
+
+    convState :: V4.StateLabel -> StateLabel
+    convState V4.Mat = Mat
+    convState V4.Ins = Ins
+    convState V4.Del = Del
 
 ------------------------------------------------------------------------------
 -- PERTURBATIONS PART I: PURE MOVEMENT
@@ -314,7 +338,7 @@ approxEq (Score x) (Score x') = abs (x - x') < epsilon
 consistentScoring :: HMM -> QuerySequence -> Property
 consistentScoring model query = printTestCase msg $
   scoreOf vscored `approxEq` hmmScore
-  where vscored = viterbi (:) HasNoEnd query model
+  where vscored = vitPath model query
         hmmScore = scoreHMM model query (unScored vscored)
         msg = unlines [ "Viterbi score " ++ show (scoreOf vscored)
                       , "Viterbi solution " ++ showSS (unScored vscored)
@@ -338,7 +362,7 @@ scoreableMetrics model query = all id $ (parMap rseq) goodScore $ allp7 metrics
 viterbiIsAwesome :: HMM -> QuerySequence -> Bool
 viterbiIsAwesome model query = 
     all ((scoreOf vscored) <=) possibleScores
-  where vscored = viterbi (:) HasNoEnd query model
+  where vscored = vitPath model query
         possibleScores = (parMap rseq) (scoreHMM model query) allStates
         allStates = allp7 $ M n r
         _message =  ("\n\nViterbi: " ++ (show $ scoreOf vscored) ++ 
@@ -354,9 +378,9 @@ viterbiIsAwesome model query =
         (n, r) = (V.length model, U.length query)
 
 viterbiFight :: HMM -> QuerySequence -> Bool
-viterbiFight ohmm query = abs (oscore - nscore) < 0.00001
-  where oscore = unScore $ scoreOf $ viterbi consNoPath HasNoEnd query ohmm
-        nscore = unScore $ V4.scoreOnly model query
+viterbiFight ohmm query = oscore `approxEq` nscore
+  where oscore = scoreOf $ viterbi consNoPath HasNoEnd query ohmm
+        nscore = V4.scoreOnly model query
         model = slice hmm (Slice { nodes_skipped = 0, width = numNodes hmm })
         hmm = toHMM ohmm
 
@@ -385,6 +409,13 @@ viterbiFightPath ohmm query =
         showpath :: Show a => Scored [a] -> String
         showpath (Scored path (Score s)) = printf "%.2f@%s" s (show path)
 
+
+costTreeConsistent :: HMM -> QuerySequence -> Bool
+costTreeConsistent ohmm query = onlyScore `approxEq` pathScore
+  where onlyScore = V4.scoreOnly model query
+        pathScore = scoreOf $ V4.scoredPath model query
+        model = slice hmm (Slice { nodes_skipped = 0, width = numNodes hmm })
+        hmm = toHMM ohmm
 
 traceid :: Show a => String -> a -> a
 traceid prefix a = trace (prefix ++ ": " ++ (show a)) a
@@ -418,7 +449,7 @@ oneLocalPerturb (_, model, queries) =
   else
     "local-perturb FAILED"
   where pass query = all (states <==>) $ viterbiLocalPerturb states
-          where states = unScored $ viterbi (:) HasNoEnd query model
+          where states = unScored $ vitPath model query
 
         viterbiLocalPerturb :: [StateLabel] -> [[StateLabel]]
         viterbiLocalPerturb states = trace (show $ head perturbs) perturbs
@@ -467,7 +498,7 @@ rightMoversPermutesProp (Plan7 ss) = all match (rightMoversStates ss)
 optimal :: (SSeq -> [SSeq]) -> HMM -> QuerySequence -> Bool
 optimal f model query = all (score <) $ map (scoreHMM model query) $ f states
   where (states, score) = (unScored v, scoreOf v)
-        v = viterbi (:) HasNoEnd query model
+        v = vitPath model query
 
 -- | Predicate @<==>@ judges the equivalence of two Plan7 sequences.
 -- N.B. It does not guarantee both lists are Plan7, just that
