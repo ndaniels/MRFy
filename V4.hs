@@ -125,8 +125,8 @@ hoViterbi leaf edge internal model rs = vee' Mat (NC $ count model) (RC $ U.leng
                  ]
         where pj = fj stateRight
 
-       notConsumeIf :: forall a . Enum a => StateLabel -> a -> StateLabel -> a
-       notConsumeIf except n s = if s == except then n else pred n
+       predUnless :: forall a . Enum a => a -> StateLabel -> StateLabel -> a
+       predUnless n don't_move s = if s == don't_move then n else pred n
 
        vee' :: StateLabel -> NodeCount -> ResidueCount -> a
        -- ^ @vee' sHat j i@ returns the min-cost path
@@ -139,7 +139,7 @@ hoViterbi leaf edge internal model rs = vee' Mat (NC $ count model) (RC $ U.leng
        vee' Mat (NC 1) i = intoMatOne i
        vee' Del (NC 1) i = intoDelOne i
        vee' stateRight j i = prevs (preceders stateRight) stateRight
-                                   (notConsumeIf Ins j) (notConsumeIf Del i)
+                                   (predUnless j Ins) (predUnless i Del)
        -- @ end hov4.tex
                -- Ins does not consume a node; Del does not consume a residue
        -- handles special non-emitting transitions into Ins state 0 and Mat state 1
@@ -151,7 +151,7 @@ hoViterbi leaf edge internal model rs = vee' Mat (NC $ count model) (RC $ U.leng
        intoDelOne _      = internal []
 
        intoMatOne (RC 0) = leaf (transition (node 0) Mat Mat)
-       intoMatOne i = prevs [Ins, Del] Mat (\_ -> 0) (notConsumeIf Del i)
+       intoMatOne i = prevs [Ins, Del] Mat (\_ -> 0) (predUnless i Del)
 
 
        vee'' = Memo.memo3 (Memo.arrayRange (minBound, maxBound))
