@@ -169,7 +169,7 @@ runCommand (TestViterbi searchParams
   (header, model, queries) <- loadTestData files
   let scores = map (vTest model) queries
   mapM_ putStrLn scores
-    where vTest h q = show $ scoreOf $ viterbi (:) HasNoEnd q h
+    where vTest h q = show $ scoreOf $ viterbi consNoPath HasNoEnd q h
 
 runCommand (AlignmentSearch searchParams
                 (files @ Files { hmmPlusF = hmmPlusFile, outputF = outFile })) = do
