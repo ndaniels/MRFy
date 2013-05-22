@@ -32,10 +32,10 @@ type Vector a = U.Vector a
 
 -- @ start hmmnode.tex
 type EProbs = Vector Score
-data HMMNode = HMMNode { nodeNum :: Int
-                       , matEmissions :: EProbs
-                       , insEmissions :: EProbs
-                       , transitions  :: TProbs
+data HMMNode = HMMNode { nodeNum :: {-# UNPACK #-} !Int
+                       , matEmissions :: !EProbs
+                       , insEmissions :: !EProbs
+                       , transitions  :: !TProbs
 -- @ end hmmnode.tex
 -- @ start hmmnode.tex
                        }
@@ -67,16 +67,16 @@ newtype TProb = TProb { logProbability :: Score }
            deriving (Show)
 
 -- @ start tprob-tprobs.tex
-data TProbs = TProbs
-  { m_m :: TProb, m_i :: TProb, m_d :: TProb
-  , i_m :: TProb, i_i :: TProb
--- @ end tprob-tprobs.tex
-  ---GROSS HACKERY (these are in the middle to prevent a bad page break in the paper)
-  , b_m :: TProb -- XXX aren't these just taking up space in the cache lines?
-  , m_e :: TProb
--- @ start tprob-tprobs.tex
-  , d_m :: TProb, d_d :: TProb }
--- @ end tprob-tprobs.tex
+data TProbs = TProbs { m_m :: {-# UNPACK #-} !TProb
+                     , m_i :: {-# UNPACK #-} !TProb
+                     , m_d :: {-# UNPACK #-} !TProb
+                     , i_m :: {-# UNPACK #-} !TProb
+                     , i_i :: {-# UNPACK #-} !TProb
+                     , b_m :: {-# UNPACK #-} !TProb
+                     , m_e :: {-# UNPACK #-} !TProb
+                     , d_m :: {-# UNPACK #-} !TProb
+                     , d_d :: {-# UNPACK #-} !TProb
+                     }
             deriving (Show)
 
 data TxLabel = TL String String (TProbs -> TProb)
