@@ -389,6 +389,29 @@ viterbiFightPath ohmm query =
   (scoreOf opath < negLogZero && scoreOf npath < negLogZero) ==>
   printTestCase infodump $ all stateEq $ zip (unScored opath) (unScored npath)
   where opath = viterbi consPath HasNoEnd query ohmm
+        npath = V4.scoredPath model query
+        model = slice hmm (Slice { nodes_skipped = 0, width = numNodes hmm })
+        hmm = toHMM ohmm
+
+        stateEq :: (StateLabel, V4.StateLabel) -> Bool
+        stateEq (Mat, V4.Mat) = True
+        stateEq (Ins, V4.Ins) = True
+        stateEq (Del, V4.Del) = True
+        stateEq (_  , _     ) = False
+
+        infodump =
+          printf ("=== %s nodes; %s residues\nOLDPATH: %s\nNEWPATH: %s\n" ++
+                  "DOTMODEL:\n%s\n")
+          (show $ numNodes hmm) (show $ U.length query)
+          (showpath opath) (showpath npath) (hmmDotString ohmm)
+        showpath :: Show a => Scored [a] -> String
+        showpath (Scored path (Score s)) = printf "%.2f@%s" s (show path)
+
+viterbiFightPathTree :: HMM -> QuerySequence -> Property
+viterbiFightPathTree ohmm query =
+  (scoreOf opath < negLogZero && scoreOf npath < negLogZero) ==>
+  printTestCase infodump $ all stateEq $ zip (unScored opath) (unScored npath)
+  where opath = viterbi consPath HasNoEnd query ohmm
         ntree = V4.costTree model query
         npath = V4.statePath $ ntree
         model = slice hmm (Slice { nodes_skipped = 0, width = numNodes hmm })

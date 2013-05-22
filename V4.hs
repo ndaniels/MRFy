@@ -59,10 +59,10 @@ statePath :: Tree -> Scored StatePath
 statePath = fmap reverse . rightToLeft
   where rightToLeft (FromBegin s) = Scored [] s
         rightToLeft (StepFrom []) = Scored [] negLogZero
-        rightToLeft (StepFrom scores) = fmap ((:) state) $ (scoreOf s) /+/ next
-          where next = rightToLeft tree
-                (state, tree) = unScored s
-                s = minimum scores
+        rightToLeft (StepFrom scores) = fmap ((:) state) next
+          where (next, state) = minimum $ map deepScored scores
+                deepScored s = (scoreOf s /+/ rightToLeft tree, state)
+                  where (state, tree) = unScored s
 
 cost :: Tree -> Score
 cost (FromBegin s) = s
@@ -76,8 +76,9 @@ costTree :: Model -> QuerySequence -> Tree
 costTree = hoViterbi FromBegin (\s l t -> Scored (l, t) s) StepFrom 
 
 scoredPath :: Model -> QuerySequence -> Scored [StateLabel] 
-scoredPath = hoViterbi (Scored []) (\s state path -> s /+/ fmap (state:) path) xminimum 
-  where xminimum = L.foldl' min (Scored [] negLogZero)
+scoredPath mod qs = fmap reverse $ hoViterbi (Scored []) combine xminimum mod qs
+  where combine s state path = s /+/ fmap (state:) path
+        xminimum = L.foldl' min (Scored [] negLogZero)
 
 scoreOnly, _lazyScoreOnly, strictScoreOnly :: Model -> QuerySequence -> Score
 scoreOnly = strictScoreOnly 

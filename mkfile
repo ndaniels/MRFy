@@ -54,5 +54,9 @@ bench-short:V:
 bench-short-old:V:
 	(cabal install && in-dir mrfy-bench ./mrfy-bench -s -old)
 
+dot:V:
+	dot -Tpdf -o tree.pdf tree.dot
+	dot -Tpdf -o model.pdf model.dot
+
 # note: to build profile: ghc --make Main.hs -O3 -rtsopts -o $TGT
 # then, ghc --make Main.hs -O3 -prof -auto-all -caf-all -rtsopts -osuf p_o -o $TGT
