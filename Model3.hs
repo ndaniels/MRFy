@@ -1,4 +1,4 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE BangPatterns, GeneralizedNewtypeDeriving #-}
 {-# OPTIONS_GHC -Wall -fno-warn-name-shadowing #-}
 
 
@@ -29,23 +29,26 @@ import qualified Data.Vector as V
 import qualified MRFTypes as T
 import qualified Score as S
 
-data MState = M { m_i, m_m, m_d :: S.Score
+data MState = M { m_i, m_m, m_d :: {-# UNPACK #-} !S.Score
                 , m_emission :: T.EProbs
                 }
   deriving (Eq, Show)
 
-data IState = I { i_i, i_m :: S.Score
+data IState = I { i_i, i_m :: {-# UNPACK #-} !S.Score
                 , i_emission :: T.EProbs
                 }
   deriving (Eq, Show)
               
-data DState = D { d_m, d_d :: S.Score }
+data DState = D { d_m, d_d :: {-# UNPACK #-} !S.Score }
   deriving (Eq, Show)
 
-data Node = Node { m :: MState, d :: DState, i :: IState }
+data Node = Node { m :: MState
+                 , d :: DState
+                 , i :: IState
+                 }
   deriving (Eq, Show)
 
-data Sequence i a = Sequence { count :: Int, get :: i -> a }
+data Sequence i a = Sequence { count :: {-# UNPACK #-} !Int, get :: i -> a }
 
 type Model = Sequence NodeIndex Node
 
@@ -75,7 +78,9 @@ toHMM old_nodes = HMM (fmap toNode old_nodes)
                       }
                 trans = T.transitions n
 
-data Slice = Slice { width :: Int, nodes_skipped :: Int }
+data Slice = Slice { width :: Int
+                   , nodes_skipped :: Int
+                   }
 
 slice :: HMM -> Slice -> Model
 slice (HMM nodes) s = Sequence (width s) mid
