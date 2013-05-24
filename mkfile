@@ -58,5 +58,13 @@ dot:V:
 	dot -Tpdf -o tree.pdf tree.dot
 	dot -Tpdf -o model.pdf model.dot
 
+cinput-micro:V: build
+	dist/build/mrfy/mrfy -dumpc testing/micro8.hmm+ testing/micro8.fasta \
+		> cviterbi/input_hmm.c
+
+cinput:V: build
+	dist/build/mrfy/mrfy -dumpc testing/8.hmm+ testing/8.fasta \
+		> cviterbi/input_hmm.c
+
 # note: to build profile: ghc --make Main.hs -O3 -rtsopts -o $TGT
 # then, ghc --make Main.hs -O3 -prof -auto-all -caf-all -rtsopts -osuf p_o -o $TGT

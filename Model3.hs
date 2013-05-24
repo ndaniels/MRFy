@@ -12,6 +12,7 @@ module Model3
   ( Model, Sequence(..), Node(..), Slice(..)
   , NodeIndex(..)
   , MState(..), IState(..), DState(..)
+  , HMM(..)
                             
   , toHMM, slice, numNodes
   )

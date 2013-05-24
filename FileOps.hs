@@ -40,6 +40,8 @@ import Viterbi
 import Model3 (toHMM, slice, Slice(..), numNodes)
 import V4 hiding (statePath)
 
+import qualified ModelToC as ModC
+
 loadTestData :: Files -> IO (HMMHeader, HMM, [QuerySequence])
 loadTestData files =
   do querySeqs <- readFasta $ fastaF files
@@ -174,6 +176,15 @@ runCommand (TestHMM "tree-consistent") =
 
 runCommand (TestHMM t) =
   error $ "I never heard of test " ++ t
+
+runCommand (TestViterbiPath searchParams
+                (files @ Files { hmmPlusF = hmmPlusFile, outputF = outFile})) = do
+  (header, ohmm, queries) <- loadTestData files
+  let hmm = toHMM ohmm
+  let model = slice hmm (Slice { width = numNodes hmm, nodes_skipped = 0 })
+  let scores = map (vTest model) queries
+  mapM_ putStrLn scores
+    where vTest m q = show $ scoredPath m q
   
 runCommand (TestViterbi searchParams
                 (files @ Files { hmmPlusF = hmmPlusFile, outputF = outFile})) = do
@@ -190,6 +201,15 @@ runCommand (TestOldViterbi searchParams
   let scores = map (vTest model) queries
   mapM_ putStrLn scores
     where vTest h q = show $ scoreOf $ viterbi (:) HasNoEnd q h
+
+runCommand (DumpToC
+                (files @ Files { hmmPlusF = hmmPlusFile, outputF = outFile})) = do
+  (header, ohmm, queries) <- loadTestData files
+  let hmm = toHMM ohmm
+  putStrLn "#include <float.h>"
+  putStrLn "#include <stdlib.h>\n"
+  putStrLn "#include \"model.h\"\n"
+  putStrLn (ModC.toc hmm)
 
 runCommand (AlignmentSearch searchParams
                 (files @ Files { hmmPlusF = hmmPlusFile, outputF = outFile })) = do
