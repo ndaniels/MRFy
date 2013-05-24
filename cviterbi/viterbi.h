@@ -16,8 +16,8 @@ struct ScoredPath *
 viterbi(struct HMM *hmm, QuerySequence query);
 
 Score
-scored_path_add(struct ScoredPath *sp, enum StateLabel state, Score score,
-                struct ScoredPath *result);
+scored_path_combine(struct ScoredPath *sp, enum StateLabel state, Score score,
+                    struct ScoredPath *result);
 
 void
 scored_path_print(struct ScoredPath *sp);

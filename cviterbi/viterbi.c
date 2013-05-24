@@ -46,7 +46,7 @@ static void
 memo_table_free(struct MemoTable * mt);
 
 Score
-scored_path_add(struct ScoredPath *sp, enum StateLabel state, Score score,
+scored_path_combine(struct ScoredPath *sp, enum StateLabel state, Score score,
                 struct ScoredPath *result)
 {
     int32_t i;
@@ -65,11 +65,11 @@ score_add(Score s1, Score s2)
 {
     Score sum;
 
-    if (s1 == DBL_MAX || s2 == DBL_MAX)
-        return DBL_MAX;
+    if (s1 == NEGLOGZERO || s2 == NEGLOGZERO)
+        return NEGLOGZERO;
     sum = s1 + s2;
-    if (DBL_MAX <= sum)
-        return DBL_MAX;
+    if (NEGLOGZERO <= sum)
+        return NEGLOGZERO;
     return sum;
 }
 
@@ -145,7 +145,7 @@ vee(struct HMM *hmm, QuerySequence query,
             return hmm->nodes[0].m_i;
         else {
             is = vee_score(INS, hmm, query, INS, nc, rc, mt, &isp);
-            return scored_path_add(&isp, INS, is, result);
+            return scored_path_combine(&isp, INS, is, result);
         }
     } else if (MAT == stateRight && 1 == nc) { /* intoMatOne */
         if (0 == rc)
@@ -155,9 +155,9 @@ vee(struct HMM *hmm, QuerySequence query,
             ds = vee_score(MAT, hmm, query, DEL, nc, rc, mt, &dsp);
 
             if (is <= ds)
-                return scored_path_add(&isp, INS, is, result);
+                return scored_path_combine(&isp, INS, is, result);
             else
-                return scored_path_add(&dsp, DEL, ds, result);
+                return scored_path_combine(&dsp, DEL, ds, result);
         }
     } else if (DEL == stateRight && 1 == nc) { /* intoDelOne */
         if (0 == rc)
@@ -172,29 +172,29 @@ vee(struct HMM *hmm, QuerySequence query,
             ds = vee_score(MAT, hmm, query, DEL, nc, rc, mt, &dsp);
 
             if (ms <= is && ms <= ds)
-                return scored_path_add(&msp, MAT, ms, result);
+                return scored_path_combine(&msp, MAT, ms, result);
             else if (is <= ds)
-                return scored_path_add(&isp, INS, is, result);
+                return scored_path_combine(&isp, INS, is, result);
             else
-                return scored_path_add(&dsp, DEL, ds, result);
+                return scored_path_combine(&dsp, DEL, ds, result);
             break;
         case INS:
             ms = vee_score(INS, hmm, query, MAT, nc, rc, mt, &msp);
             is = vee_score(INS, hmm, query, INS, nc, rc, mt, &isp);
 
             if (ms <= is)
-                return scored_path_add(&msp, MAT, ms, result);
+                return scored_path_combine(&msp, MAT, ms, result);
             else
-                return scored_path_add(&isp, INS, is, result);
+                return scored_path_combine(&isp, INS, is, result);
             break;
         case DEL:
             ms = vee_score(DEL, hmm, query, MAT, nc, rc, mt, &msp);
             ds = vee_score(DEL, hmm, query, DEL, nc, rc, mt, &dsp);
 
             if (ms <= ds)
-                return scored_path_add(&msp, MAT, ms, result);
+                return scored_path_combine(&msp, MAT, ms, result);
             else
-                return scored_path_add(&dsp, DEL, ds, result);
+                return scored_path_combine(&dsp, DEL, ds, result);
             break;
         default:
             assert(false);
