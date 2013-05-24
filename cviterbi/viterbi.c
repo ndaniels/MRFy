@@ -10,8 +10,7 @@
 #include "viterbi.h"
 
 #define NOMEMO -1
-#define NEGLOGZERO FLT_MAX
-#define INFINITY 0.0
+#define NEGLOGZERO DBL_MAX
 
 #define RESIND(ri) (ri) - 'A'
 
@@ -59,6 +58,19 @@ scored_path_add(struct ScoredPath *sp, enum StateLabel state, Score score,
     result->score = score;
     result->path[result->path_len++] = state;
     return score;
+}
+
+Score
+score_add(Score s1, Score s2)
+{
+    Score sum;
+
+    if (s1 == DBL_MAX || s2 == DBL_MAX)
+        return DBL_MAX;
+    sum = s1 + s2;
+    if (DBL_MAX <= sum)
+        return DBL_MAX;
+    return sum;
 }
 
 void
@@ -238,7 +250,7 @@ vee_score(enum StateLabel stateRight,
             assert(false);
             break;
         }
-        s += hmm->nodes[nc].m_emission[RESIND(rc)];
+        s = score_add(s, hmm->nodes[nc].m_emission[RESIND(rc)]);
         break;
     case INS:
         switch (stateRight) {
@@ -255,7 +267,7 @@ vee_score(enum StateLabel stateRight,
             assert(false);
             break;
         }
-        s += hmm->nodes[nc].i_emission[RESIND(rc)];
+        s = score_add(s, hmm->nodes[nc].i_emission[RESIND(rc)]);
         break;
     case DEL:
         switch (stateRight) {
@@ -278,7 +290,7 @@ vee_score(enum StateLabel stateRight,
         break;
     }
 
-    return s + vee_memo(hmm, query, state, nc, rc, mt, result);
+    return score_add(s, vee_memo(hmm, query, state, nc, rc, mt, result));
 }
 
 static struct MemoTable *

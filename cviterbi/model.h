@@ -11,6 +11,9 @@ typedef double Score;
 
 typedef Score EScores[NUMAA];
 
+Score
+score_add(Score s1, Score s2);
+
 struct Node {
     Score m_i;
     Score m_m;
