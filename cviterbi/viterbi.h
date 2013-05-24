@@ -1,15 +1,14 @@
 #ifndef __MRFY_VITERBI_H__
 #define __MRFY_VITERBI_H__
 
-#define PATH_CAP 8096
-#define NUMLABELS 3
-
-enum StateLabel { MAT, INS, DEL };
+enum StateLabel { MAT=0, INS, DEL, NUMLABELS };
+// INS must follow MAT
+const char *label_names[] = { "Mat", "Ins", "Del", "out of bounds" };
 
 struct ScoredPath {
     Score score;
-    enum StateLabel path[PATH_CAP];
-    int32_t path_len;
+    int32_t path_len; // number of labels in 'path'
+    enum StateLabel path[];
 };
 
 struct ScoredPath *

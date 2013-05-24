@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 
+typedef unsigned char AA;
 #define NUMAA 20
 
 typedef char *QuerySequence;
@@ -26,10 +27,11 @@ struct Node {
     EScores i_emission;
 };
 
-struct HMM {
-    int32_t size;
-    struct Node nodes[8096];
-};
+typedef struct HMM {
+    int32_t size; // number of elements in 'nodes'
+    struct Node nodes[];
+      // node 0 contains a Begin state in the Match position
+} *HMM;
 
 void
 hmm_print(struct HMM *hmm);
