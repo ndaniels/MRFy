@@ -23,21 +23,21 @@ struct MemoTable {
     int32_t querylen;
 };
 
-static Score
+static struct ScoredPath *
 vee(struct HMM *hmm, QuerySequence query,
     enum StateLabel stateRight, int32_t nc, int32_t rc,
-    struct MemoTable *mt, struct ScoredPath *result);
+    struct MemoTable *mt);
 
-static Score
+static struct ScoredPath *
 vee_memo(struct HMM *hmm, QuerySequence query,
          enum StateLabel stateRight, int32_t nc, int32_t rc,
-         struct MemoTable *mt, struct ScoredPath *result);
+         struct MemoTable *mt);
 
-static Score
+static struct ScoredPath *
 vee_score(enum StateLabel stateRight,
           struct HMM *hmm, QuerySequence query,
           enum StateLabel state, int32_t nc, int32_t rc,
-          struct MemoTable *mt, struct ScoredPath *result);
+          struct MemoTable *mt);
 
 static struct MemoTable *
 memo_table_new(int32_t hmmlen, int32_t querylen);
@@ -102,7 +102,7 @@ scored_path_print(struct ScoredPath *sp)
 struct ScoredPath *
 viterbi(struct HMM *hmm, QuerySequence query)
 {
-    struct ScoredPath *result;
+    struct ScoredPath *result, *answer;
     struct MemoTable *mt;
     int32_t hmmlen, querylen;
 
@@ -113,23 +113,26 @@ viterbi(struct HMM *hmm, QuerySequence query)
     result = malloc(sizeof(*result));
     assert(result != NULL);
 
-    result->score = 0.0;
-    result->path_len = 0;
-
-    vee(hmm, query, MAT, hmmlen, querylen, mt, result);
+    answer = vee(hmm, query, MAT, hmmlen, querylen, mt);
+    result = memcpy(result, answer);
 
     memo_table_free(mt);
     return result;
 }
 
-static Score
+static struct ScoredPath *
 vee(struct HMM *hmm, QuerySequence query,
     enum StateLabel stateRight, int32_t nc, int32_t rc,
-    struct MemoTable *mt, struct ScoredPath *result)
+    struct MemoTable *mt)
 {
-    Score ms, is, ds;
-    struct ScoredPath msp, isp, dsp;
+    struct ScoredPath *msp, *isp, *dsp;
 
+    /* msp, isp and dsp correspond to the scored state paths
+     * of each possible state transition to `stateRight`.
+     *
+     * `result` will be filled with the best scored state
+     * path of the three.
+     */
     msp.path_len = 0;
     msp.score = 0.0;
     isp.path_len = 0;
@@ -144,8 +147,8 @@ vee(struct HMM *hmm, QuerySequence query,
         if (0 == rc)
             return hmm->nodes[0].m_i;
         else {
-            is = vee_score(INS, hmm, query, INS, nc, rc, mt, &isp);
-            return scored_path_combine(&isp, INS, is, result);
+            isp = vee_score(INS, hmm, query, INS, nc, rc, mt);
+            return scored_path_combine(&isp, INS, is, mt[INS][nc][rc]);
         }
     } else if (MAT == stateRight && 1 == nc) { /* intoMatOne */
         if (0 == rc)
@@ -290,7 +293,7 @@ vee_score(enum StateLabel stateRight,
         break;
     }
 
-    return score_add(s, vee_memo(hmm, query, state, nc, rc, mt, result));
+    return score_add(s, vee(hmm, query, state, nc, rc, mt, result));
 }
 
 static struct MemoTable *
@@ -298,6 +301,7 @@ memo_table_new(int32_t hmmlen, int32_t querylen)
 {
     struct MemoTable *mt;
     Score ***mts;
+    struct ScoredPath *sp;
     int32_t i, j, k;
 
     mts = malloc(sizeof(*mts) * NUMLABELS);
@@ -310,8 +314,14 @@ memo_table_new(int32_t hmmlen, int32_t querylen)
             mts[i][j] = malloc(sizeof(*mts[i][j]) * querylen);
             assert(mts[i][j] != NULL);
 
-            for (k = 0; k < querylen; k++)
-                mts[i][j][k] = NOMEMO;
+            for (k = 0; k < querylen; k++) {
+                sp = malloc(sizeof(*sp));
+                assert(sp != NULL);
+
+                sp->score = NOMEMO;
+                sp->path_len = 0;
+                mts[i][j][k] = sp;
+            }
         }
     }
 
@@ -327,10 +337,12 @@ memo_table_new(int32_t hmmlen, int32_t querylen)
 static void
 memo_table_free(struct MemoTable * mt)
 {
-    int32_t i, j;
+    int32_t i, j, k;
 
     for (i = 0; i < NUMLABELS; i++) {
         for (j = 0; j < mt->hmmlen; j++)
+            for (k = 0; k < querylen; k++)
+                free(mt->scores[i][j][k]);
             free(mt->scores[i][j]);
         free(mt->scores[i]);
     }
@@ -341,6 +353,7 @@ memo_table_free(struct MemoTable * mt)
 int
 main()
 {
+    (void) vee_memo;
     struct ScoredPath *result;
 
     result = viterbi(input_hmm, input_query);
