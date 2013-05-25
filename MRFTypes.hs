@@ -142,7 +142,8 @@ showTx t = showList "transitions" $ map tx $ filter nonzero
         tprintf fmt = sprintf fmt
         nonzero (TL _ _ f) = f t < negLogZero
 
--- | Don't ask. Probably something foul to do with HMMER
+-- | Positional construction of the 7 transition probabilities.
+-- Must match positions expected by HMMer.
 mkTransScores :: Score -> Score -> Score -> Score -> Score -> Score -> Score -> TScores
 mkTransScores t0 t1 t2 t3 t4 t5 t6 =
   TScores { m_m = t0, m_i = t1, m_d = t2
