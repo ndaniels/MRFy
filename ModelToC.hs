@@ -24,7 +24,7 @@ toc (HMM hmm) =
 
         us :: Score -> String
         us s = let d = unScore s
-               in  if isInfinite d then "FLT_MAX" else printf "%f" d
+               in  if isInfinite d then "DBL_MAX" else printf "%f" d
 
         ntoc :: Node -> String
         ntoc n =
