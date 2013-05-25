@@ -71,23 +71,16 @@ micro8 = Files "testing/micro8.hmm+" "testing/micro8.fasta" "/dev/null"
 data Test = T { testName :: String, runTest :: IO () }
 namedTests :: [Test]
 namedTests =
-  [ T "mini" $ admissible "mini8" mini8
-  , T "mini-strings" $ runOne mini8
-
-  , T "8" $ admissible "8" t8
-  , T "8-strings" $ runOne t8
-
-  , T "micro8" $ admissible "micro8" micro8
-  , T "micro8-strings" $ runOne micro8
-
-  , T "all-perturb-8" $ runp oneAllMoversPerturb t8
-  , T "all-perturb-micro8" $ runp oneAllMoversPerturb micro8
-  , T "decay-perturb-8" $ runp oneDecayMoversPerturb t8
-  , T "decay-perturb-micro8" $ runp oneDecayMoversPerturb micro8
-  , T "local-perturb-8" $ runp oneLocalPerturb t8
-  , T "local-perturb-micro8" $ runp oneLocalPerturb micro8
-
-  , T "plan7GenProp" $ quickCheck isPlan7Prop
+  [ T (prefix ++ name ++ suffix) (action files)
+  | (name, files) <- [("mini8", mini8), ("8", t8), ("micro8", micro8)]
+  , (prefix, action, suffix) <- [ ("", admissible name, "")
+                                , ("", runOne, "-strings")
+                                , ("all-perturb-",   runp oneAllMoversPerturb, "")
+                                , ("decay-perturb-", runp oneDecayMoversPerturb, "")
+                                , ("local-perturb-", runp oneLocalPerturb, "")
+                                ]
+  ] ++
+  [ T "plan7GenProp" $ quickCheck isPlan7Prop
   , T "tickProp" $ quickCheck tickProp
   , T "ubProp" $ quickCheck ubProp
   , T "buProp" $ quickCheck buProp
