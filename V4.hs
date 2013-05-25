@@ -4,6 +4,7 @@
 module V4
   ( hoViterbi
   , scoreOnly, scoredPath, costTree, statePath, cost, Tree(..), treeDot
+  , scorePlusX
   , StateLabel(..)
   )
 where
@@ -86,6 +87,9 @@ _lazyScoreOnly  = hoViterbi id (\s _ s' -> s + s') minimum
 strictScoreOnly = hoViterbi id (\(!s) _ (!s') -> s + s') xminimum
   where xminimum = L.foldl' min negLogZero
 
+scorePlusX :: Model -> QuerySequence -> Score -> Score
+scorePlusX m q s = hoViterbi (s+) (\(!s) _ (!s') -> s + s') xminimum m q
+  where xminimum = L.foldl' min negLogZero
 
 
 newtype NodeCount    = NC Int
