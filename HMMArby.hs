@@ -125,8 +125,6 @@ shrinkT shrinkOne t = onlyShrunk $
      new_d_d <- hit $ d_d t
      new_i_m <- hit $ i_m t
      new_i_i <- hit $ i_i t
-     new_b_m <- hit $ b_m t
-     new_m_e <- hit $ m_e t
      return $ TScores { m_m = new_m_m
                       , m_i = new_m_i
                       , m_d = new_m_d
@@ -134,8 +132,6 @@ shrinkT shrinkOne t = onlyShrunk $
                       , d_d = new_d_d
                       , i_m = new_i_m
                       , i_i = new_i_i
-                      , b_m = new_b_m
-                      , m_e = new_m_e
                       }
   where hit p = shrinkMe shrinkOne p
         

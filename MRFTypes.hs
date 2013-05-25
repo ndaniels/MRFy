@@ -120,8 +120,7 @@ data StateLabel = Mat | Ins | Del | Beg | End
 data TScores = TScores
   { m_m :: Score, m_i :: Score, m_d :: Score
   , i_m :: Score, i_i :: Score
-  , d_m :: Score, d_d :: Score
-  , b_m :: Score, m_e :: Score } -- legacy
+  , d_m :: Score, d_d :: Score }
 -- @ end tprob-tprobs.tex
             deriving (Show, Eq)
 
@@ -135,8 +134,6 @@ showTx t = showList "transitions" $ map tx $ filter nonzero
            , TL "D" "D" d_d
            , TL "I" "M" i_m
            , TL "I" "I" i_i
-           , TL "B" "M" b_m
-           , TL "M" "E" m_e
            ]
   where tx (TL from to f) = from ++ "-" ++ tprintf "%.2f" (f t) ++ "->" ++ to
         tprintf fmt = sprintf fmt
@@ -149,9 +146,7 @@ mkTransScores t0 t1 t2 t3 t4 t5 t6 =
   TScores { m_m = t0, m_i = t1, m_d = t2
           , i_m = t3, i_i = t4
           , d_m = t5, d_d = t6
-          , b_m = nlz, m_e = nlz
           } 
-  where nlz = negLogZero
         
 sprintf :: PrintfType t => String -> Score -> t
 sprintf fmt (Score s) = printf fmt s

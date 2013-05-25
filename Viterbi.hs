@@ -290,8 +290,8 @@ transScoreNode n from to =
         edge Ins Ins = i_i
         edge Del Mat = d_m
         edge Del Del = d_d
-        edge Beg Mat = b_m
-        edge Mat End = m_e
+        edge Beg Mat = error "don't talk Beg to me"
+        edge Mat End = error "don't talk End to me"
         edge f   t   = error $ "HMM edge " ++ show f ++ " -> " ++ show t ++
                                " is not allowed in the Plan7 architecture"
 
