@@ -44,7 +44,7 @@ cell(MemoTable t, StateLabel s, NodeCount j, ResidueCount i)
 }
 
 static MemoTable
-memo_new(NodeCount j, ResidueCount i)
+memo_new(NodeCount j, ResidueCount i, bool init)
 {
     int numscores = j * i * NUMLABELS;
     MemoTable t = malloc(sizeof(*t) + numscores * sizeof(t->scores[0]));
@@ -52,8 +52,12 @@ memo_new(NodeCount j, ResidueCount i)
 
     t->hmmlen = j;
     t->querylen = i;
-    for (int i = 0; i < numscores; i++)
-        t->scores[i] = NOMEMO;
+    if (init)
+        for (int i = 0; i < numscores; i++)
+            t->scores[i] = NEGLOGZERO;
+    else
+        for (int i = 0; i < numscores; i++)
+            t->scores[i] = NOMEMO;
 
     return t;
 }
@@ -72,80 +76,93 @@ static Score
 run_forward(HMM hmm, QuerySequence query)
 {
     MemoTable mt;
-    StateLabel s;
     NodeCount j; // number of nodes consumed on path to this state
     ResidueCount i; // number of residues consumed on path to this state
 
     NodeCount num_normals = hmm->size - 1; // number of nodes with normal successors
     ResidueCount n = strlen(query);
 
-    mt = memo_new(hmm->size + 1, n + 1);
-
-    for (i = 0; i < n; i++)
-        for (s = Mat; s < NUMLABELS; s++)
-            *cell(mt, s, 0, i) = NEGLOGZERO;
+    mt = memo_new(hmm->size + 1, n + 1, true);
     *cell(mt, Mat, 0, 0) = 0.0; // BEGIN node
 
     for (j = 0; j < num_normals; j++)
-        for (i = 0; i < n; i++) {
-            AA residue = query[i];
-            Score here = *cell(mt, Mat, j, i);
-            down_successor(mt, Ins, j, i+1, 
-                           here + hmm->nodes[j+1].m_i +
-                           hmm->nodes[j+1].m_emission[resindex(residue)]);
-            down_successor(mt, Mat, j+1, i+1, 
-                           here + hmm->nodes[j].m_m +
-                           hmm->nodes[j].m_emission[resindex(residue)]);
-            down_successor(mt, Del, j+1, i, 
-                           here + hmm->nodes[j].m_d);
+        for (i = 0; i < n-1; i++) {
+            AA residue = query[i+1];
+            int resind = resindex(residue);
 
-            here = *cell(mt, Ins, j, i);
-            down_successor(mt, Ins, j, i+1, 
-                           here + hmm->nodes[j+1].i_i +
-                           hmm->nodes[j+1].i_emission[resindex(residue)]);
-            down_successor(mt, Mat, j+1, i+1, 
-                           here + hmm->nodes[j].i_m +
-                           hmm->nodes[j].m_emission[resindex(residue)]);
+            // m -> i
+            // VI_j+1(i+1) = EI_j+1(aa_i+1) + m->i_j+1 + VM_j+1(i)
+            down_successor(mt, Ins, j+1, i+1, 
+                           hmm->nodes[j+1].i_emission[resind]
+                           + hmm->nodes[j+1].m_i
+                           + *cell(mt, Mat, j+1, i));
 
-            residue = query[i+1];
-            here = *cell(mt, Del, j, i);
+            // m -> m
+            // VM_j+1(i+1) = EM_j+1(aa_i+1) + m->m_j + VM_j(i)
             down_successor(mt, Mat, j+1, i+1, 
-                           here + hmm->nodes[j].d_m +
-                           hmm->nodes[j].m_emission[resindex(residue)]);
-            down_successor(mt, Del, j+1, i, 
-                           here + hmm->nodes[j].d_d);
+                           hmm->nodes[j+1].m_emission[resind]
+                           + hmm->nodes[j].m_m
+                           + *cell(mt, Mat, j, i));
+
+            // m -> d
+            // VD_j+1(i+1) = m->d_j + VM_j(i+1)
+            down_successor(mt, Del, j+1, i+1, 
+                           hmm->nodes[j].m_d
+                           + *cell(mt, Mat, j, i+1));
+
+            // i -> i
+            // VI_j+1(i+1) = EI_j+1(aa_i+1) + i->i_j+1 + VI_j+1(i)
+            down_successor(mt, Ins, j+1, i+1, 
+                           hmm->nodes[j+1].i_emission[resind]
+                           + hmm->nodes[j+1].i_i
+                           + *cell(mt, Ins, j+1, i));
+
+            // i -> m
+            // VM_j+1(i+1) = EM_j+1(aa_i+1) + i->m_j + VI_j(i)
+            down_successor(mt, Mat, j+1, i+1, 
+                           hmm->nodes[j+1].m_emission[resind]
+                           + hmm->nodes[j].i_m
+                           + *cell(mt, Ins, j, i));
+
+            // d -> m
+            // VM_j+1(i+1) = EM_j+1(aa_i+1) + d->m_j + VD_j(i)
+            down_successor(mt, Mat, j+1, i+1, 
+                           hmm->nodes[j+1].m_emission[resind]
+                           + hmm->nodes[j].d_m
+                           + *cell(mt, Del, j, i));
+
+            // d -> d
+            // VD_j+1(i+1) = d->d_j + VD_j(i+1)
+            down_successor(mt, Del, j+1, i+1, 
+                           hmm->nodes[j].d_d
+                           + *cell(mt, Del, j, i+1));
         }
-
-    /* Score here = *cell(mt, Mat, num_normals, n); */
-    /* down_successor(mt, Mat, num_normals+1, n, */
-                   /* here + hmm->nodes[num_normals].m_m); */
-    /*  */
-    /* here = *cell(mt, Ins, num_normals, n); */
-    /* down_successor(mt, Ins, num_normals+1, n, */
-                   /* here + hmm->nodes[num_normals].i_m); */
-    /*  */
-    /* here = *cell(mt, Del, num_normals, n); */
-    /* down_successor(mt, Del, num_normals+1, n, */
-                   /* here + hmm->nodes[num_normals].d_m); */
 
     // It seems like without this loop, not all entries in the DP table will
     // get filled. But maybe they don't need to be. Blech. -- Zombie Andrew
+    j = num_normals;
     for (i = 0; i < n; i++) {
-        Score here = *cell(mt, Mat, num_normals, i);
-        down_successor(mt, Mat, num_normals+1, i,
-                       here + hmm->nodes[num_normals].m_m);
-        
-        here = *cell(mt, Ins, num_normals, i);
-        down_successor(mt, Ins, num_normals+1, i,
-                       here + hmm->nodes[num_normals].i_m);
-        
-        here = *cell(mt, Del, num_normals, i);
-        down_successor(mt, Del, num_normals+1, i,
-                       here + hmm->nodes[num_normals].d_m);
+        // m -> m
+        // VM_j+1(i+1) = m->m_j + VM_j(i)
+        down_successor(mt, Mat, j+1, i+1, 
+                       hmm->nodes[j].m_m
+                       + *cell(mt, Mat, j, i));
+
+        // i -> m
+        // VM_j+1(i+1) = i->m_j + VI_j(i)
+        down_successor(mt, Mat, j+1, i+1, 
+                       hmm->nodes[j].i_m
+                       + *cell(mt, Ins, j, i));
+
+        // d -> m
+        // VM_j+1(i+1) = d->m_j + VD_j(i)
+        down_successor(mt, Mat, j+1, i+1, 
+                       hmm->nodes[j].d_m
+                       + *cell(mt, Del, j, i));
     }
     
     // the answer lies in *cell(t, Mat, hmm->size, n)
-    Score answer = *cell(mt, Mat, num_normals, n-1);
+    Score answer = *cell(mt, Mat, hmm->size, n);
     free(mt);
     return answer;
 }
@@ -319,7 +336,7 @@ viterbi_memo(struct HMM *hmm, QuerySequence query)
 
     hmmlen = hmm->size;
     querylen = strlen(query);
-    mt = memo_new(hmmlen + 1, querylen + 1);
+    mt = memo_new(hmmlen + 1, querylen + 1, false);
 
     answer = vee(hmm, query, Mat, hmmlen, querylen, mt);
 
