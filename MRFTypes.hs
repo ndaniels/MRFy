@@ -2,7 +2,7 @@
 {-# OPTIONS_GHC -Wall -fno-warn-name-shadowing #-}
 
 module MRFTypes
-  ( MRF(..), HMM, HMMHeader(..), HMMNode(..), StateLabel(..)
+  ( MRF(..), HMM, HMMHeader(..), HMMNode(..), StateLabel(..), FullStateLabel(..)
   , matchEmissions, insertionEmissions  
   , StrandPair(..)
   , Helix(..)
@@ -110,10 +110,11 @@ matchEmissions, insertionEmissions :: HMMNode -> EScores
 matchEmissions = matEmissions
 insertionEmissions = insEmissions
 
+data FullStateLabel = Beg | End | BMat | OtherState StateLabel
+                deriving (Eq, Ord, Show)
 -- @ start statelabel.tex
-data StateLabel = Mat | Ins | Del | Beg | End
+data StateLabel = Mat | Ins | Del
 -- @ end statelabel.tex
-                | BMat  -- keeping secrets from our readers...
                 deriving (Show, Ord, Eq, Enum, Ix, Bounded)
 
 -- @ start tprob-tprobs.tex

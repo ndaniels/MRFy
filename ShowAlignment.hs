@@ -42,13 +42,14 @@ import Debug.Trace (trace)
 showAlignment :: HMM
               -> [BetaStrand]
               -> QuerySequence
-              -> StatePath
+              -> FullStatePath
               -> Int
               -> Alphabet
               -> String
 showAlignment hmm betas query path len alpha = 
-  niceify $ showA (map (getResidue alpha) $ U.toList query) path 1 Mat [] [] []
-  where model i = alpha U.! ai
+  niceify $ showA (map (getResidue alpha) $ U.toList query) path 1 (s Mat) [] [] []
+  where s = OtherState
+        model i = alpha U.! ai
           where (_, ai, _) = U.foldl minWithInd 
                                      (0, 0, negLogZero) 
                                      (U.slice 0 ((U.length mEmissions) - 1) mEmissions)
@@ -60,7 +61,7 @@ showAlignment hmm betas query path len alpha =
                                         else
                                           (ind + 1, mi, mp)
   
-        showA :: String -> StatePath -> Int -> StateLabel 
+        showA :: String -> FullStatePath -> Int -> FullStateLabel 
                  -> String -> String -> String -- correspond to the three lines
                  -> (String, String, String)
         showA (q:qs) [] _ _ _ _ _ = error ("No more states but we still have " ++ (show (q:qs)) ++ " query sequence left")
@@ -69,14 +70,14 @@ showAlignment hmm betas query path len alpha =
                                   , reverse $ map toUpper oq
                                   )
         showA [] (p:ps) i lastp oh om oq
-          | p == Del = showA [] ps (i+1) lastp ((model i):oh) (' ':om) ('-':oq)
+          | p == s Del = showA [] ps (i+1) lastp ((model i):oh) (' ':om) ('-':oq)
           | otherwise = error $ (show p) ++ " is not a delete state"
         showA (q:qs) (p:ps) i lastp oh om oq -- 'i' should be the node number
-          | p == Mat = showA qs ps (i+1) p ((model i):oh) ('|':om) (q:oq)
-          | p == BMat = showA qs ps (i+1) p ((model i):oh) ('B':om) (q:oq)
-          | p == Ins || p == Beg || p == End = 
+          | p == s Mat = showA qs ps (i+1) p ((model i):oh) ('|':om) (q:oq)
+          | p == s Ins || p == Beg || p == End =
               showA qs ps i p ('-':oh) (' ':om) (q:oq)
-          | p == Del = showA (q:qs) ps (i+1) p ((model i):oh) (' ':om) ('-':oq)
+          | p == s Del = showA (q:qs) ps (i+1) p ((model i):oh) (' ':om) ('-':oq)
+          | p == BMat = showA qs ps (i+1) p ((model i):oh) ('B':om) (q:oq)
 
         -- Strictly for cutting up the strings and displaying them nicely.
         -- Note: Assumes each string is in the correct order and that
@@ -93,4 +94,3 @@ showAlignment hmm betas query path len alpha =
                   ++ niceify' (splitAt len oh') 
                               (splitAt len om') 
                               (splitAt len oq')
-

@@ -2,7 +2,7 @@
 {-# OPTIONS_GHC -Wall -fno-warn-name-shadowing #-}
 module Viterbi
        ( QuerySequence
-       , StatePath
+       , StatePath, FullStatePath
        , LeftBoundary(..), RightBoundary(..)
        , viterbi
        , viterbiPlusX
@@ -27,6 +27,7 @@ import Score
 type QuerySequence = U.Vector AA
 
 type StatePath = [ StateLabel ]
+type FullStatePath = [ FullStateLabel ]
 
 type ScorePathCons a = a -> [a] -> [a]
 
@@ -59,13 +60,13 @@ viterbi pathCons right query hmm =
         transN state sp = Scored (Prelude.reverse $ unScored sp)
                                  ((aScore state Mat (numNodes - 1)) + (scoreOf sp))
         -- @ start memo.tex -8
-        vee'' = Memo.memo3 (Memo.arrayRange (Mat, End)) 
+        vee'' = Memo.memo3 (Memo.arrayRange (minBound, maxBound)) 
                            (Memo.arrayRange (0, numNodes))
                            (Memo.arrayRange (-1, seqlen)) 
                            vee'
         -- @ end memo.tex
 
-        bestEnd = vee' End (numNodes - 1) (seqlen - 1)
+        bestEnd = vee'End (numNodes - 1) (seqlen - 1)
 
         numNodes = V.length $ hmm
         seqlen = U.length query
@@ -82,6 +83,7 @@ viterbi pathCons right query hmm =
         disallowed = Scored [] negLogZero -- outcome of zero likelihood
         
         vee' :: StateLabel -> Int -> Int -> Scored [StateLabel]
+        vee'End ::  Int -> Int -> Scored [StateLabel]
         
         -- 1  0 Mat
         -- 0  0 Ins
@@ -91,6 +93,16 @@ viterbi pathCons right query hmm =
         -- 0  i End
         -- j -1 Del
         -- j  i Ins, Mat, Del, End
+
+        vee'End 0 _ = Scored [Mat] (error "aScore Mat End 0 not defined")
+        vee'End j i = error "cannot extend standard path with End"
+                      -- extend End $ minimum (map from preds)
+         where _preds = if j >= 2 then [OtherState Mat, End] else [OtherState Mat]
+               _from (OtherState Mat) = aScore Mat Mat (j-1) /+/ vee'' Mat  (j-1) i
+               _from End =                          vee'End (j-1) i
+               _from _ = error "unused case"
+                        -- for local to QUERY we would do j, i-1.
+
 
         -- node 1 and zeroth observation
         vee' Mat 1 0 = Scored [Mat] (aScore Mat Mat 0 + eScore Mat 1 0) -- from Beg
@@ -113,7 +125,6 @@ viterbi pathCons right query hmm =
                        (aScore Ins Ins 0 + eScore Ins 0 i) /+/ vee'' Ins 0 (i-1)
 
         vee' Del 0 _ = disallowed
-        vee' End 0 _ = Scored [Mat] (aScore Mat End 0)
 
         -- node 1 and no more observations (came from begin)
         vee' Mat 1 (-1) = disallowed
@@ -146,14 +157,6 @@ viterbi pathCons right query hmm =
         vee' Del j i = extend Del $ minimum (map from [Mat, Del])
           where from prev = aScore prev Del (j-1) /+/ vee'' prev (j-1) i
 
-        vee' End j i = extend End $ minimum (map from preds)
-         where preds = if j >= 2 then [Mat, End] else [Mat]
-               from Mat  = aScore Mat Mat (j-1) /+/ vee'' Mat  (j-1) i
-               from prev =                          vee'' prev (j-1) i
-                        -- for local to QUERY we would do j, i-1.
-
-        vee' Beg _ _  = error "Viterbi called on Beg state" 
-        vee' BMat _ _  = error "Viterbi called on BMat state" 
 
 
 viterbiPlusX :: ScorePathCons StateLabel -> RightBoundary ->
@@ -171,12 +174,21 @@ viterbiPlusX pathCons right query hmm begScore =
         transN :: StateLabel -> Scored StatePath -> Scored StatePath
         transN state sp = Scored (Prelude.reverse $ unScored sp)
                                  ((aScore state Mat (numNodes - 1)) + (scoreOf sp))
-        vee'' = Memo.memo3 (Memo.arrayRange (Mat, End)) 
+        vee'' = Memo.memo3 (Memo.arrayRange (minBound, maxBound)) 
                            (Memo.arrayRange (0, numNodes))
                            (Memo.arrayRange (-1, seqlen)) 
                            vee'
 
-        bestEnd = vee' End (numNodes - 1) (seqlen - 1)
+        bestEnd = vee'End (numNodes - 1) (seqlen - 1)
+
+        vee'End 0 _ = Scored [Mat] (error "aScore Mat End 0 not defined")
+        vee'End j i = -- extend End $ minimum (map from preds)
+                      error "cannot extend standard path with End"
+         where _preds = if j >= 2 then [OtherState Mat, End] else [OtherState Mat]
+               _from (OtherState Mat) = aScore Mat Mat (j-1) /+/ vee'' Mat  (j-1) i
+               _from End =                          vee'End (j-1) i
+               _from _ = error "unused case"
+                        -- for local to QUERY we would do j, i-1.
 
         numNodes = V.length $ hmm
         seqlen = U.length query
@@ -224,7 +236,6 @@ viterbiPlusX pathCons right query hmm begScore =
                        (aScore Ins Ins 0 + eScore Ins 0 i) /+/ vee'' Ins 0 (i-1)
 
         vee' Del 0 _ = disallowed
-        vee' End 0 _ = Scored [Mat] (aScore Mat End 0)
 
         -- node 1 and no more observations (came from begin)
         vee' Mat 1 (-1) = disallowed
@@ -255,14 +266,6 @@ viterbiPlusX pathCons right query hmm begScore =
         vee' Del j i = extend Del $ minimum (map from [Mat, Del])
           where from prev = aScore prev Del (j-1) /+/ vee'' prev (j-1) i
 
-        vee' End j i = extend End $ minimum (map from preds)
-         where preds = if j >= 2 then [Mat, End] else [Mat]
-               from Mat  = aScore Mat Mat (j-1) /+/ vee'' Mat  (j-1) i
-               from prev =                          vee'' prev (j-1) i
-                        -- for local to QUERY we would do j, i-1.
-
-        vee' Beg _ _  = error "Viterbi called on Beg state" 
-        vee' BMat _ _  = error "Viterbi called on BMat state" 
 
 -- TODO seqLocal: consider the case where we consume obs, not state, for beg & end.
 
@@ -290,8 +293,6 @@ transScoreNode n from to =
         edge Ins Ins = i_i
         edge Del Mat = d_m
         edge Del Del = d_d
-        edge Beg Mat = error "don't talk Beg to me"
-        edge Mat End = error "don't talk End to me"
         edge f   t   = error $ "HMM edge " ++ show f ++ " -> " ++ show t ++
                                " is not allowed in the Plan7 architecture"
 

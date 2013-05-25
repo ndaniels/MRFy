@@ -58,7 +58,6 @@ nodeCount xss@(x:xs)
           count Mat  = 1
           count Del  = 1
           count Ins  = 0
-          count _    = 0
         
 -- | Admissible solution to a problem
 -- admissibleSolution :: HMMModel -> QuerySquence -> [StateLabel] -> Bool
@@ -159,8 +158,6 @@ scoreHMM nss qss hss = scoreHMM' (reverse $ V.toList nss)
     scoreHMM' (n:ns) (q:qs) (Ins:hs) t = eScore n q Ins +
                                          aScore n Ins t +
                                          scoreHMM' (n:ns) qs hs Ins
-    scoreHMM' (n:ns) (q:qs) (_:hs)   t = error "Invalid state"
-    scoreHMM' _      _      _        _ = error "WTF"
     -- note: we are assuming we trust the below functions from Viterbi
     eScore = emissionScoreNode
     aScore = transScoreNode

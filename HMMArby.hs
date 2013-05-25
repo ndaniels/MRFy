@@ -91,7 +91,7 @@ instance Arbitrary Score where
 
 instance Arbitrary StateLabel where
   -- Test this with sample (arbitrary :: Gen StateLabel)
-  arbitrary = elements [Mat, Ins, Del, Beg, End, BMat] 
+  arbitrary = elements [minBound..maxBound]
 
 -- | Map a probability to a score
 toScore :: Double -> Score

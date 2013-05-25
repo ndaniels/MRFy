@@ -108,17 +108,17 @@ statePath ::
   -> QuerySequence
   -> [BetaStrand]
   -> Scored Placement
-  -> StatePath
+  -> FullStatePath
 statePath hmm query betas ps =
   foldr (++) []
     $ map viterbiOrBeta
     $ DL.zip4 hmmAlignTypes (map traceid miniHMMs) miniQueries
     $ dupeElements [0..]
-  where viterbiOrBeta :: (BetaOrViterbi, HMM, QuerySequence, Int) -> StatePath
+  where viterbiOrBeta :: (BetaOrViterbi, HMM, QuerySequence, Int) -> FullStatePath
         viterbiOrBeta (Beta,   _ns, _qs, i) =
           take (len (betas !! i)) $ repeat BMat
         viterbiOrBeta (Viterbi, ns, qs, _i) =
-          unScored $ viterbi consPath HasNoEnd qs ns
+          map OtherState $ unScored $ viterbi consPath HasNoEnd qs ns
 
         -- traceid hmm = trace (show (V.map nodeNum hmm)) $ id hmm 
         -- traceid = (trace (show guesses)) id 
