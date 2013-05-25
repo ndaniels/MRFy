@@ -171,12 +171,10 @@ viterbiPlusX pathCons right query hmm begScore =
         transN :: StateLabel -> Scored StatePath -> Scored StatePath
         transN state sp = Scored (Prelude.reverse $ unScored sp)
                                  ((aScore state Mat (numNodes - 1)) + (scoreOf sp))
-        -- @ start memo.tex -8
         vee'' = Memo.memo3 (Memo.arrayRange (Mat, End)) 
                            (Memo.arrayRange (0, numNodes))
                            (Memo.arrayRange (-1, seqlen)) 
                            vee'
-        -- @ end memo.tex
 
         bestEnd = vee' End (numNodes - 1) (seqlen - 1)
 
@@ -241,12 +239,10 @@ viterbiPlusX pathCons right query hmm begScore =
 
         -- consume an observation AND a node
         --------------------------------------------------------
-        -- @ start viterbi.tex -8
         vee' Mat j i = fmap (Mat `cons`) $
            eScore Mat j i /+/ minimum (map avSum [Mat, Ins, Del])
          where avSum prev =
                  aScore prev Mat (j-1) /+/ vee'' prev (j-1) (i-1)
-        -- @ end viterbi.tex
                cons = pathCons
         -- avoids having to explain 'extend' in the paper
 
