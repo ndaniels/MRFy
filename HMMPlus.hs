@@ -176,13 +176,13 @@ hmmInsertionEmissions = optSpaces *> (U.fromList <$> many1 (lexeme logProb)) <* 
 hmmTransitions        = optSpaces *> 
                        (
                        mkTransScores <$> 
-                       (mkTransScore Mat Mat <$> lexeme logProb <* optSpaces) <*>
-                       (mkTransScore Mat Ins <$> lexeme logProb <* optSpaces) <*>
-                       (mkTransScore Mat Del <$> lexeme logProb <* optSpaces) <*>
-                       (mkTransScore Ins Mat <$> lexeme logProb <* optSpaces) <*>
-                       (mkTransScore Ins Ins <$> lexeme logProb <* optSpaces) <*>
-                       (mkTransScore Del Mat <$> lexeme logProb <* optSpaces) <*>
-                       (mkTransScore Del Del <$> lexeme logProb <* optSpaces)
+                       (lexeme logProb <* optSpaces) <*>
+                       (lexeme logProb <* optSpaces) <*>
+                       (lexeme logProb <* optSpaces) <*>
+                       (lexeme logProb <* optSpaces) <*>
+                       (lexeme logProb <* optSpaces) <*>
+                       (lexeme logProb <* optSpaces) <*>
+                       (lexeme logProb <* optSpaces)
                        ) 
                        <* eol 
                       <?> "hmmTransitions"

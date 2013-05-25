@@ -11,7 +11,7 @@ module MRFTypes
   , BetaStrand(..), BetaPosition, BetaResidue(..), BetaPair(..)
   , TScores(..)
   , EScores
-  , mkTransScore, mkTransScores
+  , mkTransScores
   , mkScore
   , showBetas
   , hmmDot, hmmDotString
@@ -154,9 +154,6 @@ mkTransScores t0 t1 t2 t3 t4 t5 t6 =
         
 sprintf :: PrintfType t => String -> Score -> t
 sprintf fmt (Score s) = printf fmt s
-
-mkTransScore :: StateLabel -> StateLabel -> Score -> Score
-mkTransScore _from _to = id -- wtf?
 
 mkScore :: String -> Score
 mkScore "*" = negLogZero
