@@ -5,6 +5,7 @@ module Viterbi
        , StatePath
        , LeftBoundary(..), RightBoundary(..)
        , viterbi
+       , viterbiPlusX
        , transScore
        , transScoreNode
        , emissionScore
@@ -119,6 +120,119 @@ viterbi pathCons right query hmm =
         vee' Mat 1 (-1) = disallowed
         vee' Ins 1 (-1) = disallowed
         vee' Del 1 (-1) = Scored [Del] (aScore Mat Del 0) -- came from begin
+
+        -- not node 1 yet, but not more observations (came from delete)
+        vee' Mat _ (-1) = disallowed
+        vee' Ins _ (-1) = disallowed
+        vee' Del j (-1) = extend Del $
+                          aScore Del Del (j - 1) /+/ vee'' Del (j - 1) (-1)
+
+        -- consume an observation AND a node
+        --------------------------------------------------------
+        -- @ start viterbi.tex -8
+        vee' Mat j i = fmap (Mat `cons`) $
+           eScore Mat j i /+/ minimum (map avSum [Mat, Ins, Del])
+         where avSum prev =
+                 aScore prev Mat (j-1) /+/ vee'' prev (j-1) (i-1)
+        -- @ end viterbi.tex
+               cons = pathCons
+        -- avoids having to explain 'extend' in the paper
+
+        -- consume an observation but not a node
+        vee' Ins j i = extend Ins
+                       (eScore Ins j i /+/ minimum (map from [Mat, Ins]))
+         where from prev = aScore prev Ins j /+/ vee'' prev j (i-1)
+
+        -- consume a node but not an observation
+        vee' Del j i = extend Del $ minimum (map from [Mat, Del])
+          where from prev = aScore prev Del (j-1) /+/ vee'' prev (j-1) i
+
+        vee' End j i = extend End $ minimum (map from preds)
+         where preds = if j >= 2 then [Mat, End] else [Mat]
+               from Mat  = aScore Mat Mat (j-1) /+/ vee'' Mat  (j-1) i
+               from prev =                          vee'' prev (j-1) i
+                        -- for local to QUERY we would do j, i-1.
+
+        vee' Beg _ _  = error "Viterbi called on Beg state" 
+        vee' BMat _ _  = error "Viterbi called on BMat state" 
+
+
+viterbiPlusX :: ScorePathCons StateLabel -> RightBoundary ->
+           QuerySequence -> HMM -> Score -> Scored StatePath
+viterbiPlusX pathCons right query hmm begScore =
+  if numNodes == 0 then
+    Scored [] negLogOne
+  else
+    minimum $ [transN s $ 
+              vee'' s (numNodes - 1) (seqlen - 1) | s <- [Mat, Ins, Del]] ++ 
+              case right of { HasEnd -> [bestEnd]; HasNoEnd -> [] }
+
+  -- trace (show state DL.++ " " DL.++ show node DL.++ " " DL.++ show obs) $
+  where 
+        transN :: StateLabel -> Scored StatePath -> Scored StatePath
+        transN state sp = Scored (Prelude.reverse $ unScored sp)
+                                 ((aScore state Mat (numNodes - 1)) + (scoreOf sp))
+        -- @ start memo.tex -8
+        vee'' = Memo.memo3 (Memo.arrayRange (Mat, End)) 
+                           (Memo.arrayRange (0, numNodes))
+                           (Memo.arrayRange (-1, seqlen)) 
+                           vee'
+        -- @ end memo.tex
+
+        bestEnd = vee' End (numNodes - 1) (seqlen - 1)
+
+        numNodes = V.length $ hmm
+        seqlen = U.length query
+
+        extend :: StateLabel -> Scored StatePath -> Scored StatePath
+        extend = fmap . pathCons
+        
+        aScore :: StateLabel -> StateLabel -> Int -> Score
+        aScore = transScore hmm
+        
+        eScore :: StateLabel -> Int -> Int -> Score
+        eScore = emissionScore hmm query
+        
+        disallowed = Scored [] negLogZero -- outcome of zero likelihood
+        
+        vee' :: StateLabel -> Int -> Int -> Scored [StateLabel]
+        
+        -- 1  0 Mat
+        -- 0  0 Ins
+        -- 0 -1 Mat
+        -- 1 -1 Del
+        -- 0  i Ins
+        -- 0  i End
+        -- j -1 Del
+        -- j  i Ins, Mat, Del, End
+
+        -- node 1 and zeroth observation
+        vee' Mat 1 0 = Scored [Mat] (aScore Mat Mat 0 + eScore Mat 1 0 + begScore) -- from Beg
+        vee' Ins 1 0 = disallowed
+        vee' Del 1 0 = disallowed
+
+        -- node 0 and zeroth observation, base of self-insert
+        vee' Mat 0 0 = disallowed
+        vee' Ins 0 0 = Scored [Ins] (aScore Mat Ins 0 + eScore Ins 0 0 + begScore)
+        vee' Del 0 0 = disallowed
+
+        -- node 0 and no observations
+        vee' Mat 0 (-1) = Scored [] (aScore Mat Mat 0 + begScore)
+        vee' Ins 0 (-1) = disallowed
+        vee' Del 0 (-1) = disallowed
+
+        -- node 0 but not zeroth observation
+        vee' Mat 0 _ = disallowed
+        vee' Ins 0 i = extend Ins $     -- possible self-insert cycle
+                       (aScore Ins Ins 0 + eScore Ins 0 i) /+/ vee'' Ins 0 (i-1)
+
+        vee' Del 0 _ = disallowed
+        vee' End 0 _ = Scored [Mat] (aScore Mat End 0)
+
+        -- node 1 and no more observations (came from begin)
+        vee' Mat 1 (-1) = disallowed
+        vee' Ins 1 (-1) = disallowed
+        vee' Del 1 (-1) = Scored [Del] (aScore Mat Del 0 + begScore) -- came from begin
 
         -- not node 1 yet, but not more observations (came from delete)
         vee' Mat _ (-1) = disallowed
