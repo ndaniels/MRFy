@@ -42,6 +42,7 @@ import V4 hiding (statePath)
 
 import qualified ModelToC as ModC
 
+
 loadTestData :: Files -> IO (HMMHeader, HMM, [QuerySequence])
 loadTestData files =
   do querySeqs <- readFasta $ fastaF files
@@ -54,128 +55,82 @@ translateQuery = V.fromList . map lookup
                         Just i -> AA i
                         Nothing -> error "Residue not found in alphabet"
 
+admissible :: String -> Files -> IO ()
+admissible what files =
+  do test <- loadTestData files
+     res <- quickCheckResult (oneTestAdmissible test)
+     putStrLn $ "Function viterbiAdmissible " ++
+        (case res of { Success {} -> "passes"; _ -> "DOES NOT PASS" }) ++
+                      " test " ++ what
+
+mini8, t8, micro8 :: Files
+mini8  = Files "testing/mini8.hmm+" "testing/mini8.fasta" "/dev/null"
+t8     = Files "testing/8.hmm+"     "testing/8.fasta"     "/dev/null"
+micro8 = Files "testing/micro8.hmm+" "testing/micro8.fasta" "/dev/null"
+
+data Test = T { testName :: String, runTest :: IO () }
+namedTests :: [Test]
+namedTests =
+  [ T "mini" $ admissible "mini8" mini8
+  , T "mini-strings" $ runOne mini8
+
+  , T "8" $ admissible "8" t8
+  , T "8-strings" $ runOne t8
+
+  , T "micro8" $ admissible "micro8" micro8
+  , T "micro8-strings" $ runOne micro8
+
+  , T "all-perturb-8" $ runp oneAllMoversPerturb t8
+  , T "all-perturb-micro8" $ runp oneAllMoversPerturb micro8
+  , T "decay-perturb-8" $ runp oneDecayMoversPerturb t8
+  , T "decay-perturb-micro8" $ runp oneDecayMoversPerturb micro8
+  , T "local-perturb-8" $ runp oneLocalPerturb t8
+  , T "local-perturb-micro8" $ runp oneLocalPerturb micro8
+
+  , T "plan7GenProp" $ quickCheck isPlan7Prop
+  , T "tickProp" $ quickCheck tickProp
+  , T "ubProp" $ quickCheck ubProp
+  , T "buProp" $ quickCheck buProp
+
+  , T "blockNoMergeProp" $ quickCheck blockNoMergeProp
+  , T "mergeMergeProp" $ quickCheck mergeMergeProp
+
+  , T "countEnumLaw" $ quickCheck countEnumLaw
+  , T "pointsWidthLaw" $ quickCheck pointsWidthLaw
+  , T "twoCountsLaw" $ quickCheck twoCountsLaw
+
+  , T "freqLaw" $ quickCheck freqLaw
+  , T "isEnumLaw" $ quickCheck isEnumLaw
+  , T "randomLaw" $ quickCheck randomLaw
+
+  , T "consistent-scoring" $ quickCheck consistentScoring
+  , T "scoreable-metrics" $ quickCheck scoreableMetrics
+  , T "viterbi-awesome" $ quickCheck viterbiIsAwesome
+
+  , T "all-perturb" $ runNamedProps perturbProps
+  , T "all-props" $ runNamedProps $ perturbProps ++ hmmProps ++ hyperProps
+
+  , T "fight" $ quickCheck viterbiFight
+  , T "fight-path" $ quickCheck viterbiFightPath
+
+  , T "tree-consistent" $ quickCheck costTreeConsistent
+  ]
+
+  where runNamedProps props = mapM_ run $ props
+        run (s, p) = do { putStrLn ("Testing " ++ s); quickCheck p }
+        runp perturb files = putStrLn . perturb =<< loadTestData files
+        runOne files = mapM_ putStrLn . oneTestResults =<< loadTestData files
+
+
+
 runCommand :: Commanded -> IO ()
-runCommand (TestHMM "mini") =
-  do test <- loadTestData $ Files "testing/mini8.hmm+" "testing/mini8.fasta" "/dev/null"
-     res <- quickCheckResult (oneTestAdmissible test)
-     putStrLn $ "Function viterbiAdmissible " ++
-                (case res of { Success {} -> "passes"; _ -> "DOES NOT PASS" }) ++
-                " test mini8"
 
-runCommand (TestHMM "mini-strings") =
-  do test <- loadTestData $ Files "testing/mini8.hmm+" "testing/mini8.fasta" "/dev/null"
-     mapM_ putStrLn $ oneTestResults test
-
-runCommand (TestHMM "8") =
-  do test <- loadTestData $ Files "testing/8.hmm+" "testing/8.fasta" "/dev/null"
-     res <- quickCheckResult (oneTestAdmissible test)
-     putStrLn $ "Function viterbiAdmissible " ++
-                (case res of { Success {} -> "passes"; _ -> "DOES NOT PASS" }) ++
-                " test 8"
-
-runCommand (TestHMM "8-strings") =
-  do test <- loadTestData $ Files "testing/8.hmm+" "testing/8.fasta" "/dev/null"
-     mapM_ putStrLn $ oneTestResults test
-
-runCommand (TestHMM "micro8") =
-  do test <- loadTestData $ Files "testing/micro8.hmm+" "testing/micro8.fasta" "/dev/null"
-     res <- quickCheckResult (oneTestAdmissible test)
-     putStrLn $ "Function viterbiAdmissible " ++
-                (case res of { Success {} -> "passes"; _ -> "DOES NOT PASS" }) ++
-                " test micro8"
-
-runCommand (TestHMM "micro8-strings") =
-  do test <- loadTestData $ Files "testing/micro8.hmm+" "testing/micro8.fasta" "/dev/null"
-     mapM_ putStrLn $ oneTestResults test
-
-runCommand (TestHMM "all-perturb-8") =
-  do test <- loadTestData $ Files "testing/8.hmm+" "testing/8.fasta" "/dev/null"
-     putStrLn $ oneAllMoversPerturb test
-
-runCommand (TestHMM "all-perturb-micro8") =
-  do test <- loadTestData $ Files "testing/micro8.hmm+" "testing/micro8.fasta" "/dev/null"
-     putStrLn $ oneAllMoversPerturb test
-
-runCommand (TestHMM "decay-perturb-8") =
-  do test <- loadTestData $ Files "testing/8.hmm+" "testing/8.fasta" "/dev/null"
-     putStrLn $ oneDecayMoversPerturb test
-
-runCommand (TestHMM "decay-perturb-micro8") =
-  do test <- loadTestData $ Files "testing/micro8.hmm+" "testing/micro8.fasta" "/dev/null"
-     putStrLn $ oneDecayMoversPerturb test
-
-runCommand (TestHMM "local-perturb-8") =
-  do test <- loadTestData $ Files "testing/8.hmm+" "testing/8.fasta" "/dev/null"
-     putStrLn $ oneLocalPerturb test
-
-runCommand (TestHMM "local-perturb-micro8") =
-  do test <- loadTestData $ Files "testing/micro8.hmm+" "testing/micro8.fasta" "/dev/null"
-     putStrLn $ oneLocalPerturb test
-
-runCommand (TestHMM "plan7GenProp") =
-  quickCheck isPlan7Prop
-
-runCommand (TestHMM "tickProp") =
-  quickCheck tickProp
-
-runCommand (TestHMM "ubProp") =
-  quickCheck ubProp
-
-runCommand (TestHMM "buProp") =
-  quickCheck buProp
-
-runCommand (TestHMM "blockNoMergeProp") =
-  quickCheck blockNoMergeProp
-
-runCommand (TestHMM "mergeMergeProp") =
-  quickCheck mergeMergeProp
-
-runCommand (TestHMM "countEnumLaw") =
-  quickCheck countEnumLaw
-
-runCommand (TestHMM "pointsWidthLaw") =
-  quickCheck pointsWidthLaw
-
-runCommand (TestHMM "twoCountsLaw") =
-  quickCheck twoCountsLaw
-
-runCommand (TestHMM "freqLaw") =
-  quickCheck freqLaw
-
-runCommand (TestHMM "isEnumLaw") =
-  quickCheck isEnumLaw
-
-runCommand (TestHMM "randomLaw") =
-  quickCheck randomLaw
-
-runCommand (TestHMM "consistent-scoring") =
-  quickCheck consistentScoring
-
-runCommand (TestHMM "scoreable-metrics") =
-  quickCheck scoreableMetrics
-
-runCommand (TestHMM "viterbi-awesome") =
-  quickCheck viterbiIsAwesome
-
-runCommand (TestHMM "all-perturb") =
-  mapM_ run $ perturbProps
-    where run (s, p) = do { putStrLn ("Testing " ++ s); quickCheck p }
-
-runCommand (TestHMM "all-props") =
-  mapM_ run $ perturbProps ++ hmmProps ++ hyperProps
-    where run (s, p) = do { putStrLn ("Testing " ++ s); quickCheck p }
-
-runCommand (TestHMM "fight") =
-  quickCheck viterbiFight
-
-runCommand (TestHMM "fight-path") =
-  quickCheck viterbiFightPath
-
-runCommand (TestHMM "tree-consistent") =
-  quickCheck costTreeConsistent
-
+runCommand (TestHMM "all") = sequence_ $ map runTest namedTests
 runCommand (TestHMM t) =
-  error $ "I never heard of test " ++ t
+  case find ((== t) . testName) namedTests of
+    Just t -> runTest t
+    Nothing -> error $ "I never heard of test " ++ t ++ "; try\n" ++
+                       concatMap ((\n -> "  " ++ n ++ "\n") . testName) namedTests
 
 runCommand (TestViterbiPath searchParams
                 (files @ Files { hmmPlusF = hmmPlusFile, outputF = outFile})) = do
