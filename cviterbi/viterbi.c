@@ -16,6 +16,7 @@ const double NEGLOGZERO = DBL_MAX;
 static inline int resindex(AA residue) { return residue - 'A'; }
 
 static inline Score min(Score x, Score y) { return x < y ? x : y; }
+static inline Score max(Score x, Score y) { return x > y ? x : y; }
 
 extern QuerySequence  input_query;
 extern struct HMM    *input_hmm;
@@ -86,80 +87,74 @@ run_forward(HMM hmm, QuerySequence query)
     *cell(mt, Mat, 0, 0) = 0.0; // BEGIN node
 
     for (j = 0; j < num_normals; j++)
-        for (i = 0; i < n-1; i++) {
-            AA residue = query[i+1];
+        for (i = 0; i < n; i++) {
+            AA residue = query[i];
             int resind = resindex(residue);
+            Score here;
 
-            // m -> i
-            // VI_j+1(i+1) = EI_j+1(aa_i+1) + m->i_j+1 + VM_j+1(i)
-            down_successor(mt, Ins, j+1, i+1, 
-                           hmm->nodes[j+1].i_emission[resind]
-                           + hmm->nodes[j+1].m_i
-                           + *cell(mt, Mat, j+1, i));
-
-            // m -> m
-            // VM_j+1(i+1) = EM_j+1(aa_i+1) + m->m_j + VM_j(i)
-            down_successor(mt, Mat, j+1, i+1, 
-                           hmm->nodes[j+1].m_emission[resind]
+            here = *cell(mt, Mat, j, i);
+            down_successor(mt, Ins, j, i+1,
+                           hmm->nodes[j].i_emission[resind]
+                           + hmm->nodes[j].m_i
+                           + here);
+            down_successor(mt, Mat, j+1, i+1,
+                           hmm->nodes[j].m_emission[resind]
                            + hmm->nodes[j].m_m
-                           + *cell(mt, Mat, j, i));
-
-            // m -> d
-            // VD_j+1(i+1) = m->d_j + VM_j(i+1)
-            down_successor(mt, Del, j+1, i+1, 
+                           + here);
+            down_successor(mt, Del, j+1, i,
                            hmm->nodes[j].m_d
-                           + *cell(mt, Mat, j, i+1));
+                           + here);
 
-            // i -> i
-            // VI_j+1(i+1) = EI_j+1(aa_i+1) + i->i_j+1 + VI_j+1(i)
-            down_successor(mt, Ins, j+1, i+1, 
-                           hmm->nodes[j+1].i_emission[resind]
-                           + hmm->nodes[j+1].i_i
-                           + *cell(mt, Ins, j+1, i));
-
-            // i -> m
-            // VM_j+1(i+1) = EM_j+1(aa_i+1) + i->m_j + VI_j(i)
-            down_successor(mt, Mat, j+1, i+1, 
-                           hmm->nodes[j+1].m_emission[resind]
+            here = *cell(mt, Ins, j, i);
+            down_successor(mt, Ins, j, i+1,
+                           hmm->nodes[j].i_emission[resind]
+                           + hmm->nodes[j].i_i
+                           + here);
+            down_successor(mt, Mat, j+1, i+1,
+                           hmm->nodes[j].m_emission[resind]
                            + hmm->nodes[j].i_m
-                           + *cell(mt, Ins, j, i));
+                           + here);
 
-            // d -> m
-            // VM_j+1(i+1) = EM_j+1(aa_i+1) + d->m_j + VD_j(i)
-            down_successor(mt, Mat, j+1, i+1, 
-                           hmm->nodes[j+1].m_emission[resind]
+            here = *cell(mt, Del, j, i);
+            down_successor(mt, Mat, j+1, i+1,
+                           hmm->nodes[j].m_emission[resind]
                            + hmm->nodes[j].d_m
-                           + *cell(mt, Del, j, i));
-
-            // d -> d
-            // VD_j+1(i+1) = d->d_j + VD_j(i+1)
-            down_successor(mt, Del, j+1, i+1, 
+                           + here);
+            down_successor(mt, Del, j+1, i,
                            hmm->nodes[j].d_d
-                           + *cell(mt, Del, j, i+1));
+                           + here);
         }
 
-    // It seems like without this loop, not all entries in the DP table will
-    // get filled. But maybe they don't need to be. Blech. -- Zombie Andrew
-    j = num_normals;
-    for (i = 0; i < n; i++) {
-        // m -> m
-        // VM_j+1(i+1) = m->m_j + VM_j(i)
-        down_successor(mt, Mat, j+1, i+1, 
-                       hmm->nodes[j].m_m
-                       + *cell(mt, Mat, j, i));
+    int lastj = num_normals;
+    down_successor(mt, Mat, lastj+1, n, 
+                   hmm->nodes[lastj].m_m
+                   + *cell(mt, Mat, lastj, n-1));
+    down_successor(mt, Mat, lastj+1, n, 
+                   hmm->nodes[lastj].i_m
+                   + *cell(mt, Ins, lastj, n-1));
+    down_successor(mt, Mat, lastj+1, n, 
+                   hmm->nodes[lastj].d_m
+                   + *cell(mt, Del, lastj, n-1));
 
-        // i -> m
-        // VM_j+1(i+1) = i->m_j + VI_j(i)
-        down_successor(mt, Mat, j+1, i+1, 
-                       hmm->nodes[j].i_m
-                       + *cell(mt, Ins, j, i));
-
-        // d -> m
-        // VM_j+1(i+1) = d->m_j + VD_j(i)
-        down_successor(mt, Mat, j+1, i+1, 
-                       hmm->nodes[j].d_m
-                       + *cell(mt, Del, j, i));
-    }
+    /* i = n; */
+    /* j = hmm->size; */
+    /* while (i >= 0 && j >= 0) { */
+        /* Score ms = *cell(mt, Mat, j, i); */
+        /* Score is = *cell(mt, Ins, j, i); */
+        /* Score ds = *cell(mt, Del, j, i); */
+/*  */
+        /* if (ms <= is && ms <= ds) { */
+            /* printf("Mat "); */
+            /* i--; */
+            /* j--; */
+        /* } else if (is <= ds) { */
+            /* printf("Ins "); */
+            /* i--; */
+        /* } else { */
+            /* printf("Del "); */
+            /* j--; */
+        /* } */
+    /* } */
     
     // the answer lies in *cell(t, Mat, hmm->size, n)
     Score answer = *cell(mt, Mat, hmm->size, n);
