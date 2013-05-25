@@ -29,7 +29,7 @@ struct Node {
 
 typedef struct HMM {
     int32_t size; // number of elements in 'nodes'
-    struct Node nodes[];
+    struct Node nodes[8096];
       // node 0 contains a Begin state in the Match position
 } *HMM;
 
