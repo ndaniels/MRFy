@@ -54,6 +54,7 @@ mutate _ query betas scorer (Scored oldp _) =
 -- precondition: length betas == length oldp && maxRight >= sum betas
 randomizePlacement 
   :: RandomGen r => [BetaStrand] -> Placement -> Int -> Rand r Placement
+randomizePlacement _ [] _ = return []
 randomizePlacement betas oldp maxRight = shiftFrom betas 0 (tail oldp ++ [maxRight])
   where shiftFrom (beta:betas) leftBound (rightBound:nextBounds) = do
           g  <- getRandomR (leftBound, rightBound - len beta)
