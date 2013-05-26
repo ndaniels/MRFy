@@ -365,13 +365,14 @@ main(int argc, char **argv)
 
     printf("%d\n", num_models);
 
-    for (int j = 0; j < num_models; j++)
-        while (NULL != (q = *input_query++)) {
-            printf("%s\n", q);
+    for (int j = 0; j < num_models; j++) {
+        QuerySequence *qs = input_query;
+        while (NULL != (q = *qs++)) {
             for (int i = 0; i < passes; i++)
                 score = viterbi_dp(&input_hmms[j], q);
             printf("DP Score:   %f\n", score);
         }
+    }
 
     return 0;
 }
