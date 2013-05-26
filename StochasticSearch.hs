@@ -57,6 +57,7 @@ data SearchParameters = SearchParameters { strategy :: NewSS
                                          , mutationRate :: Maybe Double
                                          , convergenceAge :: Maybe Int
                                          , secPreds :: Maybe [SSPrediction]
+                                         , viterbiPasses :: Int
                                          }
 
 getSearchParm :: SearchParameters -> (SearchParameters ->  Maybe a) -> a
