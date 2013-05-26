@@ -17,7 +17,7 @@ import Text.Printf (printf)
 
 import qualified Constants as C
 import qualified Dot
-import Model2
+import Model3
 import Score
 
 -- import Debug.Trace (trace)
@@ -103,13 +103,16 @@ newtype ResidueCount = RC Int
 -- be specialized to produce various outputs. 
 
 transition :: Node -> StateLabel -> StateLabel -> Score
-transition n from to = edge from n
-  where edge Mat = goto to . m
-        edge Del = goto to . d
-        edge Ins = goto to . i
-        goto Mat = toM
-        goto Del = toD
-        goto Ins = toI
+transition n from to = edge from to n
+  where edge Mat Mat = m_m . m
+        edge Mat Ins = m_i . m
+        edge Mat Del = m_d . m
+        edge Ins Mat = i_m . i
+        edge Ins Ins = i_i . i
+        edge Del Mat = d_m . d
+        edge Del Del = d_d . d
+        edge Del Ins = error "d_i impossible"
+        edge Ins Del = error "i_d impossible"
 
 emission :: Node -> StateLabel -> C.AA -> Score
 emission n state residue =
@@ -130,10 +133,9 @@ hoViterbi :: forall a b .
           -> (Score -> StateLabel -> a -> b) -- ^ one possible child
           -> ([b] -> a) -- ^ make answer from all children
           -> Model -> QuerySequence -> a
-hoViterbi leaf edge internal model rs = vee' Mat (NC $ count nodes) (RC $ U.length rs)
- where node    (NC j) = get nodes (NI j)
+hoViterbi leaf edge internal model rs = vee' Mat (NC $ count model) (RC $ U.length rs)
+ where node    (NC j) = get model (NI j)
        residue (RC i) = rs U.! i
-       Model { begin = bnode, middle = nodes } = model
 
        vee' :: StateLabel -> NodeCount -> ResidueCount -> a
        -- ^ @vee' sHat j i@ returns the min-cost path
@@ -141,8 +143,10 @@ hoViterbi leaf edge internal model rs = vee' Mat (NC $ count nodes) (RC $ U.leng
        -- producing the first @i@ residues from the vector @rs@.
        -- (For diagram see https://www.evernote.com/shard/s276/sh/39e47600-3354-4e8e-89f8-5c89884f9245/8880bd2c2a94dffb9be1432f12471ff2)
        -- @ start hov4.tex -7
-       vee' Mat (NC 0) i = matchIntoZero i
-       vee' Del (NC 0) i = delIntoZero i
+       vee' Mat (NC 0) (RC 0) = error "reached unreachable state Mat/0/0"
+       vee' Ins (NC 0) i = intoInsZero i
+       vee' Mat (NC 1) i = intoMatOne i
+       vee' Del (NC 1) i = intoDelOne i
        vee' stateRight j i = prevs (preceders stateRight) stateRight
                                    (predUnless j Ins) (predUnless i Del)
        -- @ end hov4.tex
@@ -185,27 +189,19 @@ hoViterbi leaf edge internal model rs = vee' Mat (NC $ count nodes) (RC $ U.leng
        predUnless :: forall a . Enum a => a -> StateLabel -> StateLabel -> a
        predUnless n don't_move s = if s == don't_move then n else pred n
 
-       delIntoZero (RC 0) = leaf (toD $ b bnode)
-       delIntoZero _      = internal []
+       -- handles special non-emitting transitions into Ins state 0 and Mat state 1
+       -- as well as self-transition for Ins state 0
+       intoInsZero (RC 0) = leaf (transition (node 0) Mat Ins)
+       intoInsZero i = prevs [Ins] Ins (\_ -> 0) (\_ -> pred i)
 
-       matchIntoZero (RC 0) = leaf (toM $ b bnode)
-       matchIntoZero i = 
-         internal [ edge score Ins (izero pi)
-                  | let score = (toM $ bi bnode)
-                              + i_emission (bi bnode) C./!/ (residue pi)
-                  ]
-          where pi = pred i
+       intoDelOne (RC 0) = leaf (transition (node 0) Mat Del)
+       intoDelOne _      = internal []
 
-       izero (RC 0) = leaf (toI $ b bnode)
-       izero i = 
-         internal [ edge score Ins (izero pi)
-                  | let score = (toI $ bi bnode)
-                              + i_emission (bi bnode) C./!/ (residue pi)
-                  ]
-         where pi = pred i
+       intoMatOne (RC 0) = leaf (transition (node 0) Mat Mat)
+       intoMatOne i = prevs [Ins, Del] Mat (\_ -> 0) (predUnless i Del)
 
 
        vee'' = Memo.memo3 (Memo.arrayRange (minBound, maxBound))
-                          (Memo.arrayRange (0, NC (count nodes - 1)))
+                          (Memo.arrayRange (0, NC (count model - 1)))
                           (Memo.arrayRange (0, RC (U.length rs - 1)))
                vee'

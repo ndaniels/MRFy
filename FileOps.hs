@@ -37,7 +37,7 @@ import ShowAlignment
 import StochasticSearch
 import Viterbi
 
-import Model2 (toHMM, slice, Slice(..), numNodes)
+import Model3 (toHMM, slice, Slice(..), numNodes)
 import V4 hiding (statePath)
 
 import qualified ModelToC as ModC
@@ -152,7 +152,6 @@ runCommand (TestOldViterbi searchParams
   mapM_ putStrLn scores
     where vTest h q = show $ scoreOf $ viterbi (:) HasNoEnd q h
 
-{-
 runCommand (DumpToC
                 (files @ Files { hmmPlusF = hmmPlusFile, outputF = outFile})) = do
   (header, ohmm, queries) <- loadTestData files
@@ -161,7 +160,6 @@ runCommand (DumpToC
   putStrLn "#include <stdlib.h>\n"
   putStrLn "#include \"model.h\"\n"
   putStrLn (ModC.toc hmm)
--}
 
 runCommand (AlignmentSearch searchParams
                 (files @ Files { hmmPlusF = hmmPlusFile, outputF = outFile })) = do
