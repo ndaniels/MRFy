@@ -16,6 +16,7 @@ data Flag = Verbose | Version | Help
             | Generations String | MultiStartPop String
             | PopSize String | InitTemp String | CoolingFact String
             | BoltzmannConst String | MutationRate String | Convergence String
+            | ViterbiPasses String
 
 options :: [OptDescr Flag]
 options =
@@ -34,6 +35,7 @@ options =
   , Option ['g'] ["genetic"] (NoArg StratGA) "use genetic algorithms"
   , Option ['r'] ["random"] (NoArg StratRand) "use random hill climbing"
   , Option ['d'] ["decay"] (NoArg StratRD) "use random decay"
+  , Option [] ["num-passes"] (ReqArg ViterbiPasses "INT") "number of times to run viterbi for benchmarking"
   ]
 
 data Files = Files { hmmPlusF :: String
@@ -77,6 +79,7 @@ getParams (f:fs) =
     BoltzmannConst x -> params { boltzmannConstant = Just $ read x }
     MutationRate x -> params { mutationRate = Just $ read x }
     Convergence x -> params { convergenceAge = Just $ read x }
+    ViterbiPasses x -> params { viterbiPasses = read x }
   where params = getParams fs
 
 
@@ -105,4 +108,5 @@ defaultSP = SearchParameters { strategy = SimulatedAnnealing.nss
                              , mutationRate = Just 1.0
                              , convergenceAge = Nothing
                              , secPreds = Nothing
+                             , viterbiPasses = 1
                              }

@@ -164,12 +164,26 @@ runCommand (TestHMM "all-props") =
 runCommand (TestHMM t) =
   error $ "I never heard of test " ++ t
   
+-- use `viterbiPasses` from `searchParams` and `scorePlusX`...
 runCommand (TestViterbi searchParams
                 (files @ Files { hmmPlusF = hmmPlusFile, outputF = outFile})) = do
+  -- (header, ohmm, queries) <- loadTestData files 
+  -- let hmm = toHMM ohmm 
+  -- let model = slice hmm (Slice { width = numNodes hmm, nodes_skipped = 0 }) 
+  -- let scores = map (vTest model) queries 
+  -- putStrLn $ show $ sum $ concat scores 
+    -- where vTest m q = map plus [1..(viterbiPasses searchParams)] 
+            -- where plus i = scorePlusX m q (Score $ fromIntegral i) 
+
   (header, model, queries) <- loadTestData files
   let scores = map (vTest model) queries
-  mapM_ putStrLn scores
-    where vTest h q = show $ scoreOf $ viterbi consNoPath HasNoEnd q h
+  putStrLn $ show $ sum $ concat scores
+    where vTest m q = map plus [1..(viterbiPasses searchParams)]
+            where plus i = scoreOf
+                           $ viterbiPlusX consNoPath HasNoEnd q m (toScore i)
+
+          toScore :: Int -> Score
+          toScore = Score . fromIntegral
 
 runCommand (AlignmentSearch searchParams
                 (files @ Files { hmmPlusF = hmmPlusFile, outputF = outFile })) = do
