@@ -1,1 +1,2 @@
-/home/nr/papers/mrfy/mrfy
+./
+
