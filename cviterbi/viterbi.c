@@ -18,8 +18,8 @@ static inline int resindex(AA residue) { return residue - 'A'; }
 static inline Score min(Score x, Score y) { return x < y ? x : y; }
 static inline Score max(Score x, Score y) { return x > y ? x : y; }
 
-extern QuerySequence  input_query;
-extern struct HMM    *input_hmm;
+extern QuerySequence  *input_query;
+extern struct HMM     *input_hmms;
 
 typedef int NodeCount;
 typedef int ResidueCount;
@@ -346,21 +346,34 @@ viterbi_dp(struct HMM *hmm, QuerySequence query)
 }
 
 int
-main()
+main(int argc, char **argv)
 {
     (void) viterbi_dp;
     (void) viterbi_memo;
     (void) vee_memo;
+    int passes = 1;
+    int num_models;
+    QuerySequence q;
 
-    Score score;
+    Score score = 0.0;
+    num_models = sizeof(*input_hmms) / sizeof(input_hmms[0]);
+    if (argc == 2)
+        passes = atoi(argv[1]);
 
-    hmm_print(input_hmm);
+    /* hmm_print(input_hmms); */
 
-    score = viterbi_memo(input_hmm, input_query);
-    printf("\nMemo Score: %f\n", score);
+    /* score = viterbi_memo(input_hmms, input_query); */
+    /* printf("\nMemo Score: %f\n", score); */
 
-    score = viterbi_dp(input_hmm, input_query);
-    printf("\nDP Score:   %f\n", score);
+    printf("%d\n", num_models);
+
+    for (int j = 0; j < num_models; j++)
+        while (NULL != (q = *input_query++)) {
+            printf("%s\n", q);
+            for (int i = 0; i < passes; i++)
+                score = viterbi_dp(&input_hmms[j], q);
+            printf("DP Score:   %f\n", score);
+        }
 
     return 0;
 }
