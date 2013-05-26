@@ -45,6 +45,7 @@ data Files = Files { hmmPlusF :: String
 
 -- | Things this program can be commanded to do
 data Commanded = AlignmentSearch SearchParameters Files
+               | Multi (Files -> Commanded) [Files]
                | TestHMM String
                | TestViterbi SearchParameters Files
                | TestViterbiPath SearchParameters Files
@@ -61,7 +62,15 @@ getFiles [hmmPlus, fasta, output] = Files { hmmPlusF = hmmPlus
                                           , fastaF = fasta
                                           , outputF = output
                                           }
-getFiles _ = error "AG fool"
+getFiles _ = error "Usage: $0 hmm fasta [hmm fasta ...]"
+
+oneOrMulti :: (Files -> Commanded) -> [String] -> Commanded
+oneOrMulti one args@(_:_:_:_:_) = Multi one (searches args)
+  where searches [] = []
+        searches (h:f:args) = getFiles [h, f] : searches args
+        searches _ = error "Usage: $0 [options] hmm fasta [hmm fasta ...]"
+oneOrMulti one args = one (getFiles args)
+
 
 getParams :: [Flag] -> SearchParameters
 getParams [] = defaultSP
@@ -86,33 +95,23 @@ getParams (f:fs) =
   where params = getParams fs
 
 
+filesCommand :: (SearchParameters -> Files -> Commanded) ->
+                ([Flag], [String], [String]) -> Commanded
+                
+filesCommand cmd (o, moreArgs, [])   = oneOrMulti (cmd (getParams o)) moreArgs
+filesCommand _   (_, _,        errs) = error (concat errs ++ usageInfo header options)
+  where header = "Usage: mrfy [OPTION ...] hmm fasta [hmm fasta ...]"
+
+parse :: (SearchParameters -> Files -> Commanded) -> [String] -> Commanded
+parse cmd argv = filesCommand cmd (getOpt RequireOrder options argv)
+
 getOpts :: [String] -> Commanded 
-getOpts ["-test", what] = TestHMM what
-getOpts ("-dumpc":argv) = 
-    case getOpt RequireOrder options argv of
-      (_, moreArgs, []) -> DumpToC (getFiles moreArgs)
-      (_, _, errs) -> error (concat errs ++ usageInfo header options)
-  where header = "Usage: mrfy [OPTION ...] files..."
-getOpts ("-viterbi":argv) = 
-    case getOpt RequireOrder options argv of
-      (o, moreArgs, []) -> TestViterbi (getParams o) (getFiles moreArgs)
-      (_, _, errs) -> error (concat errs ++ usageInfo header options)
-  where header = "Usage: mrfy [OPTION ...] files..."
-getOpts ("-viterbi-path":argv) = 
-    case getOpt RequireOrder options argv of
-      (o, moreArgs, []) -> TestViterbiPath (getParams o) (getFiles moreArgs)
-      (_, _, errs) -> error (concat errs ++ usageInfo header options)
-  where header = "Usage: mrfy [OPTION ...] files..."
-getOpts ("-old-viterbi":argv) = 
-    case getOpt RequireOrder options argv of
-      (o, moreArgs, []) -> TestOldViterbi (getParams o) (getFiles moreArgs)
-      (_, _, errs) -> error (concat errs ++ usageInfo header options)
-  where header = "Usage: mrfy [OPTION ...] files..."
-getOpts argv =
-    case getOpt RequireOrder options argv of
-      (o, moreArgs, []) -> AlignmentSearch (getParams o)  (getFiles moreArgs)
-      (_, _, errs) -> error (concat errs ++ usageInfo header options)
-  where header = "Usage: mrfy [OPTION ...] files..."
+getOpts ["-test", what]        = TestHMM what
+getOpts ("-dumpc":argv)        = parse (const DumpToC) argv
+getOpts ("-viterbi":argv)      = parse TestViterbi argv
+getOpts ("-viterbi-path":argv) = parse TestViterbiPath argv
+getOpts ("-old-viterbi":argv)  = parse TestOldViterbi argv
+getOpts argv                   = parse AlignmentSearch argv
 
 defaultSP :: SearchParameters
 defaultSP = SearchParameters { strategy = SimulatedAnnealing.nss

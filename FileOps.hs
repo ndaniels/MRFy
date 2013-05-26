@@ -161,6 +161,8 @@ runCommand (DumpToC
   putStrLn "#include \"model.h\"\n"
   putStrLn (ModC.toc hmm)
 
+runCommand (Multi cmd filess) = mapM_ (runCommand . cmd) filess
+
 runCommand (AlignmentSearch searchParams
                 (files @ Files { hmmPlusF = hmmPlusFile, outputF = outFile })) = do
   (header, hmm, queries) <- loadTestData files
