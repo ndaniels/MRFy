@@ -36,7 +36,7 @@ import MRFTypes
 import Score
 import Viterbi
 
-import Model3 (toHMM, slice, Slice(..), numNodes)
+import Model2 (toHMM, slice, Slice(..), numNodes)
 import qualified V4
 
 
