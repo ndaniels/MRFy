@@ -9,6 +9,7 @@
 
 #include "model.h"
 #include "viterbi.h"
+#include "input_hmm.h"
 
 const double NOMEMO = -1.0;
 const double NEGLOGZERO = DBL_MAX;
@@ -19,7 +20,7 @@ static inline Score min(Score x, Score y) { return x < y ? x : y; }
 static inline Score max(Score x, Score y) { return x > y ? x : y; }
 
 extern QuerySequence  *input_query;
-extern struct HMM     *input_hmms;
+
 
 typedef int NodeCount;
 typedef int ResidueCount;
@@ -348,15 +349,12 @@ viterbi_dp(struct HMM *hmm, QuerySequence query)
 int
 main(int argc, char **argv)
 {
-    (void) viterbi_dp;
     (void) viterbi_memo;
     (void) vee_memo;
     int passes = 1;
-    int num_models;
     QuerySequence q;
 
     Score score = 0.0;
-    num_models = sizeof(*input_hmms) / sizeof(input_hmms[0]);
     if (argc == 2)
         passes = atoi(argv[1]);
 

@@ -1,7 +1,7 @@
 #include <float.h>
 #include <stdlib.h>
 
-#include "model.h"
+#include "input_hmm.h"
 
 struct HMM input_hmms[] = {
     {101, {
@@ -512,3 +512,5 @@ struct HMM input_hmms[] = {
     }}
     // , next hmm to go here...
 };
+
+int num_models = sizeof(input_hmms)/sizeof(input_hmms[0]);
