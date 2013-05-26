@@ -30,9 +30,14 @@ import qualified Data.Vector as V
 import qualified MRFTypes as T
 import qualified Score as S
 
-data MState = M { m_i, m_m, m_d :: S.Score
-                , m_emission :: T.EScores
+type Score = S.Score
+type EScores = T.EScores
+
+-- @ start model3-mstate.tex
+data MState = M { m_i, m_m, m_d :: Score
+                , m_emission :: EScores
                 }
+-- @ end model3-mstate.tex
   deriving (Eq, Show)
 
 data IState = I { i_i, i_m :: S.Score
@@ -43,7 +48,9 @@ data IState = I { i_i, i_m :: S.Score
 data DState = D { d_m, d_d :: S.Score }
   deriving (Eq, Show)
 
+-- @ start model3-node.tex
 data Node = Node { m :: MState, d :: DState, i :: IState }
+-- @ end model3-node.tex
   deriving (Eq, Show)
 
 data Sequence i a = Sequence { count :: Int, get :: i -> a }
