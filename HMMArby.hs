@@ -52,8 +52,6 @@ instance Arbitrary (V.Vector HMMNode) where
   arbitrary = do
     -- A random length is used here to essentially guarantee
     -- that we get a list of HMMNodes with at least length 2.
-    -- Is there a better way to do this? (Preferably without
-    -- setting a maximum.)
     randLen <- sized $ \n -> choose (minimumModelSize, n `max` minimumModelSize)
     nodes <- vectorOf randLen arbitrary :: Gen [HMMNode]
     return $ V.fromList $ map annotate $ zip [0..] nodes
