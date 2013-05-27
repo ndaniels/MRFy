@@ -143,11 +143,10 @@ hoViterbi leaf edge internal model rs = vee' Mat (NC $ count model) (RC $ U.leng
        vee' Ins (NC 0) (RC 0) = leaf (transition (node 0) Mat Ins)
        vee' Mat (NC 1) (RC 0) = leaf (transition (node 0) Mat Mat)
        vee' Mat j@(NC 1) i = 
-          prevs [Mat, Del] Mat (predUnless j Ins) (predUnless i Del)
-       ---            ^^^
+          prevs [Ins, Mat, Del] Mat (predUnless j Ins) (predUnless i Del)
+       ---                 ^^^
        --- removing this unnecessary Del state increases execution time
        --- by 21% on short benchmark and 18% on the medium benchmark
-       --- removing the unncessary Mat state has no measurable effect
        --- removing the whole thing slows by 18% on the short benchmark
        --- even though the code is identical to the general case
        vee' stateHat j i = prevs (preceders stateHat) stateHat
