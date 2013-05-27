@@ -134,6 +134,9 @@ hoViterbi :: forall a edge .
           -> Model -> QuerySequence -> a
 hoViterbi lf edg int model rs = vee' Mat (NI $ count model) (RC $ U.length rs)
  where 
+       {-# INLINE leaf #-}
+       {-# INLINE edge #-}
+       {-# INLINE internal #-}
        -- @ start hosigs.tex -7
        leaf     :: Score -> a
        edge     :: Score -> StateLabel -> a -> edge
