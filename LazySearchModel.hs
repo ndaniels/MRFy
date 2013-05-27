@@ -125,8 +125,7 @@ unHistory (History a) = a
 -- history.  It requires as a precondition that the input be infinite
 -- and that the first state be useful.
 -- @ start stop.tex
-type SearchStop pt =
-       [Utility (CCosted (Scored pt))] -> History pt
+type SearchStop pt = [Utility (CCosted (Scored pt))] -> History pt
 -- @ end stop.tex
 
 
@@ -194,22 +193,33 @@ everyPt :: RandomGen r
         => SearchGen pt r -> CCosted (Scored pt)
         -> Rand r [Utility (CCosted (Scored pt))]
 everyPt sg (CCosted cost startPt) = do
-  successors <- mapM (nextPt sg) (repeat startPt)
-  tagged     <- zipWithM costedUtility successors [succ cost..]
-  let (useless, Useful pt : _) = span isUseless tagged
+  successors <- zipWithM costedUtility [succ cost..] =<<
+                mapM (nextPt sg) (repeat startPt)
+  let (useless, Useful pt : _) = span isUseless successors
   (++) (Useful (CCosted cost startPt) : useless) <$> everyPt sg pt
  where
-   costedUtility pt cost = return . fmap (CCosted cost) =<< utility sg move
+   costedUtility cost pt = return . fmap (CCosted cost) =<< utility sg move
      where move = Move { older = startPt, younger = pt, youngerCCost = cost }
 -- @ end everygen.tex
 
+-- the next version is sad because of 'length useless'.  Otherwise it might be nice.
+_everyPt2 :: RandomGen r
+        => SearchGen pt r -> CCost -> Scored pt
+        -> Rand r [Utility (Scored pt)]
+_everyPt2 sg cost startPt = do
+  successors <- zipWithM costedUtility [succ cost..] =<<
+                mapM (nextPt sg) (repeat startPt)
+  let (useless, Useful pt : _) = span isUseless successors
+  (++) (Useful startPt : useless) <$> _everyPt2 sg (succ cost + length useless) pt
+ where
+   costedUtility cost pt = utility sg move
+     where move = Move { older = startPt, younger = pt, youngerCCost = cost }
   
 --------------------------------------------------------
 -- @ start search.tex
-search :: RandomGen r => SearchGen pt r -> SearchStop pt
-       -> Rand r (History pt)
-search strat test =
-  return . test =<< everyPt strat . CCosted 0 =<< pt0 strat
+search :: RandomGen r
+       => SearchGen pt r -> SearchStop pt -> Rand r (History pt)
+search sg test = return . test =<< everyPt sg . CCosted 0 =<< pt0 sg
 -- @ end search.tex
 
 data FullSearchStrategy placement r =
