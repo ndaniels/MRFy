@@ -63,8 +63,6 @@ scorePlusX m q s = hoViterbi (s+) (\(!s) _ (!s') -> s + s') xminimum m q
   where xminimum = L.foldl' min negLogZero
 
 
-newtype NodeCount    = NC Int
-  deriving (Enum, Ord, Eq, Num, Ix)
 newtype ResidueCount = RC Int
   deriving (Enum, Ord, Eq, Num, Ix)
 
@@ -104,29 +102,31 @@ hoViterbi :: forall a b .
           -> (Score -> StateLabel -> a -> b) -- ^ one possible child
           -> ([b] -> a) -- ^ make answer from all children
           -> Model -> QuerySequence -> a
-hoViterbi leaf edge internal model rs = vee' Mat (NC $ count model) (RC $ U.length rs)
- where node    (NC j) = get model (NI j)
+hoViterbi leaf edge internal model rs = vee' Mat (NI $ count model) (RC $ U.length rs)
+ where node    (NI j) = get model (NI j)
        residue (RC i) = rs U.! i
 
-       vee' :: StateLabel -> NodeCount -> ResidueCount -> a
+       -- @ start hov4.tex -7
+       vee' :: StateLabel -> NodeIndex -> ResidueCount -> a
+       -- @ end hov4.tex
        -- ^ @vee' sHat j i@ returns the min-cost path
        -- from state @Mat@ node 0 to state @sHat@ node @j@,
        -- producing the first @i@ residues from the vector @rs@.
        -- (For diagram see https://www.evernote.com/shard/s276/sh/39e47600-3354-4e8e-89f8-5c89884f9245/8880bd2c2a94dffb9be1432f12471ff2)
+       vee' Mat (NI 0) (RC 0) = error "reached unreachable state Mat/0/0"
        -- @ start hov4.tex -7
-       vee' Mat (NC 0) (RC 0) = error "reached unreachable state Mat/0/0"
-       vee' Ins (NC 0) i = intoInsZero i
-       vee' Mat (NC 1) i = intoMatOne i
-       vee' Del (NC 1) i = intoDelOne i
-       vee' stateRight j i =
+       vee' Ins (NI 0) i = intoInsZero i
+       vee' Mat (NI 1) i = intoMatOne i
+       vee' Del (NI 1) i = intoDelOne i
+       vee' stateHat j i =
          internal [ edge score state (vee'' state pj pi)
-                  | state <- preceders stateRight
+                  | state <- preceders stateHat
                   , let pi = case state of { Del -> i ; _ -> pred i }
                   , pj >= 0, pi >= 0
-                  , let score = transition (node pj) state stateRight
+                  , let score = transition (node pj) state stateHat
                                 + emission (node pj) state (residue pi)
                   ]
-         where pj = case stateRight of { Ins -> j ; _ -> pred j }
+         where pj = case stateHat of { Ins -> j ; _ -> pred j }
        -- @ end hov4.tex
                -- Ins does not consume a node; Del does not consume a residue
        -- handles special non-emitting transitions into Ins state 0 and Mat state 1
@@ -158,6 +158,6 @@ hoViterbi leaf edge internal model rs = vee' Mat (NC $ count model) (RC $ U.leng
 
 
        vee'' = Memo.memo3 (Memo.arrayRange (minBound, maxBound))
-                          (Memo.arrayRange (0, NC (count model - 1)))
+                          (Memo.arrayRange (0, NI (count model - 1)))
                           (Memo.arrayRange (0, RC (U.length rs - 1)))
                vee'
