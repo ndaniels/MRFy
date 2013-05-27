@@ -149,13 +149,13 @@ hoViterbi leaf edge internal model rs = vee' Mat (NC $ count model) (RC $ U.leng
        -- producing the first @i@ residues from the vector @rs@.
        -- (For diagram see https://www.evernote.com/shard/s276/sh/39e47600-3354-4e8e-89f8-5c89884f9245/8880bd2c2a94dffb9be1432f12471ff2)
        -- @ start hov4.tex -7
+       vee' Del (NC 1) (RC 0) = leaf (transition (node 0) Mat Del)
        vee' Ins (NC 0) (RC 0) = leaf (transition (node 0) Mat Ins)
        vee' Mat (NC 1) (RC 0) = leaf (transition (node 0) Mat Mat)
        vee' Mat (NC 1) i = prevs [Ins, Del] Mat (\_ -> 0) (predUnless i Del)
-       ---                        ^^^
-       --- removing this unnecessary state increases execution time
+       ---                             ^^^
+       --- removing this unnecessary Del state increases execution time
        --- by 21% on short benchmark and 18% on the medium benchmark
-       vee' Del (NC 1) (RC 0) = leaf (transition (node 0) Mat Del)
        vee' stateRight j i = prevs (preceders stateRight) stateRight
                                    (predUnless j Ins) (predUnless i Del)
 {-
