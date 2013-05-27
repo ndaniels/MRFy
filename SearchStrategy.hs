@@ -37,14 +37,13 @@ tickProp (Positive n') (Positive t) =
 -- to use @take@ and @catMaybes@ here, but the function has to
 -- make noise, too.
 takeNGenerations :: Int -> [AUS a] -> History a
-takeNGenerations n = take emptyHistory
-  where take (!older) (gen : younger) =
+takeNGenerations n = take emptyHistory . zipWith CCosted [0..] 
+  where take (!older) (CCosted ccost gen : younger) =
           if showMe (ccost < n) then
             take (gen `extendUsefulHistory` older) younger
           else
             older
-          where ccost = ccostOf gen
-                showMe = if isTick ccost 10 n then
+          where showMe = if isTick ccost 10 n then
                            trace (show ccost ++ " generations complete")
                          else
                            id
@@ -54,10 +53,11 @@ takeNGenerations n = take emptyHistory
 -- @older@ is the age of most recent *accepted* population
 -- and @younger@ is the age of the *current* population
 takeByCCostGap :: (CCost -> CCost -> Bool) -> [AUS a] -> History a
-takeByCCostGap continue = take emptyHistory
+takeByCCostGap continue = take emptyHistory . zipWith CCosted [0..]
   where take (older @ (History (pop : _))) (gen : younger) 
           | not (continue (ccostOf pop) (ccostOf gen)) = older
-        take (!older) (gen : younger) = take (gen `extendUsefulHistory` older) younger
+        take (!older) (CCosted _ gen : younger) =
+          take (gen `extendUsefulHistory` older) younger
 
 
 
