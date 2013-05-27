@@ -13,7 +13,10 @@ import Data.Array as A
 import qualified Data.List as L
 import qualified Data.MemoCombinators as Memo
 import qualified Data.Vector.Unboxed as U
+import qualified Data.List.Stream as S
 import Text.Printf (printf)
+
+import GHC.Exts (inline)
 
 import qualified Constants as C
 import qualified Dot
@@ -85,11 +88,13 @@ scoreOnly, _lazyScoreOnly, strictScoreOnly :: Model -> QuerySequence -> Score
 scoreOnly = strictScoreOnly 
 _lazyScoreOnly  = hoViterbi id (\s _ s' -> s + s') minimum
 strictScoreOnly = hoViterbi id (\(!s) _ (!s') -> s + s') xminimum
-  where xminimum = L.foldl' min negLogZero
+  
+xminimum :: [Score] -> Score
+{-# INLINABLE xminimum #-}
+xminimum = S.foldl' min negLogZero
 
 scorePlusX :: Model -> QuerySequence -> Score -> Score
-scorePlusX m q s = hoViterbi (s+) (\(!s) _ (!s') -> s + s') xminimum m q
-  where xminimum = L.foldl' min negLogZero
+_scorePlusX m q s = hoViterbi (s+) (\(!s) _ (!s') -> s + s') xminimum m q
 
 
 newtype NodeCount    = NC Int
@@ -153,7 +158,7 @@ hoViterbi leaf edge internal model rs = vee' Mat (NC $ count model) (RC $ U.leng
                -- Ins does not consume a node; Del does not consume a residue
 
        {-# INLINE prevs #-}
-       prevs :: [StateLabel] -- ^ potential labels @s@
+       prevs, _prevs_nofuse :: [StateLabel] -- ^ potential labels @s@
              -> StateLabel   -- ^ label of the state @sHat@
              -> (StateLabel -> NodeCount) -- ^ maps @sHat@ to index of node
                                           --   containing state @s@
@@ -176,7 +181,7 @@ hoViterbi leaf edge internal model rs = vee' Mat (NC $ count model) (RC $ U.leng
        -- NR: the following line is a redundant case, but it seems
        -- to every-so-slightly make things go faster.
        -- prevs []        _          _  _  = internal [] 
-       prevs preceders stateRight fj fi =
+       _prevs_nofuse preceders stateRight fj fi =
         internal [ edge score state (vee'' state pj pi)
                  | state <- preceders
                  , let pi = fi state
@@ -184,6 +189,27 @@ hoViterbi leaf edge internal model rs = vee' Mat (NC $ count model) (RC $ U.leng
                  , let score = transition (node pj) state stateRight
                                + emission (node pj) state (residue pi)
                  ]
+        where pj = fj stateRight
+
+{------
+[  e | True ]	 =	[e]
+[  e | q ]	 =	[ e | q, True ]
+[  e | b, Q ]	 =	if b then [  e | Q ] else []
+[  e | p <- l, Q ]	 =	let ok p = [  e | Q ]
+                                    ok _ = []
+                                in concatMap ok l
+[  e | let decls, Q ]	 =	let decls in [  e | Q ]
+----}
+       prevs preceders stateRight fj fi = inline internal $
+        let withState state =
+              let pi = fi state in
+                if pj >= 0 && pi >= 0 then
+                  let score = transition (node pj) state stateRight
+                              + emission (node pj) state (residue pi)
+                  in [ edge score state (vee'' state pj pi) ]
+                else
+                  [ ]
+        in  S.concatMap withState preceders
         where pj = fj stateRight
 
        predUnless :: forall a . Enum a => a -> StateLabel -> StateLabel -> a
@@ -205,3 +231,107 @@ hoViterbi leaf edge internal model rs = vee' Mat (NC $ count model) (RC $ U.leng
                           (Memo.arrayRange (0, NC (count model - 1)))
                           (Memo.arrayRange (0, RC (U.length rs - 1)))
                vee'
+
+
+
+scorePlusX model rs s = vee' Mat (NC $ count model) (RC $ U.length rs)
+ where node    (NC j) = get model (NI j)
+       residue (RC i) = rs U.! i
+
+       leaf = (s+)
+       {-# INLINE edge #-}
+       edge !s _ !s' = s + s'
+       internal = xminimum
+
+       vee' :: StateLabel -> NodeCount -> ResidueCount -> Score
+       -- ^ @vee' sHat j i@ returns the min-cost path
+       -- from state @Mat@ node 0 to state @sHat@ node @j@,
+       -- producing the first @i@ residues from the vector @rs@.
+       -- (For diagram see https://www.evernote.com/shard/s276/sh/39e47600-3354-4e8e-89f8-5c89884f9245/8880bd2c2a94dffb9be1432f12471ff2)
+       -- @ start hov4.tex -7
+       vee' Mat (NC 0) (RC 0) = error "reached unreachable state Mat/0/0"
+       vee' Ins (NC 0) i = intoInsZero i
+       vee' Mat (NC 1) i = intoMatOne i
+       vee' Del (NC 1) i = intoDelOne i
+       vee' stateRight j i = prevs (preceders stateRight) stateRight
+                                   (predUnless j Ins) (predUnless i Del)
+       -- @ end hov4.tex
+               -- Ins does not consume a node; Del does not consume a residue
+
+       {-# INLINE prevs #-}
+       prevs, _prevs_nofuse :: [StateLabel] -- ^ potential labels @s@
+             -> StateLabel   -- ^ label of the state @sHat@
+             -> (StateLabel -> NodeCount) -- ^ maps @sHat@ to index of node
+                                          --   containing state @s@
+             -> (StateLabel -> ResidueCount) -- ^ maps @s@ to index of
+                                             --   residue emitted by @s@
+             -> Score
+       -- @prevs ss sHat fj fi@ returns the min-cost path
+       -- from state @Mat@ node 0 to state @sHat@ node @j@,
+       -- producing the first @i@ residues from the vector @rs@,
+       -- where the path is restricted so that the state immediately
+       -- before @sHat@ lies in set @ss@.
+       -- Index @i@ is encoded as function @fi@, which given
+       -- a candidate preceding state label @s@, produces the
+       -- residue (if any) emitted by the state labelled @s@.
+       -- Index @j@ is encoded as function @fj@, which given
+       -- the state label @sHat@, produces the index of the node
+       -- in which the preceding state is located (which
+       -- is always j or @pred j@).
+
+       -- NR: the following line is a redundant case, but it seems
+       -- to every-so-slightly make things go faster.
+       -- prevs []        _          _  _  = internal [] 
+       _prevs_nofuse preceders stateRight fj fi =
+        internal [ edge score state (vee'' state pj pi)
+                 | state <- preceders
+                 , let pi = fi state
+                 , pj >= 0, pi >= 0
+                 , let score = transition (node pj) state stateRight
+                               + emission (node pj) state (residue pi)
+                 ]
+        where pj = fj stateRight
+
+{------
+[  e | True ]	 =	[e]
+[  e | q ]	 =	[ e | q, True ]
+[  e | b, Q ]	 =	if b then [  e | Q ] else []
+[  e | p <- l, Q ]	 =	let ok p = [  e | Q ]
+                                    ok _ = []
+                                in concatMap ok l
+[  e | let decls, Q ]	 =	let decls in [  e | Q ]
+----}
+       prevs preceders stateRight fj fi = inline internal $
+        let withState state =
+              let pi = fi state in
+                if pj >= 0 && pi >= 0 then
+                  let score = transition (node pj) state stateRight
+                              + emission (node pj) state (residue pi)
+                  in [ edge score state (vee'' state pj pi) ]
+                else
+                  [ ]
+        in  S.concatMap withState preceders
+        where pj = fj stateRight
+
+       predUnless :: forall a . Enum a => a -> StateLabel -> StateLabel -> a
+       predUnless n don't_move s = if s == don't_move then n else pred n
+
+       -- handles special non-emitting transitions into Ins state 0 and Mat state 1
+       -- as well as self-transition for Ins state 0
+       intoInsZero (RC 0) = leaf (transition (node 0) Mat Ins)
+       intoInsZero i = prevs [Ins] Ins (\_ -> 0) (\_ -> pred i)
+
+       intoDelOne (RC 0) = leaf (transition (node 0) Mat Del)
+       intoDelOne _      = internal []
+
+       intoMatOne (RC 0) = leaf (transition (node 0) Mat Mat)
+       intoMatOne i = prevs [Ins, Del] Mat (\_ -> 0) (predUnless i Del)
+
+
+       vee'' = Memo.memo3 (Memo.arrayRange (minBound, maxBound))
+                          (Memo.arrayRange (0, NC (count model - 1)))
+                          (Memo.arrayRange (0, RC (U.length rs - 1)))
+               vee'
+
+
+
