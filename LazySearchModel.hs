@@ -126,7 +126,7 @@ unHistory (History a) = a
 -- and that the first state be useful.
 -- @ start stop.tex
 type SearchStop pt =
-       [CCosted (Utility (Scored pt))] -> History pt
+       [Utility (CCosted (Scored pt))] -> History pt
 -- @ end stop.tex
 
 
@@ -162,14 +162,14 @@ historySolution (History (asp : _)) = unCCosted asp
 historySolution _ = error "solution from empty history"
 
 extendUsefulHistory :: AUS a -> History a -> History a
-extendUsefulHistory (CCosted _ Useless) h = h
-extendUsefulHistory (CCosted ccost (Useful a)) h = CCosted ccost a `hcons` h
+extendUsefulHistory Useless h = h
+extendUsefulHistory (Useful p) h = p `hcons` h
 
-type AUS a = CCosted (Utility (Scored a))
+type AUS a = Utility (CCosted (Scored a))
 
 
 instance Functor CCosted where
-  fmap f (CCosted ccost a) = CCosted ccost (f a)
+  fmap f (CCosted ccost a) = CCosted ccost (f a) 
 
 
 scoreUtility :: RandomGen gen => Move a -> Rand gen (Utility (Scored a))
@@ -191,16 +191,15 @@ instance Ord (History a) where
 -------------------------------------------------------V
 -- @ start everygen.tex
 everyPt :: RandomGen r
-        => SearchGen pt r -> CCost -> Scored pt
-        -> Rand r [CCosted (Utility (Scored pt))]
-everyPt sg cost startPt = do
+        => SearchGen pt r -> CCosted (Scored pt)
+        -> Rand r [Utility (CCosted (Scored pt))]
+everyPt sg (CCosted cost startPt) = do
   successors <- mapM (nextPt sg) (repeat startPt)
   tagged     <- zipWithM costedUtility successors [succ cost..]
-  let (useless, CCosted newCost (Useful newPt) : _) =
-                               span (isUseless . unCCosted) tagged
-  (++) (CCosted cost (Useful startPt) : useless) <$> everyPt sg newCost newPt
+  let (useless, Useful pt : _) = span isUseless tagged
+  (++) (Useful (CCosted cost startPt) : useless) <$> everyPt sg pt
  where
-   costedUtility pt cost = return . CCosted cost =<< utility sg move 
+   costedUtility pt cost = return . fmap (CCosted cost) =<< utility sg move
      where move = Move { older = startPt, younger = pt, youngerCCost = cost }
 -- @ end everygen.tex
 
@@ -210,7 +209,7 @@ everyPt sg cost startPt = do
 search :: RandomGen r => SearchGen pt r -> SearchStop pt
        -> Rand r (History pt)
 search strat test =
-  return . test =<< everyPt strat 0 =<< pt0 strat
+  return . test =<< everyPt strat . CCosted 0 =<< pt0 strat
 -- @ end search.tex
 
 data FullSearchStrategy placement r =
@@ -220,7 +219,8 @@ data FullSearchStrategy placement r =
 
 -- @ start fullsearch.tex
 fullSearch :: RandomGen r => FullSearchStrategy a r -> Rand r (History a)
-fullSearch (FSS gen stop best) = fmap (fmap best . stop) . everyPt gen 0 =<< pt0 gen
+fullSearch (FSS gen stop best) =
+  fmap (fmap best . stop) . everyPt gen . CCosted 0 =<< pt0 gen
 -- @ end fullsearch.tex        
 
 -- Note from NMD: Should we perhaps write type declarations
