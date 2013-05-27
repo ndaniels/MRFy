@@ -127,15 +127,26 @@ preceders Ins = [Mat, Ins]
 preceders Del = [Mat, Del]
 -- @ end v4aux.tex
 
-hoViterbi :: forall a b .
+hoViterbi :: forall a edge .
              (Score -> a) -- ^ reaction to initial transition
-          -> (Score -> StateLabel -> a -> b) -- ^ one possible child
-          -> ([b] -> a) -- ^ make answer from all children
+          -> (Score -> StateLabel -> a -> edge) -- ^ one possible child
+          -> ([edge] -> a) -- ^ make answer from all children
           -> Model -> QuerySequence -> a
-hoViterbi leaf edge internal model rs = vee' Mat (NI $ count model) (RC $ U.length rs)
- where node    j      = get model j
+hoViterbi lf edg int model rs = vee' Mat (NI $ count model) (RC $ U.length rs)
+ where 
+       -- @ start hosigs.tex -7
+       leaf     :: Score -> a
+       edge     :: Score -> StateLabel -> a -> edge
+       internal :: [edge] -> a
+       -- @ end hosigs.tex -7
+       leaf = lf
+       edge = edg
+       internal = int
+
+       node    j      = get model j
        residue (RC i) = rs U.! i
 
+      
        vee' :: StateLabel -> NodeIndex -> ResidueCount -> a
        -- ^ @vee' sHat j i@ returns the min-cost path
        -- from state @Mat@ node 0 to state @sHat@ node @j@,
@@ -152,6 +163,7 @@ hoViterbi leaf edge internal model rs = vee' Mat (NI $ count model) (RC $ U.leng
                -- Ins does not consume a node; Del does not consume a residue
 
        {-# INLINE prevs #-}
+       {-
        prevs :: [StateLabel] -- ^ potential labels @s@
              -> StateLabel   -- ^ label of the state @sHat@
              -> (StateLabel -> NodeIndex) -- ^ maps @sHat@ to index of node
@@ -159,6 +171,7 @@ hoViterbi leaf edge internal model rs = vee' Mat (NI $ count model) (RC $ U.leng
              -> (StateLabel -> ResidueCount) -- ^ maps @s@ to index of
                                              --   residue emitted by @s@
              -> a
+       -}
        -- @prevs ss sHat fj fi@ returns the min-cost path
        -- from state @Mat@ node 0 to state @sHat@ node @j@,
        -- producing the first @i@ residues from the vector @rs@,
@@ -176,9 +189,11 @@ hoViterbi leaf edge internal model rs = vee' Mat (NI $ count model) (RC $ U.leng
        -- to every-so-slightly make things go faster.
        -- prevs []        _          _  _  = internal [] 
        -- @ start hov-prevs.tex -7
-       prevs preceders stateHat fj fi =
+       prevs :: [StateLabel] -> StateLabel
+             -> (StateLabel -> NodeIndex) -> (StateLabel -> ResidueCount) -> a
+       prevs predecessors stateHat fj fi =
         internal [ edge score state (vee'' state pj pi)
-                 | state <- preceders
+                 | state <- predecessors
                  , let pi = fi state
                  , pj >= 0, pi >= 0
                  , let score = transition (node pj) state stateHat
