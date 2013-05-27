@@ -152,12 +152,26 @@ hoViterbi leaf edge internal model rs = vee' Mat (NC $ count model) (RC $ U.leng
        vee' Del (NC 1) (RC 0) = leaf (transition (node 0) Mat Del)
        vee' Ins (NC 0) (RC 0) = leaf (transition (node 0) Mat Ins)
        vee' Mat (NC 1) (RC 0) = leaf (transition (node 0) Mat Mat)
-       vee' Mat j@(NC 1) i = prevs [Ins, Del] Mat (predUnless j Ins) (predUnless i Del)
+       vee' Mat j@(NC 1) i = prevs [Ins, Del, Mat] Mat (predUnless j Ins) (predUnless i Del)
        ---                               ^^^
        --- removing this unnecessary Del state increases execution time
        --- by 21% on short benchmark and 18% on the medium benchmark
-       vee' stateRight j i = prevs (preceders stateRight) stateRight
-                                   (predUnless j Ins) (predUnless i Del)
+       --- removing the unncessary Mat state has no measurable effect
+       --- removing the whole thing slows by 18% on the short benchmark
+       --- even though the code is identical to the general case
+{-
+        internal [ edge score state (vee'' state pj pi)
+                 | state <- preceders stateHat
+                 , let pi = predUnless i Del state
+                 , pj >= 0, pi >= 0
+                 , let score = transition (node pj) state stateHat
+                               + emission (node pj) state (residue pi)
+                 ]
+        where pj = predUnless j Ins stateHat
+-}
+       vee' stateHat j i = prevs (preceders stateHat) stateHat
+                                 (predUnless j Ins) (predUnless i Del)
+       -- inlining the body below costs an extra 10% on short benchmark.  WTF?
 {-
         internal [ edge score state (vee'' state pj pi)
                  | state <- preceders stateHat
@@ -197,15 +211,15 @@ hoViterbi leaf edge internal model rs = vee' Mat (NC $ count model) (RC $ U.leng
        -- NR: the following line is a redundant case, but it seems
        -- to every-so-slightly make things go faster.
        -- prevs []        _          _  _  = internal [] 
-       prevs preceders stateRight fj fi =
+       prevs preceders stateHat fj fi =
         internal [ edge score state (vee'' state pj pi)
                  | state <- preceders
                  , let pi = fi state
                  , pj >= 0, pi >= 0
-                 , let score = transition (node pj) state stateRight
+                 , let score = transition (node pj) state stateHat
                                + emission (node pj) state (residue pi)
                  ]
-        where pj = fj stateRight
+        where pj = fj stateHat
 
        predUnless :: forall a . Enum a => a -> StateLabel -> StateLabel -> a
        predUnless n don't_move s = if s == don't_move then n else pred n
