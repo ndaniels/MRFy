@@ -50,7 +50,7 @@ build:V:
 
 prof-build:V:
 	cabal configure
-	cabal build --ghc-options='-prof -fprof-auto'
+	cabal build --ghc-options='-O2 -prof -fprof-auto'
 
 prof-run:V:
 	dist/build/mrfy/mrfy -viterbi testing/8.hmm+ testing/8.fasta +RTS -pa -hc
