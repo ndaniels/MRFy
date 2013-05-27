@@ -57,7 +57,7 @@ data Sequence i a = Sequence { count :: Int, get :: i -> a }
 
 type Model = Sequence NodeIndex Node
 
-newtype NodeIndex = NI Int deriving (Enum, Eq, A.Ix, Ord)
+newtype NodeIndex = NI Int deriving (Enum, Eq, A.Ix, Ord, Num)
 
 instance (Enum i, Eq a) => Eq (Sequence i a) where
   m1 == m2 = count m1 == count m2 &&

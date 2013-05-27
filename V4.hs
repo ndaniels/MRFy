@@ -92,8 +92,6 @@ scorePlusX m q s = hoViterbi (s+) (\(!s) _ (!s') -> s + s') xminimum m q
   where xminimum = L.foldl' min negLogZero
 
 
-newtype NodeCount    = NC Int
-  deriving (Enum, Ord, Eq, Num, Ix)
 newtype ResidueCount = RC Int
   deriving (Enum, Ord, Eq, Num, Ix)
 
@@ -123,39 +121,40 @@ emission n state residue =
       -- _   -> error ("State " ++ (show state) ++ " cannot emit") 
 
 preceders :: StateLabel -> [StateLabel]
+-- @ start v4aux.tex
 preceders Mat = [Mat, Ins, Del]
 preceders Ins = [Mat, Ins]
 preceders Del = [Mat, Del]
-
+-- @ end v4aux.tex
 
 hoViterbi :: forall a b .
              (Score -> a) -- ^ reaction to initial transition
           -> (Score -> StateLabel -> a -> b) -- ^ one possible child
           -> ([b] -> a) -- ^ make answer from all children
           -> Model -> QuerySequence -> a
-hoViterbi leaf edge internal model rs = vee' Mat (NC $ count model) (RC $ U.length rs)
- where node    (NC j) = get model (NI j)
+hoViterbi leaf edge internal model rs = vee' Mat (NI $ count model) (RC $ U.length rs)
+ where node    j      = get model j
        residue (RC i) = rs U.! i
 
-       vee' :: StateLabel -> NodeCount -> ResidueCount -> a
+       vee' :: StateLabel -> NodeIndex -> ResidueCount -> a
        -- ^ @vee' sHat j i@ returns the min-cost path
        -- from state @Mat@ node 0 to state @sHat@ node @j@,
        -- producing the first @i@ residues from the vector @rs@.
        -- (For diagram see https://www.evernote.com/shard/s276/sh/39e47600-3354-4e8e-89f8-5c89884f9245/8880bd2c2a94dffb9be1432f12471ff2)
-       -- @ start hov4.tex -7
-       vee' Mat (NC 0) (RC 0) = error "reached unreachable state Mat/0/0"
-       vee' Ins (NC 0) i = intoInsZero i
-       vee' Mat (NC 1) i = intoMatOne i
-       vee' Del (NC 1) i = intoDelOne i
-       vee' stateRight j i = prevs (preceders stateRight) stateRight
-                                   (predUnless j Ins) (predUnless i Del)
-       -- @ end hov4.tex
+       vee' Mat (NI 0) (RC 0) = error "reached unreachable state Mat/0/0"
+       vee' Ins (NI 0) i = intoInsZero i
+       vee' Mat (NI 1) i = intoMatOne i
+       vee' Del (NI 1) i = intoDelOne i
+       vee' stateHat j i = prevs (preceders stateHat) stateHat
+                                 (predUnless j Ins) (predUnless i Del)
+       -- @ start hov-prevs.tex -7
+       -- @ end hov-prevs.tex
                -- Ins does not consume a node; Del does not consume a residue
 
        {-# INLINE prevs #-}
        prevs :: [StateLabel] -- ^ potential labels @s@
              -> StateLabel   -- ^ label of the state @sHat@
-             -> (StateLabel -> NodeCount) -- ^ maps @sHat@ to index of node
+             -> (StateLabel -> NodeIndex) -- ^ maps @sHat@ to index of node
                                           --   containing state @s@
              -> (StateLabel -> ResidueCount) -- ^ maps @s@ to index of
                                              --   residue emitted by @s@
@@ -176,18 +175,22 @@ hoViterbi leaf edge internal model rs = vee' Mat (NC $ count model) (RC $ U.leng
        -- NR: the following line is a redundant case, but it seems
        -- to every-so-slightly make things go faster.
        -- prevs []        _          _  _  = internal [] 
-       prevs preceders stateRight fj fi =
+       -- @ start hov-prevs.tex -7
+       prevs preceders stateHat fj fi =
         internal [ edge score state (vee'' state pj pi)
                  | state <- preceders
                  , let pi = fi state
                  , pj >= 0, pi >= 0
-                 , let score = transition (node pj) state stateRight
+                 , let score = transition (node pj) state stateHat
                                + emission (node pj) state (residue pi)
                  ]
-        where pj = fj stateRight
+        where pj = fj stateHat
+       -- @ end hov-prevs.tex -7
 
+       -- @ start v4aux.tex -7
        predUnless :: forall a . Enum a => a -> StateLabel -> StateLabel -> a
        predUnless n don't_move s = if s == don't_move then n else pred n
+       -- @ end v4aux.tex
 
        -- handles special non-emitting transitions into Ins state 0 and Mat state 1
        -- as well as self-transition for Ins state 0
@@ -202,6 +205,6 @@ hoViterbi leaf edge internal model rs = vee' Mat (NC $ count model) (RC $ U.leng
 
 
        vee'' = Memo.memo3 (Memo.arrayRange (minBound, maxBound))
-                          (Memo.arrayRange (0, NC (count model - 1)))
+                          (Memo.arrayRange (0, NI (count model - 1)))
                           (Memo.arrayRange (0, RC (U.length rs - 1)))
                vee'
