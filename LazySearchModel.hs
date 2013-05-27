@@ -65,13 +65,13 @@ data Move pt = Move { older        :: Scored pt
 -- | Many internal decisions are made based on age,
 -- so we provide a way to tag any value with its age.
 -- @ start aged.tex
-data CCosted a = CCosted a CCost
+data CCosted a = CCosted CCost a
 -- @ end aged.tex
   deriving (Show, Eq, Ord)
 unCCosted :: CCosted a -> a
-unCCosted (CCosted a _) = a
+unCCosted (CCosted _ a) = a
 ccostOf :: CCosted a -> CCost
-ccostOf (CCosted _ age) = age
+ccostOf (CCosted age _) = age
 
 
 
@@ -162,14 +162,14 @@ historySolution (History (asp : _)) = unCCosted asp
 historySolution _ = error "solution from empty history"
 
 extendUsefulHistory :: AUS a -> History a -> History a
-extendUsefulHistory (CCosted Useless _) h = h
-extendUsefulHistory (CCosted (Useful a) ccost) h = CCosted a ccost `hcons` h
+extendUsefulHistory (CCosted _ Useless) h = h
+extendUsefulHistory (CCosted ccost (Useful a)) h = CCosted ccost a `hcons` h
 
 type AUS a = CCosted (Utility (Scored a))
 
 
 instance Functor CCosted where
-  fmap f (CCosted a ccost) = CCosted (f a) ccost
+  fmap f (CCosted ccost a) = CCosted ccost (f a)
 
 
 scoreUtility :: RandomGen gen => Move a -> Rand gen (Utility (Scored a))
@@ -196,11 +196,11 @@ everyPt :: RandomGen r
 everyPt sg cost startPt = do
   successors <- mapM (nextPt sg) (repeat startPt)
   tagged     <- zipWithM costedUtility successors [succ cost..]
-  let (useless, CCosted (Useful newPt) newCost : _) =
+  let (useless, CCosted newCost (Useful newPt) : _) =
                                span (isUseless . unCCosted) tagged
-  (++) (CCosted (Useful startPt) cost : useless) <$> everyPt sg newCost newPt
+  (++) (CCosted cost (Useful startPt) : useless) <$> everyPt sg newCost newPt
  where
-   costedUtility pt cost = utility sg move >>= \u -> return $ CCosted u cost
+   costedUtility pt cost = return . CCosted cost =<< utility sg move 
      where move = Move { older = startPt, younger = pt, youngerCCost = cost }
 -- @ end everygen.tex
 

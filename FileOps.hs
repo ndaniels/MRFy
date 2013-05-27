@@ -203,6 +203,6 @@ popSearch :: [QuerySequence -> History Placement]
           -> History Placement
 popSearch searches q = minimum $ (parMap rseq) (\s -> s q) searches
 
-noSearch = CCosted (Scored [] negLogZero) 0 `hcons` emptyHistory
+noSearch = CCosted 0 (Scored [] negLogZero) `hcons` emptyHistory
 
 
