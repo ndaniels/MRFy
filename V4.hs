@@ -133,16 +133,28 @@ hoViterbi leaf edge internal model rs = vee' Mat (NC $ count model) (RC $ U.leng
  where node    (NC j) = get model (NI j)
        residue (RC i) = rs U.! i
 
+{-
+       vee' Ins (NC 0) (RC 0) = leaf (transition (node 0) Mat Ins)
+       vee' Mat (NC 1) (RC 0) = leaf (transition (node 0) Mat Mat)
+       vee' Del (NC 1) (RC 0) = leaf (transition (node 0) Mat Del)
+       vee' Ins (NC 0) i      = prevs [Ins] Ins (const 0) (const (pred i))
+       vee' Mat (NC 1) i      = prevs [Ins] Mat (const 0) (const (pred i))
+       vee' Del (NC 1) _ = internal []
+-}
+
+
        vee' :: StateLabel -> NodeCount -> ResidueCount -> a
        -- ^ @vee' sHat j i@ returns the min-cost path
        -- from state @Mat@ node 0 to state @sHat@ node @j@,
        -- producing the first @i@ residues from the vector @rs@.
        -- (For diagram see https://www.evernote.com/shard/s276/sh/39e47600-3354-4e8e-89f8-5c89884f9245/8880bd2c2a94dffb9be1432f12471ff2)
        -- @ start hov4.tex -7
-       vee' Ins (NC 0) (RC 0) = leaf (transition (node 0) Mat Ins)
-       vee' Mat (NC 1) (RC 0) = leaf (transition (node 0) Mat Mat)
-       vee' Del (NC 1) (RC 0) = leaf (transition (node 0) Mat Del)
-       vee' stateHat j i = 
+       vee' Ins (NC 0) i = intoInsZero i
+       vee' Mat (NC 1) i = intoMatOne i
+       vee' Del (NC 1) i = intoDelOne i
+       vee' stateRight j i = prevs (preceders stateRight) stateRight
+                                   (predUnless j Ins) (predUnless i Del)
+{-
         internal [ edge score state (vee'' state pj pi)
                  | state <- preceders stateHat
                  , let pi = predUnless i Del state
@@ -151,16 +163,62 @@ hoViterbi leaf edge internal model rs = vee' Mat (NC $ count model) (RC $ U.leng
                                + emission (node pj) state (residue pi)
                  ]
         where pj = predUnless j Ins stateHat
+-}
        -- @ end hov4.tex
        -- @ start hov-prevs.tex -7
        -- @ end hov-prevs.tex
                -- Ins does not consume a node; Del does not consume a residue
+
+       {-# INLINE prevs #-}
+       prevs :: [StateLabel] -- ^ potential labels @s@
+             -> StateLabel   -- ^ label of the state @sHat@
+             -> (StateLabel -> NodeCount) -- ^ maps @sHat@ to index of node
+                                          --   containing state @s@
+             -> (StateLabel -> ResidueCount) -- ^ maps @s@ to index of
+                                             --   residue emitted by @s@
+             -> a
+       -- @prevs ss sHat fj fi@ returns the min-cost path
+       -- from state @Mat@ node 0 to state @sHat@ node @j@,
+       -- producing the first @i@ residues from the vector @rs@,
+       -- where the path is restricted so that the state immediately
+       -- before @sHat@ lies in set @ss@.
+       -- Index @i@ is encoded as function @fi@, which given
+       -- a candidate preceding state label @s@, produces the
+       -- residue (if any) emitted by the state labelled @s@.
+       -- Index @j@ is encoded as function @fj@, which given
+       -- the state label @sHat@, produces the index of the node
+       -- in which the preceding state is located (which
+       -- is always j or @pred j@).
+
+       -- NR: the following line is a redundant case, but it seems
+       -- to every-so-slightly make things go faster.
+       -- prevs []        _          _  _  = internal [] 
+       prevs preceders stateRight fj fi =
+        internal [ edge score state (vee'' state pj pi)
+                 | state <- preceders
+                 , let pi = fi state
+                 , pj >= 0, pi >= 0
+                 , let score = transition (node pj) state stateRight
+                               + emission (node pj) state (residue pi)
+                 ]
+        where pj = fj stateRight
 
        predUnless :: forall a . Enum a => a -> StateLabel -> StateLabel -> a
        predUnless n don't_move s = if s == don't_move then n else pred n
 
        -- handles special non-emitting transitions into Ins state 0 and Mat state 1
        -- as well as self-transition for Ins state 0
+       intoInsZero (RC 0) = leaf (transition (node 0) Mat Ins)
+       intoInsZero i = prevs [Ins] Ins (\_ -> 0) (\_ -> pred i)
+
+       intoDelOne (RC 0) = leaf (transition (node 0) Mat Del)
+       intoDelOne _      = internal []
+
+       intoMatOne (RC 0) = leaf (transition (node 0) Mat Mat)
+       intoMatOne i = prevs [Ins, Del] Mat (\_ -> 0) (predUnless i Del)
+       ---                        ^^^
+       --- removing this unnecessary state increases execution time
+       --- by 21% on short benchmark and 18% on the medium benchmark
 
        vee'' = Memo.memo3 (Memo.arrayRange (minBound, maxBound))
                           (Memo.arrayRange (0, NC (count model - 1)))
