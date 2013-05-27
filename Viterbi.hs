@@ -141,9 +141,8 @@ viterbi pathCons right query hmm =
         --------------------------------------------------------
         -- @ start viterbi.tex -8
         vee' Mat j i = fmap (Mat `cons`) $
-           eScore Mat j i /+/ minimum (map avSum [Mat, Ins, Del])
-         where avSum prev =
-                 aScore prev Mat (j-1) /+/ vee'' prev (j-1) (i-1)
+                       eScore Mat j i /+/ minimum (map avSum [Mat, Ins, Del])
+         where avSum prev = aScore prev Mat (j-1) /+/ vee'' prev (j-1) (i-1)
         -- @ end viterbi.tex
                cons = pathCons
         -- avoids having to explain 'extend' in the paper

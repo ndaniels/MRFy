@@ -95,9 +95,9 @@ data SearchStrategy pt r =
 
 -- @ start gen.tex
 data SearchGen pt r = 
- SG { pt0     :: Rand r (Scored pt)
+ SG { pt0     ::              Rand r (Scored pt)
     , nextPt  :: Scored pt -> Rand r (Scored pt)
-    , utility :: Move pt -> Rand r (Utility (Scored pt))
+    , utility :: Move pt   -> Rand r (Utility (Scored pt))
     }
 -- @ end gen.tex
  -- ^ utility returns the *younger* item in the delta
@@ -195,15 +195,13 @@ everyPt :: RandomGen r
         -> Rand r [CCosted (Utility (Scored pt))]
 everyPt sg cost startPt = do
   successors <- mapM (nextPt sg) (repeat startPt)
-  tagged <- zipWithM costedUtility successors [succ cost..]
+  tagged     <- zipWithM costedUtility successors [succ cost..]
   let (useless, CCosted (Useful newPt) newCost : _) =
-                      span (isUseless . unCCosted) tagged
-  (++) (CCosted (Useful startPt) cost : useless) <$>
-                                  everyPt sg newCost newPt
- where costedUtility pt cost =
-         utility sg move >>= \u -> return $ CCosted u cost
-        where move = Move { older = startPt, younger = pt
-                          , youngerCCost = cost }
+                               span (isUseless . unCCosted) tagged
+  (++) (CCosted (Useful startPt) cost : useless) <$> everyPt sg newCost newPt
+ where
+   costedUtility pt cost = utility sg move >>= \u -> return $ CCosted u cost
+     where move = Move { older = startPt, younger = pt, youngerCCost = cost }
 -- @ end everygen.tex
 
   
