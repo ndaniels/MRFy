@@ -55,34 +55,46 @@ btransition node state = beginTransitions node ! state
 
 
 costTree :: BeginNode -> [HMMNode] -> [AA] -> Tree
-costTree bnode = ct Mat -- damn lie, leaves off the end transition
-  where ct stateRight [] [] = FromBegin (btransition bnode stateRight)
-        ct stateRight [] aas = insertAll stateRight aas
-        ct stateRight nodes [] = deleteAll stateRight nodes
-        ct stateRight nodes@(node:ntail) aas@(aa:aatail) =
-          StepFrom [ Scored (state, t) score
-                   | state <- preceders ! stateRight
-                   , let t = next state nodes ntail aas aatail
-                   , let score = transition node state stateRight +
+costTree bnode = vee' Mat -- damn lie, leaves off the end transition
+  where 
+        -- @ start list-viterbi.tex -8
+        vee' :: StateLabel -> [HMMNode] -> [AA] -> Tree
+        -- @ end list-viterbi.tex
+        vee' stateHat [] [] = FromBegin (btransition bnode stateHat)
+        vee' stateHat [] aas = insertAll stateHat aas
+        vee' stateHat nodes [] = deleteAll stateHat nodes
+        -- @ start list-viterbi.tex -8
+        vee' stateHat nodes@(node:ntail) aas@(aa:aatail) =
+        -- @ end list-viterbi.tex
+          {-
+        -- @ start list-viterbi.tex -8
+                  ... next state ...
+        -- @ end list-viterbi.tex
+          -}
+          StepFrom [ Scored (state, next state) score
+                   | state <- preceders ! stateHat
+                   , let score = transition node state stateHat +
                                  emission node state aa
                    ]
-        next s@Mat _ ntail _   aatail = ct' s ntail aatail
-        next s@Del _ ntail aas _      = ct' s ntail aas
-        next s@Ins nodes _ _   aatail = ct' s nodes aatail
+        -- @ start list-viterbi.tex -8
+          where next s@Mat = vee'' s ntail aatail
+                next s@Del = vee'' s ntail aas
+                next s@Ins = vee'' s nodes aatail
+        -- @ end list-viterbi.tex
 
         insertAll Del _ = error "this can't happen" -- XXX wrong, needs inf cost
-        insertAll stateRight [] = ct stateRight [] []
+        insertAll stateHat [] = vee' stateHat [] []
         insertAll Mat aas = begin_i_m bnode `addHead` insertAll Ins aas
         insertAll Ins (aa:aas) =
           StepFrom [Scored (Ins, insertAll Ins aas)
                     (begin_i_i bnode + begin_emissions_i bnode ! aa)]
 
         deleteAll Ins _ = error "this can't happen" -- XXX wrong, needs inf cost
-        deleteAll stateRight [] = ct stateRight [] []
-        deleteAll stateRight (node:nodes) = 
-          StepFrom [Scored (Del, deleteAll Del nodes) (transition node Del stateRight)]
+        deleteAll stateHat [] = vee' stateHat [] []
+        deleteAll stateHat (node:nodes) = 
+          StepFrom [Scored (Del, deleteAll Del nodes) (transition node Del stateHat)]
 
-        ct' = ct -- memoize here; probably worth trying both Memo.list
+        vee'' = vee' -- memoize here; probably worth trying both Memo.list
                  -- and also Memo.wrap
 
 -- | @canFollow s s'@ tells whether one state can follow another 
