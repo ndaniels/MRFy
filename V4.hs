@@ -123,13 +123,17 @@ hoViterbi leaf edge internal model rs = vee' Mat (NI $ count model) (RC $ U.leng
        vee' stateHat j i =
          internal [ edge score state (vee'' state pj pi)
                   | state <- preceders stateHat
-                  , let pi = case state of { Del -> i ; _ -> pred i }
+                  , let pi = predUnless i Del state
                   , pj >= 0, pi >= 0
                   , let score = transition (node pj) state stateHat
                                 + emission (node pj) state (residue pi)
                   ]
-         where pj = case stateHat of { Ins -> j ; _ -> pred j }
+         where pj = predUnless j Ins stateHat
        -- @ end hov4.tex
+       predUnless :: forall a . Enum a => a -> StateLabel -> StateLabel -> a
+       predUnless n don't_move s = if s == don't_move then n else pred n
+
+
                -- Ins does not consume a node; Del does not consume a residue
        -- handles special non-emitting transitions into Ins state 0 and Mat state 1
        -- as well as self-transition for Ins state 0
