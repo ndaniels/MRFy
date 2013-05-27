@@ -103,8 +103,8 @@ namedTests =
   , T "all-perturb" $ runNamedProps perturbProps
   , T "all-props" $ runNamedProps $ perturbProps ++ hmmProps ++ hyperProps
 
-  , T "fight" $ quickCheck viterbiFight
-  , T "fight-path" $ quickCheck viterbiFightPath
+  , T "fight" $ quickCheckWith stdArgs { maxSuccess = 500 } viterbiFight
+  , T "fight-path" $ quickCheckWith stdArgs { maxSuccess = 500 } viterbiFightPath
 
   , T "tree-consistent" $ quickCheck costTreeConsistent
   ]

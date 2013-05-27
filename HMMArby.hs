@@ -48,7 +48,9 @@ minimumModelSize :: Int
 minimumModelSize = 2
 
 instance Arbitrary (V.Vector HMMNode) where
-  shrink = map V.fromList . filter ((>= minimumModelSize) . length) . shrink . V.toList
+  shrink = map (V.fromList . zipWith renumber [0..]) .
+           filter ((>= minimumModelSize) . length) . shrink . V.toList
+    where renumber n node = node { nodeNum = n }
   arbitrary = do
     -- A random length is used here to essentially guarantee
     -- that we get a list of HMMNodes with at least length 2.
