@@ -152,55 +152,21 @@ hoViterbi lf edg int model rs = vee' Mat (NI $ count model) (RC $ U.length rs)
        -- from state @Mat@ node 0 to state @sHat@ node @j@,
        -- producing the first @i@ residues from the vector @rs@.
        -- (For diagram see https://www.evernote.com/shard/s276/sh/39e47600-3354-4e8e-89f8-5c89884f9245/8880bd2c2a94dffb9be1432f12471ff2)
-       vee' Mat (NI 0) (RC 0) = error "reached unreachable state Mat/0/0"
-       vee' Ins (NI 0) i = intoInsZero i
-       vee' Mat (NI 1) i = intoMatOne i
-       vee' Del (NI 1) i = intoDelOne i
-       vee' stateHat j i = prevs (preceders stateHat) stateHat
-                                 (predUnless j Ins) (predUnless i Del)
-       -- @ start hov-prevs.tex -7
-       -- @ end hov-prevs.tex
-               -- Ins does not consume a node; Del does not consume a residue
-
-       {-# INLINE prevs #-}
-       {-
-       prevs :: [StateLabel] -- ^ potential labels @s@
-             -> StateLabel   -- ^ label of the state @sHat@
-             -> (StateLabel -> NodeIndex) -- ^ maps @sHat@ to index of node
-                                          --   containing state @s@
-             -> (StateLabel -> ResidueCount) -- ^ maps @s@ to index of
-                                             --   residue emitted by @s@
-             -> a
-       -}
-       -- @prevs ss sHat fj fi@ returns the min-cost path
-       -- from state @Mat@ node 0 to state @sHat@ node @j@,
-       -- producing the first @i@ residues from the vector @rs@,
-       -- where the path is restricted so that the state immediately
-       -- before @sHat@ lies in set @ss@.
-       -- Index @i@ is encoded as function @fi@, which given
-       -- a candidate preceding state label @s@, produces the
-       -- residue (if any) emitted by the state labelled @s@.
-       -- Index @j@ is encoded as function @fj@, which given
-       -- the state label @sHat@, produces the index of the node
-       -- in which the preceding state is located (which
-       -- is always j or @pred j@).
-
-       -- NR: the following line is a redundant case, but it seems
-       -- to every-so-slightly make things go faster.
-       -- prevs []        _          _  _  = internal [] 
-       -- @ start hov-prevs.tex -7
-       prevs :: [StateLabel] -> StateLabel
-             -> (StateLabel -> NodeIndex) -> (StateLabel -> ResidueCount) -> a
-       prevs predecessors stateHat fj fi =
+       vee' Ins (NI 0) (RC 0) = leaf (transition (node 0) Mat Ins)
+       vee' Mat (NI 1) (RC 0) = leaf (transition (node 0) Mat Mat)
+       vee' Del (NI 1) (RC 0) = leaf (transition (node 0) Mat Del)
+       vee' stateHat j i = 
         internal [ edge score state (vee'' state pj pi)
-                 | state <- predecessors
-                 , let pi = fi state
+                 | state <- preceders stateHat
+                 , let pi = predUnless i Del state
                  , pj >= 0, pi >= 0
                  , let score = transition (node pj) state stateHat
                                + emission (node pj) state (residue pi)
                  ]
-        where pj = fj stateHat
-       -- @ end hov-prevs.tex -7
+        where pj = predUnless j Ins stateHat
+       -- @ start hov-prevs.tex -7
+       -- @ end hov-prevs.tex
+               -- Ins does not consume a node; Del does not consume a residue
 
        -- @ start v4aux.tex -7
        predUnless :: forall a . Enum a => a -> StateLabel -> StateLabel -> a
@@ -209,14 +175,7 @@ hoViterbi lf edg int model rs = vee' Mat (NI $ count model) (RC $ U.length rs)
 
        -- handles special non-emitting transitions into Ins state 0 and Mat state 1
        -- as well as self-transition for Ins state 0
-       intoInsZero (RC 0) = leaf (transition (node 0) Mat Ins)
-       intoInsZero i = prevs [Ins] Ins (\_ -> 0) (\_ -> pred i)
 
-       intoDelOne (RC 0) = leaf (transition (node 0) Mat Del)
-       intoDelOne _      = internal []
-
-       intoMatOne (RC 0) = leaf (transition (node 0) Mat Mat)
-       intoMatOne i = prevs [Ins] Mat (\_ -> 0) (\_ -> pred i)
 
 
        vee'' = Memo.memo3 (Memo.arrayRange (minBound, maxBound))
