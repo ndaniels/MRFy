@@ -49,7 +49,9 @@ inlinedTree :: Model -> QuerySequence -> Tree
 inlinedTree = hoViterbi FromBegin (\s l t -> Scored (l, t) s) StepFrom 
 
 scoredPath :: Model -> QuerySequence -> Scored [StateLabel] 
-scoredPath = hoViterbi (Scored []) (\s state path -> s /+/ fmap (state:) path) xminimum 
+scoredPath m q =
+  fmap reverse $
+  hoViterbi (Scored []) (\s state path -> s /+/ fmap (state:) path) xminimum m q
   where xminimum = L.foldl' min (Scored [] negLogZero)
 
 scoreOnly, _lazyScoreOnly, strictScoreOnly :: Model -> QuerySequence -> Score
