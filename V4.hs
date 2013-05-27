@@ -201,7 +201,7 @@ hoViterbi leaf edge internal model rs = vee' Mat (NI $ count model) (RC $ U.leng
        intoDelOne _      = internal []
 
        intoMatOne (RC 0) = leaf (transition (node 0) Mat Mat)
-       intoMatOne i = prevs [Ins, Del] Mat (\_ -> 0) (predUnless i Del)
+       intoMatOne i = prevs [Ins] Mat (\_ -> 0) (\_ -> pred i)
 
 
        vee'' = Memo.memo3 (Memo.arrayRange (minBound, maxBound))
