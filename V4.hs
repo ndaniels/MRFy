@@ -155,10 +155,15 @@ hoViterbi lf edg int model rs = vee' Mat (NI $ count model) (RC $ U.length rs)
        -- from state @Mat@ node 0 to state @sHat@ node @j@,
        -- producing the first @i@ residues from the vector @rs@.
        -- (For diagram see https://www.evernote.com/shard/s276/sh/39e47600-3354-4e8e-89f8-5c89884f9245/8880bd2c2a94dffb9be1432f12471ff2)
-       vee' Mat (NI 0) (RC 0) = error "reached unreachable state Mat/0/0"
-       vee' Ins (NI 0) i = intoInsZero i
-       vee' Mat (NI 1) i = intoMatOne i
-       vee' Del (NI 1) i = intoDelOne i
+       vee' Ins (NI 0) (RC 0) = leaf (transition (node 0) Mat Ins)
+       vee' Ins (NI 0) i = prevs [Ins] Ins (\_ -> 0) (\_ -> pred i)
+
+       vee' Del (NI 1) (RC 0) = leaf (transition (node 0) Mat Del)
+       vee' Del (NI 1) _      = internal []
+
+       vee' Mat (NI 1) (RC 0) = leaf (transition (node 0) Mat Mat)
+       vee' Mat (NI 1) i = prevs [Ins, Del] Mat (\_ -> 0) (\_ -> pred i)
+
        vee' stateHat j i = prevs (preceders stateHat) stateHat
                                  (predUnless j Ins) (predUnless i Del)
        -- @ start hov-prevs.tex -7
@@ -212,14 +217,6 @@ hoViterbi lf edg int model rs = vee' Mat (NI $ count model) (RC $ U.length rs)
 
        -- handles special non-emitting transitions into Ins state 0 and Mat state 1
        -- as well as self-transition for Ins state 0
-       intoInsZero (RC 0) = leaf (transition (node 0) Mat Ins)
-       intoInsZero i = prevs [Ins] Ins (\_ -> 0) (\_ -> pred i)
-
-       intoDelOne (RC 0) = leaf (transition (node 0) Mat Del)
-       intoDelOne _      = internal []
-
-       intoMatOne (RC 0) = leaf (transition (node 0) Mat Mat)
-       intoMatOne i = prevs [Ins] Mat (\_ -> 0) (\_ -> pred i)
 
 
        vee'' = Memo.memo3 (Memo.arrayRange (minBound, maxBound))
