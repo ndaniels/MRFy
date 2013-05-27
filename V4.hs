@@ -212,15 +212,6 @@ hoViterbi leaf edge internal model rs = vee' Mat (NC $ count model) (RC $ U.leng
        predUnless :: forall a . Enum a => a -> StateLabel -> StateLabel -> a
        predUnless n don't_move s = if s == don't_move then n else pred n
 
-       -- handles special non-emitting transitions into Ins state 0 and Mat state 1
-       -- as well as self-transition for Ins state 0
-
-       intoMatOne (RC 0) = leaf (transition (node 0) Mat Mat)
-       intoMatOne i = prevs [Ins, Del] Mat (\_ -> 0) (predUnless i Del)
-       ---                        ^^^
-       --- removing this unnecessary state increases execution time
-       --- by 21% on short benchmark and 18% on the medium benchmark
-
        vee'' = Memo.memo3 (Memo.arrayRange (minBound, maxBound))
                           (Memo.arrayRange (0, NC (count model - 1)))
                           (Memo.arrayRange (0, RC (U.length rs - 1)))
