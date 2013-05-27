@@ -140,8 +140,10 @@ hoViterbi leaf edge internal model rs = vee' Mat (NC $ count model) (RC $ U.leng
        -- (For diagram see https://www.evernote.com/shard/s276/sh/39e47600-3354-4e8e-89f8-5c89884f9245/8880bd2c2a94dffb9be1432f12471ff2)
        -- @ start hov4.tex -7
        vee' Ins (NC 0) (RC 0) = leaf (transition (node 0) Mat Ins)
-       vee' Mat (NC 1) (RC 0) = leaf (transition (node 0) Mat Mat)
        vee' Del (NC 1) (RC 0) = leaf (transition (node 0) Mat Del)
+       vee' Mat (NC 1) (RC 0) = leaf (transition (node 0) Mat Mat)
+       vee' Mat j@(NC 1) i = 
+          prevs [Mat, Del] Mat (predUnless j Ins) (predUnless i Del)
        vee' stateHat j i = 
         internal [ edge score state (vee'' state pj pi)
                  | state <- preceders stateHat
@@ -152,7 +154,17 @@ hoViterbi leaf edge internal model rs = vee' Mat (NC $ count model) (RC $ U.leng
                  ]
         where pj = predUnless j Ins stateHat
        -- @ end hov4.tex
+       {-# INLINE prevs #-}
        -- @ start hov-prevs.tex -7
+       prevs predecessors stateHat fj fi =
+        internal [ edge score state (vee'' state pj pi)
+                 | state <- predecessors
+                 , let pi = fi state
+                 , pj >= 0, pi >= 0
+                 , let score = transition (node pj) state stateHat
+                               + emission (node pj) state (residue pi)
+                 ]
+        where pj = fj stateHat
        -- @ end hov-prevs.tex
                -- Ins does not consume a node; Del does not consume a residue
 
