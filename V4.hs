@@ -151,7 +151,11 @@ hoViterbi leaf edge internal model rs = vee' Mat (NC $ count model) (RC $ U.leng
        -- @ start hov4.tex -7
        vee' Ins (NC 0) (RC 0) = leaf (transition (node 0) Mat Ins)
        vee' Ins (NC 0) i = prevs [Ins] Ins (\_ -> 0) (\_ -> pred i)
-       vee' Mat (NC 1) i = intoMatOne i
+       vee' Mat (NC 1) (RC 0) = leaf (transition (node 0) Mat Mat)
+       vee' Mat (NC 1) i = prevs [Ins, Del] Mat (\_ -> 0) (predUnless i Del)
+       ---                        ^^^
+       --- removing this unnecessary state increases execution time
+       --- by 21% on short benchmark and 18% on the medium benchmark
        vee' Del (NC 1) (RC 0) = leaf (transition (node 0) Mat Del)
        vee' Del (NC 1) _      = internal []
        vee' stateRight j i = prevs (preceders stateRight) stateRight
@@ -210,11 +214,6 @@ hoViterbi leaf edge internal model rs = vee' Mat (NC $ count model) (RC $ U.leng
 
        -- handles special non-emitting transitions into Ins state 0 and Mat state 1
        -- as well as self-transition for Ins state 0
-       intoInsZero (RC 0) = leaf (transition (node 0) Mat Ins)
-       intoInsZero i = prevs [Ins] Ins (\_ -> 0) (\_ -> pred i)
-
-       intoDelOne (RC 0) = leaf (transition (node 0) Mat Del)
-       intoDelOne _      = internal []
 
        intoMatOne (RC 0) = leaf (transition (node 0) Mat Mat)
        intoMatOne i = prevs [Ins, Del] Mat (\_ -> 0) (predUnless i Del)
