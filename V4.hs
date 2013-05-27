@@ -151,7 +151,8 @@ hoViterbi leaf edge internal model rs = vee' Mat (NC $ count model) (RC $ U.leng
        -- @ start hov4.tex -7
        vee' Ins (NC 0) i = intoInsZero i
        vee' Mat (NC 1) i = intoMatOne i
-       vee' Del (NC 1) i = intoDelOne i
+       vee' Del (NC 1) (RC 0) = leaf (transition (node 0) Mat Del)
+       vee' Del (NC 1) _      = internal []
        vee' stateRight j i = prevs (preceders stateRight) stateRight
                                    (predUnless j Ins) (predUnless i Del)
 {-
