@@ -150,20 +150,37 @@ hoViterbi lf edg int model rs = vee' Mat (NI $ count model) (RC $ U.length rs)
        residue (RC i) = rs U.! i
 
       
+       -- @ start hov4.tex -7
        vee' :: StateLabel -> NodeIndex -> ResidueCount -> a
+       -- @ end hov4.tex
        -- ^ @vee' sHat j i@ returns the min-cost path
        -- from state @Mat@ node 0 to state @sHat@ node @j@,
        -- producing the first @i@ residues from the vector @rs@.
        -- (For diagram see https://www.evernote.com/shard/s276/sh/39e47600-3354-4e8e-89f8-5c89884f9245/8880bd2c2a94dffb9be1432f12471ff2)
+       -- @ start hov4.tex -7
        vee' Del (NI 1) (RC 0) = leaf (transition (node 0) Mat Del)
        vee' Ins (NI 0) (RC 0) = leaf (transition (node 0) Mat Ins)
        vee' Mat (NI 1) (RC 0) = leaf (transition (node 0) Mat Mat)
+       -- @ end hov4.tex
        vee' Mat j@(NI 1) i = prevs [Ins, Mat, Del] Mat 
                                    (predUnless j Ins) (predUnless i Del)
 
-       vee' stateHat j i = prevs (preceders stateHat) stateHat
-                                 (predUnless j Ins) (predUnless i Del)
-       -- @ start hov-prevs.tex -7
+       -- @ start hov4.tex -7
+       vee' stateHat j i = 
+       -- @ end hov4.tex
+         prevs (preceders stateHat) stateHat (predUnless j Ins) (predUnless i Del)
+       _unused stateHat j i = 
+       -- @ start hov4.tex -7
+         internal [ edge score state (vee'' state pj pi)
+                  | state <- preceders stateHat
+                  , let pi = predUnless i Del state
+                  , pj >= 0, pi >= 0
+                  , let score = transition (node pj) state stateHat
+                                + emission (node pj) state (residue pi)
+                  ]
+         where pj = predUnless j Ins stateHat
+       -- @ end hov4.tex
+       -- @ start hov-prevs.tex
        prevs predecessors stateHat fj fi =
         internal [ edge score state (vee'' state pj pi)
                  | state <- predecessors
