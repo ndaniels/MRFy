@@ -155,10 +155,11 @@ hoViterbi lf edg int model rs = vee' Mat (NI $ count model) (RC $ U.length rs)
        -- from state @Mat@ node 0 to state @sHat@ node @j@,
        -- producing the first @i@ residues from the vector @rs@.
        -- (For diagram see https://www.evernote.com/shard/s276/sh/39e47600-3354-4e8e-89f8-5c89884f9245/8880bd2c2a94dffb9be1432f12471ff2)
-       vee' Ins (NI 0) (RC 0) = leaf (transition (node 0) Mat Ins)
        vee' Del (NI 1) (RC 0) = leaf (transition (node 0) Mat Del)
+       vee' Ins (NI 0) (RC 0) = leaf (transition (node 0) Mat Ins)
        vee' Mat (NI 1) (RC 0) = leaf (transition (node 0) Mat Mat)
-       vee' Mat (NI 1) i = prevs [Ins, Del] Mat (\_ -> 0) (\_ -> pred i)
+       vee' Mat j@(NI 1) i = prevs [Mat, Ins, Del] Mat 
+                                   (predUnless j Ins) (predUnless i Del)
 
        vee' stateHat j i = prevs (preceders stateHat) stateHat
                                  (predUnless j Ins) (predUnless i Del)
