@@ -202,6 +202,6 @@ hoViterbi leaf edge internal model rs = vee' Mat (NC $ count model) (RC $ U.leng
 
        vee'' = Memo.memo3 (Memo.arrayRange (minBound, maxBound))
                           (Memo.arrayRange (0, NC (count model - 1)))
-                          (Memo.arrayRange (0, RC (U.length rs - 1)))
+                          (Memo.arrayRange (0, RC (U.length rs)))
                vee'
 
