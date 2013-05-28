@@ -158,12 +158,21 @@ hoViterbi lf edg int model rs = vee' Mat (NI $ count model) (RC $ U.length rs)
        vee' Del (NI 1) (RC 0) = leaf (transition (node 0) Mat Del)
        vee' Ins (NI 0) (RC 0) = leaf (transition (node 0) Mat Ins)
        vee' Mat (NI 1) (RC 0) = leaf (transition (node 0) Mat Mat)
-       vee' Mat j@(NI 1) i = prevs [Mat, Ins, Del] Mat 
+       vee' Mat j@(NI 1) i = prevs [Ins, Mat, Del] Mat 
                                    (predUnless j Ins) (predUnless i Del)
 
        vee' stateHat j i = prevs (preceders stateHat) stateHat
                                  (predUnless j Ins) (predUnless i Del)
        -- @ start hov-prevs.tex -7
+       prevs predecessors stateHat fj fi =
+        internal [ edge score state (vee'' state pj pi)
+                 | state <- predecessors
+                 , let pi = fi state
+                 , pj >= 0, pi >= 0
+                 , let score = transition (node pj) state stateHat
+                               + emission (node pj) state (residue pi)
+                 ]
+        where pj = fj stateHat
        -- @ end hov-prevs.tex
                -- Ins does not consume a node; Del does not consume a residue
 
@@ -196,25 +205,12 @@ hoViterbi lf edg int model rs = vee' Mat (NI $ count model) (RC $ U.length rs)
        -- @ start hov-prevs.tex -7
        prevs :: [StateLabel] -> StateLabel
              -> (StateLabel -> NodeIndex) -> (StateLabel -> ResidueCount) -> a
-       prevs predecessors stateHat fj fi =
-        internal [ edge score state (vee'' state pj pi)
-                 | state <- predecessors
-                 , let pi = fi state
-                 , pj >= 0, pi >= 0
-                 , let score = transition (node pj) state stateHat
-                               + emission (node pj) state (residue pi)
-                 ]
-        where pj = fj stateHat
        -- @ end hov-prevs.tex -7
 
        -- @ start v4aux.tex -7
        predUnless :: forall a . Enum a => a -> StateLabel -> StateLabel -> a
        predUnless n don't_move s = if s == don't_move then n else pred n
        -- @ end v4aux.tex
-
-       -- handles special non-emitting transitions into Ins state 0 and Mat state 1
-       -- as well as self-transition for Ins state 0
-
 
        vee'' = Memo.memo3 (Memo.arrayRange (minBound, maxBound))
                           (Memo.arrayRange (0, NI (count model - 1)))
