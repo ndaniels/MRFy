@@ -49,7 +49,7 @@ data DState = D { d_m, d_d :: S.Score }
   deriving (Eq, Show)
 
 -- @ start model3-node.tex
-data Node = Node { m :: MState, d :: DState, i :: IState }
+data Node = Node { i :: IState, m :: MState, d :: DState }
 -- @ end model3-node.tex
   deriving (Eq, Show)
 
@@ -68,7 +68,7 @@ newtype HMM = HMM (V.Vector Node)
 
 toHMM :: T.HMM -> HMM
 toHMM old_nodes = HMM (fmap toNode old_nodes)
-  where toNode n = Node m d i
+  where toNode n = Node { m = m,  d = d, i = i }
           where m = M { m_i = T.m_i trans
                       , m_m = T.m_m trans
                       , m_d = T.m_d trans
