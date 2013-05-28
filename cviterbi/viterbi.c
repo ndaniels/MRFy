@@ -12,7 +12,7 @@
 #include "input_hmm.h"
 
 const double NOMEMO = -1.0;
-const double NEGLOGZERO = DBL_MAX;
+const double NEGLOGZERO = 10e28;
 
 static inline int resindex(AA residue) { return residue - 'A'; }
 
@@ -78,7 +78,7 @@ run_forward(HMM hmm, QuerySequence query)
     NodeCount j; // number of nodes consumed on path to this state
     ResidueCount i; // number of residues consumed on path to this state
 
-    NodeCount num_normals = hmm->size - 1; // number of nodes with normal successors
+    NodeCount num_nodes = hmm->size;
     ResidueCount n = strlen(query);
 
     mt = memo_new(hmm->size + 1, n + 1, NEGLOGZERO);
@@ -87,14 +87,15 @@ run_forward(HMM hmm, QuerySequence query)
     *cell(mt, Mat, 0, 0) = 0.0; // BEGIN node
 
     
-    for (j = 0; j < num_normals; j++)
+    for (j = 0; j < num_nodes; j++)
         for (i = 0; i < n; i++) {
             // set scores for three states s/j/i
             AA residue = query[i];
             int resind = resindex(residue);
+            // emission scores belong to the successor of the state at node j
             Score m_emission =
-                j + 1 < num_normals ? nodes[j+1].m_emission[resind] : 0.0;
-                // the end state (node num_normals) does not emit
+                j + 1 < num_nodes ? nodes[j+1].m_emission[resind] : 0.0;
+                // the end state (node num_nodes) does not emit
             Score i_emission = nodes[j].i_emission[resind];
 
             Score here;
@@ -114,9 +115,11 @@ run_forward(HMM hmm, QuerySequence query)
 
         }
 
-    /* i = n; */
-    /* j = hmm->size; */
-    /* while (i >= 0 && j >= 0) { */
+    if (getenv("CVPATH")) {
+#if 0
+        ResidueCount i = n;
+        NodeCount j = num_nodes;
+#endif
         /* Score ms = *cell(mt, Mat, j, i); */
         /* Score is = *cell(mt, Ins, j, i); */
         /* Score ds = *cell(mt, Del, j, i); */
@@ -132,10 +135,9 @@ run_forward(HMM hmm, QuerySequence query)
             /* printf("Del "); */
             /* j--; */
         /* } */
-    /* } */
+    }
     
-    // the answer lies in *cell(t, Mat, hmm->size, n)
-    Score answer = *cell(mt, Mat, num_normals, n);
+    Score answer = *cell(mt, Mat, num_nodes, n);
     free(mt);
     return answer;
 }
