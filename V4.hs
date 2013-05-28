@@ -231,5 +231,5 @@ hoViterbi lf edg int model rs = vee' Mat (NI $ count model) (RC $ U.length rs)
 
        vee'' = Memo.memo3 (Memo.arrayRange (minBound, maxBound))
                           (Memo.arrayRange (0, NI (count model - 1)))
-                          (Memo.arrayRange (0, RC (U.length rs - 1)))
+                          (Memo.arrayRange (0, RC (U.length rs)))
                vee'
