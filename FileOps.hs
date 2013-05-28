@@ -141,8 +141,8 @@ runCommand (TestViterbi searchParams
   let hmm = toHMM ohmm
   let model = slice hmm (Slice { width = numNodes hmm, nodes_skipped = 0 })
   let scores = map (vTest model) queries
-  putStrLn $ show $ sum $ concat scores
-    where vTest m q = map plus [1..(viterbiPasses searchParams)]
+  putStrLn $ show $ concat scores
+    where vTest m q = map plus [0..(viterbiPasses searchParams - 1)]
             where plus i = scorePlusX m q (Score $ fromIntegral i)
 
 runCommand (TestOldViterbi searchParams
