@@ -26,41 +26,38 @@ typedef int NodeCount;
 typedef int ResidueCount;
 
 typedef struct MemoTable {
-    NodeCount hmmlen;
-    ResidueCount querylen;
-    Score scores[];  // array (hmmlen * querylen * NUMLABELS)
+    NodeCount hmmlenplus;
+    ResidueCount querylenplus;
+    Score scores[];  // array [NUMLABELS * hmmlenplus * querylenplus]
                      // INVARIANT during construction:
     // NOMEMO is a cell never reached
     // other value is the min cost to reach that cell
-    // from cell 0/0/Mat using the paths traversed so far
+    // from cell Mat/0/0 using the paths traversed so far.
+    // Residues are numbered from 0.  The score for cell s/j/0
+    // includes no emission scores.  The score for cell s/j/i
+    // includes the score for the emission of residue i-1 at state s/j.
+    // (Index i is the total number of residues emitted at that point.)
 } *MemoTable;
 
-// #error ERROR ERROR -- THE TABLE IS TOO SMALL ALONG THE HMM DIMENSION AND THE 
-// QUERY DIMENSION
 
 
 static inline Score *
 cell(MemoTable t, StateLabel s, NodeCount j, ResidueCount i)
 {
-    return &t->scores[s + NUMLABELS * (j + t->hmmlen * i)];
+    return &t->scores[s + NUMLABELS * (j + t->hmmlenplus * i)];
 }
 
 static MemoTable
-memo_new(NodeCount j, ResidueCount i, bool init)
+memo_new(NodeCount j, ResidueCount i, Score init)
 {
-    int numscores = j * i * NUMLABELS;
+    int numscores = (j+1) * (i+1) * NUMLABELS;
     MemoTable t = malloc(sizeof(*t) + numscores * sizeof(t->scores[0]));
     assert(t);
 
-    t->hmmlen = j;
-    t->querylen = i;
-    if (init)
-        for (int i = 0; i < numscores; i++)
-            t->scores[i] = NEGLOGZERO;
-    else
-        for (int i = 0; i < numscores; i++)
-            t->scores[i] = NOMEMO;
-
+    t->hmmlenplus = j+1;
+    t->querylenplus = i+1;
+    for (int i = 0; i < numscores; i++)
+        t->scores[i] = init;
     return t;
 }
 
@@ -70,7 +67,7 @@ down_successor(MemoTable t, StateLabel s, NodeCount j, ResidueCount i, Score x)
     if (x > NEGLOGZERO)
         x = NEGLOGZERO;
     Score *succ = cell(t, s, j, i); // the successor
-    if (*succ == NOMEMO || x < *succ)
+    if (x < *succ)
         *succ = x;
 }
         
@@ -84,58 +81,38 @@ run_forward(HMM hmm, QuerySequence query)
     NodeCount num_normals = hmm->size - 1; // number of nodes with normal successors
     ResidueCount n = strlen(query);
 
-    mt = memo_new(hmm->size + 1, n + 1, true);
+    mt = memo_new(hmm->size + 1, n + 1, NEGLOGZERO);
+    Node nodes = &hmm->nodes[0];
+
     *cell(mt, Mat, 0, 0) = 0.0; // BEGIN node
 
+    
     for (j = 0; j < num_normals; j++)
         for (i = 0; i < n; i++) {
+            // set scores for three states s/j/i
             AA residue = query[i];
             int resind = resindex(residue);
+            Score m_emission =
+                j + 1 < num_normals ? nodes[j+1].m_emission[resind] : 0.0;
+                // the end state (node num_normals) does not emit
+            Score i_emission = nodes[j].i_emission[resind];
+
             Score here;
 
             here = *cell(mt, Mat, j, i);
-            down_successor(mt, Ins, j, i+1,
-                           hmm->nodes[j].i_emission[resind]
-                           + hmm->nodes[j].m_i
-                           + here);
-            down_successor(mt, Mat, j+1, i+1,
-                           hmm->nodes[j].m_emission[resind]
-                           + hmm->nodes[j].m_m
-                           + here);
-            down_successor(mt, Del, j+1, i,
-                           hmm->nodes[j].m_d
-                           + here);
+            down_successor(mt, Ins, j,   i+1, here + nodes[j].m_i + i_emission);
+            down_successor(mt, Mat, j+1, i+1, here + nodes[j].m_m + m_emission);
+            down_successor(mt, Del, j+1, i,   here + nodes[j].m_d);
 
             here = *cell(mt, Ins, j, i);
-            down_successor(mt, Ins, j, i+1,
-                           hmm->nodes[j].i_emission[resind]
-                           + hmm->nodes[j].i_i
-                           + here);
-            down_successor(mt, Mat, j+1, i+1,
-                           hmm->nodes[j].m_emission[resind]
-                           + hmm->nodes[j].i_m
-                           + here);
+            down_successor(mt, Ins, j,   i+1, here + nodes[j].i_i + i_emission);
+            down_successor(mt, Mat, j+1, i+1, here + nodes[j].i_m + m_emission);
 
             here = *cell(mt, Del, j, i);
-            down_successor(mt, Mat, j+1, i+1,
-                           hmm->nodes[j].m_emission[resind]
-                           + hmm->nodes[j].d_m
-                           + here);
-            down_successor(mt, Del, j+1, i,
-                           hmm->nodes[j].d_d
-                           + here);
-        }
+            down_successor(mt, Mat, j+1, i+1, here + nodes[j].d_m + m_emission);
+            down_successor(mt, Del, j+1, i,   here + nodes[j].d_d);
 
-    int lastj = num_normals;
-    down_successor(mt, Mat, lastj+1, n, 
-                   hmm->nodes[lastj].m_m
-                   + *cell(mt, Mat, lastj, n-1));
-    down_successor(mt, Mat, lastj+1, n, 
-                   hmm->nodes[lastj].i_m
-                   + *cell(mt, Ins, lastj, n-1));
-    down_successor(mt, Mat, lastj+1, n, 
-                   hmm->nodes[lastj].d_m
-                   + *cell(mt, Del, lastj, n-1));
+        }
 
     /* i = n; */
     /* j = hmm->size; */
@@ -158,7 +135,7 @@ run_forward(HMM hmm, QuerySequence query)
     /* } */
     
     // the answer lies in *cell(t, Mat, hmm->size, n)
-    Score answer = *cell(mt, Mat, hmm->size, n);
+    Score answer = *cell(mt, Mat, num_normals, n);
     free(mt);
     return answer;
 }
@@ -370,7 +347,8 @@ main(int argc, char **argv)
         while (NULL != (q = *qs++)) {
             for (int i = 0; i < passes; i++)
                 score = viterbi_dp(&input_hmms[j], q);
-            printf("DP Score:   %f\n", score);
+            printf("Model %d (%3d nodes) query %d (%4d residues) DP Score:  %9.4f\n",
+                   j, input_hmms[j].size, qs-input_query, strlen(q), score);
         }
     }
 

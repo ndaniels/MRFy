@@ -15,7 +15,7 @@ typedef Score EScores[NUMAA];
 Score
 score_add(Score s1, Score s2);
 
-struct Node {
+typedef struct Node {
     Score m_i;
     Score m_m;
     Score m_d;
@@ -25,7 +25,7 @@ struct Node {
     Score d_d;
     EScores m_emission;
     EScores i_emission;
-};
+} *Node;
 
 typedef struct HMM {
     int32_t size; // number of elements in 'nodes'
