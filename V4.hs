@@ -115,11 +115,10 @@ hoViterbi leaf edge internal model rs = vee' Mat (NI $ count model) (RC $ U.leng
        -- from state @Mat@ node 0 to state @sHat@ node @j@,
        -- producing the first @i@ residues from the vector @rs@.
        -- (For diagram see https://www.evernote.com/shard/s276/sh/39e47600-3354-4e8e-89f8-5c89884f9245/8880bd2c2a94dffb9be1432f12471ff2)
-       vee' Mat (NI 0) (RC 0) = error "reached unreachable state Mat/0/0"
        -- @ start hov4.tex -7
-       vee' Ins (NI 0) i = intoInsZero i
-       vee' Mat (NI 1) i = intoMatOne i
-       vee' Del (NI 1) i = intoDelOne i
+       vee' Ins (NI 0) (RC 0) = leaf (transition (node 0) Mat Ins)
+       vee' Mat (NI 1) (RC 0) = leaf (transition (node 0) Mat Mat)
+       vee' Del (NI 1) (RC 0) = leaf (transition (node 0) Mat Del)
        vee' stateHat j i =
          internal [ edge score state (vee'' state pj pi)
                   | state <- preceders stateHat
@@ -132,36 +131,6 @@ hoViterbi leaf edge internal model rs = vee' Mat (NI $ count model) (RC $ U.leng
        -- @ end hov4.tex
        predUnless :: forall a . Enum a => a -> StateLabel -> StateLabel -> a
        predUnless n don't_move s = if s == don't_move then n else pred n
-
-
-               -- Ins does not consume a node; Del does not consume a residue
-       -- handles special non-emitting transitions into Ins state 0 and Mat state 1
-       -- as well as self-transition for Ins state 0
-       intoInsZero (RC 0) = leaf (transition (node 0) Mat Ins)
-       intoInsZero i =
-         internal [ edge score state (intoInsZero pi)
-                  | state <- [Ins]
-                  , let pi = pred i
-                  , let score = transition (node pj) state stateRight
-                                + emission (node pj) state (residue pi)
-                  ]
-           where pj = 0
-                 stateRight = Ins
-
-       intoDelOne (RC 0) = leaf (transition (node 0) Mat Del)
-       intoDelOne _      = internal []
-
-       intoMatOne (RC 0) = leaf (transition (node 0) Mat Mat)
-       intoMatOne i =
-         internal $ [ edge score state (vee'' state pj pi)
-                    | state <- [Ins, Del]
-                    , let pi = case state of { Del -> i ; _ -> pred i }
-                    , let score = transition (node pj) state stateRight
-                                  + emission (node pj) state (residue pi)
-                  ]
-         where pj = 0
-               stateRight = Mat
-
 
        vee'' = Memo.memo3 (Memo.arrayRange (minBound, maxBound))
                           (Memo.arrayRange (0, NI (count model - 1)))
