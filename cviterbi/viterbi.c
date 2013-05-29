@@ -349,8 +349,8 @@ main(int argc, char **argv)
         while (NULL != (q = *qs++)) {
             for (int i = 0; i < passes; i++)
                 score = viterbi_dp(&input_hmms[j], q);
-            printf("Model %d (%3d nodes) query %d (%4d residues) DP Score:  %9.4f\n",
-                   j, input_hmms[j].size, qs-input_query, strlen(q), score);
+            printf("Model %d (%3d nodes) query %ld (%4d residues) DP Score:  %9.4f\n",
+                   j, input_hmms[j].size, qs-input_query, (int) strlen(q), score);
         }
     }
 
