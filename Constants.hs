@@ -1,11 +1,12 @@
-{-# LANGUAGE BangPatterns, GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE TypeFamilies, MultiParamTypeClasses, BangPatterns, GeneralizedNewtypeDeriving #-}
 
 module Constants where
 
+import Control.Monad (liftM)
 import Data.Vector.Unboxed
 import Data.Ix
-import Data.Vector.Generic.Base
-import Data.Vector.Generic.Mutable
+import qualified Data.Vector.Generic as G
+import qualified Data.Vector.Generic.Mutable as M
 import Data.Vector.Unboxed as U hiding (minimum, (++), map)
 import qualified Data.Vector as V hiding (minimum, (++), map)
 
@@ -24,9 +25,7 @@ betaCoeff = 0.5
 -- @ start aa.tex
 newtype AA = AA Int
 -- @ end aa.tex
-  deriving (Show, Eq, Num, Ord, Ix, Integral, Enum, Real
-           , Data.Vector.Generic.Base.Vector U.Vector
-           , Data.Vector.Generic.Mutable.MVector U.MVector, U.Unbox)
+  deriving (Show, Eq, Num, Ord, Ix, Integral, Enum, Real)
   
 instance Bounded AA where
      minBound = AA 0
@@ -48,4 +47,50 @@ numAlphabetAdditions = 1 :: Int -- just X for now
 
 data Debugging = Debugging { slicing :: Bool }
 debug = Debugging { slicing = False }
+
+
+newtype instance U.MVector s (AA) = MV_AA (U.MVector s Int)
+newtype instance U.Vector    (AA) = V_AA  (U.Vector    Int)
+
+instance U.Unbox AA
+
+instance M.MVector U.MVector AA where
+  {-# INLINE basicLength #-}
+  {-# INLINE basicUnsafeSlice #-}
+  {-# INLINE basicOverlaps #-}
+  {-# INLINE basicUnsafeNew #-}
+  {-# INLINE basicUnsafeReplicate #-}
+  {-# INLINE basicUnsafeRead #-}
+  {-# INLINE basicUnsafeWrite #-}
+  {-# INLINE basicClear #-}
+  {-# INLINE basicSet #-}
+  {-# INLINE basicUnsafeCopy #-}
+  {-# INLINE basicUnsafeGrow #-}
+  basicLength (MV_AA v) = M.basicLength v
+  basicUnsafeSlice i n (MV_AA v) = MV_AA $ M.basicUnsafeSlice i n v
+  basicOverlaps (MV_AA v1) (MV_AA v2) = M.basicOverlaps v1 v2
+  basicUnsafeNew n = MV_AA `liftM` M.basicUnsafeNew n
+  basicUnsafeReplicate n (AA x) = MV_AA `liftM` M.basicUnsafeReplicate n x
+  basicUnsafeRead (MV_AA v) i = AA `liftM` M.basicUnsafeRead v i
+  basicUnsafeWrite (MV_AA v) i (AA x) = M.basicUnsafeWrite v i x
+  basicClear (MV_AA v) = M.basicClear v
+  basicSet (MV_AA v) (AA x) = M.basicSet v x
+  basicUnsafeCopy (MV_AA v1) (MV_AA v2) = M.basicUnsafeCopy v1 v2
+  basicUnsafeMove (MV_AA v1) (MV_AA v2) = M.basicUnsafeMove v1 v2
+  basicUnsafeGrow (MV_AA v) n = MV_AA `liftM` M.basicUnsafeGrow v n
+
+instance G.Vector U.Vector AA where
+  {-# INLINE basicUnsafeFreeze #-}
+  {-# INLINE basicUnsafeThaw #-}
+  {-# INLINE basicLength #-}
+  {-# INLINE basicUnsafeSlice #-}
+  {-# INLINE basicUnsafeIndexM #-}
+  {-# INLINE elemseq #-}
+  basicUnsafeFreeze (MV_AA v) = V_AA `liftM` G.basicUnsafeFreeze v
+  basicUnsafeThaw (V_AA v) = MV_AA `liftM` G.basicUnsafeThaw v
+  basicLength (V_AA v) = G.basicLength v
+  basicUnsafeSlice i n (V_AA v) = V_AA $ G.basicUnsafeSlice i n v
+  basicUnsafeIndexM (V_AA v) i = AA `liftM` G.basicUnsafeIndexM v i
+  basicUnsafeCopy (MV_AA mv) (V_AA v) = G.basicUnsafeCopy mv v
+  elemseq _ (AA x) y = G.elemseq (undefined :: U.Vector a) x y
 

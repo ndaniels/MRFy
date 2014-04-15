@@ -46,7 +46,7 @@ supportedAlphabet = "amino"
 
 checkMRF :: Either ParseError MRF -> MRF
 checkMRF (Right m) = m
-checkMRF (Left e)  = error "Failed to parse HMMPlus file"
+checkMRF (Left e)  = error ("Failed to parse HMMPlus file: " ++ show e)
 
 parseMRF :: String -> IO (Either ParseError MRF)
 parseMRF fName = parseFromFile mrfFile fName -- this should pull out of Either
@@ -200,6 +200,7 @@ headerKey = oneStringOf [ "NAME"
                         , "EFFN"
                         , "CKSUM"
                         , "STATS"
+                        , "DESC", "SMURFLITE", "SIMEVFREQ", "SIMEVCOUNT"
                         ]
 
 headerPair :: GenParser Char st (String, String)
