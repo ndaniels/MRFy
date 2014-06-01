@@ -14,6 +14,7 @@ module MRFTypes
   , mkTransProb, mkTransProbs
   , mkScore
   , showBetas
+  , hmmDotString, hmmDot
   )
 where
 
@@ -27,6 +28,7 @@ import Prelude hiding (showList)
 import Test.QuickCheck
 import Text.Printf
 
+import qualified Dot
 import Score
 
 type HMM = V.Vector HMMNode
@@ -244,3 +246,47 @@ instance Eq BetaPair where
   (==) = (==) `on` pairPosition
 instance Ord BetaPair where
   compare = compare `on` pairPosition
+
+
+hmmDotString :: HMM -> String
+hmmDotString = Dot.toDot . hmmDot
+
+hmmDot :: HMM -> Dot.DotBuilder ()
+hmmDot nodes =
+  do e <- Dot.node "E"
+     ed <- Dot.node "ED"
+     node (V.length nodes - 1) e ed
+ where node 0 m d = do b <- Dot.node ("B" ++ emissions (matEmissions n))
+                       i <- Dot.node ("I" ++ emissions (insEmissions n))
+                       edge b i (m_i trans)
+                       edge b m (m_m trans)
+                       edge b d (m_d trans)
+                       edge i i (i_i trans)
+                       edge i m (i_m trans)
+         where n = nodes V.! 0
+               trans = transitions n
+                       
+       node j m d = do m' <- Dot.node ("M" ++ emissions (matEmissions n))
+                       i  <- Dot.node ("I" ++ emissions (insEmissions n))
+                       d' <- Dot.node "D"
+                       edge m' i (m_i trans)
+                       edge m' m (m_m trans)
+                       edge m' d (m_d trans)
+                       edge i i (i_i trans)
+                       edge i m (i_m trans)
+                       edge d' m (d_m trans)
+                       edge d' d (d_d trans)
+                       node (pred j) m' d'
+         where n = nodes V.! j
+               trans = transitions n
+                       
+       edge from to p' =
+         if p < negLogZero then Dot.edge from to (sprintf "%.2f" p)
+         else return ()
+         where p = logProbability p'
+
+       emissions v = concat $ map p $ filter nonzero $ zip [0..] (U.toList v)
+         where p (i, (Score score)) = printf "\\nAA%d = %.2f" i score
+               p :: (Int, Score) -> String
+               nonzero (_, s) = s < negLogZero
+                       
