@@ -78,45 +78,45 @@ hoViterbi :: (Score -> a) -- ^ reaction to initial transition
           -> ([b] -> a) -- ^ make answer from all children
           -> Model -> QuerySequence -> a
 hoViterbi leaf child internal = viterbi 
- where viterbi model rs = ct Mat (NI nMids) (RI $ U.length rs)
+ where viterbi model rs = vee' Mat (NI nMids) (RI $ U.length rs)
         where
           Model { begin = bnode, middle = middle, end = enode, midSize = nMids } = model
 
-          ct stateRight (NI 0) (RI 0)  = leaf (beginMatch bnode stateRight)
-          ct stateRight (NI 0)  ri     = insertAll stateRight ri
-          ct stateRight ni     (RI 0)  = deleteAll stateRight ni
+          vee' stateRight (NI 0) (RI 0)  = leaf (beginMatch bnode stateRight)
+          vee' stateRight (NI 0)  ri     = insertAll stateRight ri
+          vee' stateRight ni     (RI 0)  = deleteAll stateRight ni
           -- @ start hoviterbi.tex -10
-          ct stateRight ni ri =
-            internal [ child score state (next state ni ri)
-                     | state <- preceders stateRight -- memoized!
+          vee' stateRight j i =
+            internal [ child score state (next state j i)
+                     | state <- preceders stateRight
                      , let score = transition node state stateRight
                                    + emission node state aa
                      ]
-            where node = middle (pred ni)
-                  aa = rs `rat` pred ri
+            where node = middle (pred j)
+                  aa = rs `rat` pred i
           -- @ end hoviterbi.tex
 
-          next s@Mat ni ri = ct' s (pred ni) (pred ri)
-          next s@Del ni ri = ct' s (pred ni) ri
-          next s@Ins ni ri = ct' s ni        (pred ri)
+          next s@Mat ni ri = vee'' s (pred ni) (pred ri)
+          next s@Del ni ri = vee'' s (pred ni) ri
+          next s@Ins ni ri = vee'' s ni        (pred ri)
 
-          insertAll stateRight (RI 0) = ct stateRight (NI 0) (RI 0)
+          insertAll stateRight (RI 0) = vee' stateRight (NI 0) (RI 0)
           insertAll stateRight ri = 
             internal [ child score stateRight (insertAll Ins (pred ri)) ]
             where aa = rs `rat` pred ri
                   score = bitransition bnode stateRight + ((binse bnode) C./!/ aa)
           -- deleteAll Ins _ = error "this can't happen" -- XXX wrong, needs inf cost 
           deleteAll Ins _ = leaf negLogZero
-          deleteAll stateRight (NI 0) = ct stateRight (NI 0) (RI 0)
+          deleteAll stateRight (NI 0) = vee' stateRight (NI 0) (RI 0)
           deleteAll stateRight ni =
             internal [ child score Del (deleteAll Del (pred ni)) ]
               where node = middle (pred ni)
                     score = transition node Del stateRight
 
-          ct' = Memo.memo3 (Memo.arrayRange (minBound, maxBound))
+          vee'' = Memo.memo3 (Memo.arrayRange (minBound, maxBound))
                            (Memo.arrayRange (NI 0, NI $ pred $ nMids))
                            (Memo.arrayRange (RI 0, RI $ pred $ U.length rs))
-                           ct
+                           vee'
             -- N.B. could go with unsafe ranges here
 
 beginMatch :: BeginNode -> StateLabel -> Score
@@ -156,7 +156,7 @@ emission n state residue =
     case state of
       Mat -> (mate n) C./!/ residue 
       Ins -> (inse n) C./!/ residue 
-      Del -> negLogOne
+      Del -> 0
       -- _   -> error ("State " ++ (show state) ++ " cannot emit") 
 
 logp = logProbability
