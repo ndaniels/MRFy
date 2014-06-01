@@ -1,3 +1,5 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
 module Model
 where
 
@@ -80,8 +82,10 @@ asBegin n = BeginNode (inse n) (m_m n) (m_i n) (m_d n) (i_m n) (i_i n)
 
 -- data Seq a = Seq { get :: Int -> a, seqLength :: Int }  
 
+newtype NodeIndex = NI Int deriving (Enum, Eq, A.Ix, Ord)
+
 data Model = Model { begin :: BeginNode
-                   , middle :: Int -> MiddleNode
+                   , middle :: NodeIndex -> MiddleNode
                    , end :: EndNode
                    , midSize :: Int
                    }
@@ -104,15 +108,15 @@ modelHMM mod = HMM (beg, listArray mids)
 modelList :: Model -> (BeginNode, [MiddleNode], EndNode)
 modelList mod = (begin mod, reverse $ midsList (midSize mod - 1), end mod)
   where midsList (-1) = []
-        midsList   n  = mid n : midsList (n - 1)
+        midsList   n  = mid (NI n) : midsList (n - 1)
 
         mid = middle mod
 
 slice :: HMM -> Interval -> Model
 slice hmm@(HMM (hmmBegin, mids)) (start, len) =
   Model begNode mid EndNode (len - 1)
-  where mid :: Int -> MiddleNode
-        mid n
+  where mid :: NodeIndex -> MiddleNode
+        mid (NI n)
           | n < 0         = error ("< oob (" ++ show n ++ ")")
           | n >= len - 1  = error "> oob"
           -- Gross. Indexing here must be offset by whether the
