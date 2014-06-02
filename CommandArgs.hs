@@ -50,6 +50,7 @@ data Commanded = AlignmentSearch SearchParameters Files
                | TestViterbiPath SearchParameters Files
                | TestOldViterbi SearchParameters Files
                | DumpToC Files
+               | DumpToML Files
      
 
 getFiles :: [String] -> Files
@@ -91,6 +92,11 @@ getOpts ["-test", what] = TestHMM what
 getOpts ("-dumpc":argv) = 
     case getOpt RequireOrder options argv of
       (_, moreArgs, []) -> DumpToC (getFiles moreArgs)
+      (_, _, errs) -> error (concat errs ++ usageInfo header options)
+  where header = "Usage: mrfy [OPTION ...] files..."
+getOpts ("-dumpml":argv) = 
+    case getOpt RequireOrder options argv of
+      (_, moreArgs, []) -> DumpToML (getFiles moreArgs)
       (_, _, errs) -> error (concat errs ++ usageInfo header options)
   where header = "Usage: mrfy [OPTION ...] files..."
 getOpts ("-viterbi":argv) = 

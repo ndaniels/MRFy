@@ -66,5 +66,13 @@ cinput:V: build
 	dist/build/mrfy/mrfy -dumpc testing/8.hmm+ testing/8.fasta \
 		> cviterbi/input_hmm.c
 
+mlinput-micro:V: build
+	dist/build/mrfy/mrfy -dumpml testing/micro8.hmm+ testing/micro8.fasta \
+		> mlviterbi/input_hmm.sml
+
+mlinput:V: build
+	dist/build/mrfy/mrfy -dumpml testing/8.hmm+ testing/8.fasta \
+		> mlviterbi/input_hmm.sml
+
 # note: to build profile: ghc --make Main.hs -O3 -rtsopts -o $TGT
 # then, ghc --make Main.hs -O3 -prof -auto-all -caf-all -rtsopts -osuf p_o -o $TGT

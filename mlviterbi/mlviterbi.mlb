@@ -1,0 +1,9 @@
+$(SML_LIB)/basis/basis.mlb
+debug.sml
+alpha_map.sml
+model.sml
+input_query.sml
+input_hmm.sml
+memo.sml
+viterbi.sml
+main.sml

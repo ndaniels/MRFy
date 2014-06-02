@@ -41,6 +41,7 @@ import Model3 (toHMM, slice, Slice(..), numNodes)
 import V4 hiding (statePath)
 
 import qualified ModelToC as ModC
+import qualified ModelToML as ModML
 
 loadTestData :: Files -> IO (HMMHeader, HMM, [QuerySequence])
 loadTestData files =
@@ -212,6 +213,12 @@ runCommand (DumpToC
   putStrLn "#include <stdlib.h>\n"
   putStrLn "#include \"model.h\"\n"
   putStrLn (ModC.toc hmm)
+
+runCommand (DumpToML
+                (files @ Files { hmmPlusF = hmmPlusFile, outputF = outFile})) = do
+  (header, ohmm, queries) <- loadTestData files
+  let hmm = toHMM ohmm
+  putStrLn (ModML.toml hmm)
 
 runCommand (AlignmentSearch searchParams
                 (files @ Files { hmmPlusF = hmmPlusFile, outputF = outFile })) = do
